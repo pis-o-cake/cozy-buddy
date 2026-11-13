@@ -35,4 +35,6 @@ class AlarmRepositoryImpl @Inject constructor(
         Timber.d("Alarm delete id=%s deleted=%b", id, deleted)
         return deleted
     }
+
+    override suspend fun currentRevision(): Long = dao.currentRevision() ?: 0L
 }
