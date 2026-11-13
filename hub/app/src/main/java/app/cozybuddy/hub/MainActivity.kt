@@ -1,15 +1,32 @@
 package app.cozybuddy.hub
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.compose.foundation.layout.Box
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import app.cozybuddy.hub.core.designsystem.CozyTheme
+import app.cozybuddy.hub.feature.alarm.AlarmListViewModel
+import app.cozybuddy.hub.feature.alarm.AlarmRingViewModel
+import app.cozybuddy.hub.feature.alarm.ui.AlarmListRoute
+import app.cozybuddy.hub.feature.alarm.ui.AlarmRingOverlayRoute
 import app.cozybuddy.hub.feature.ambient.AmbientViewModel
 import app.cozybuddy.hub.feature.ambient.ui.AmbientRoute
 import dagger.hilt.android.AndroidEntryPoint
@@ -19,16 +36,45 @@ import dagger.hilt.android.AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
     private val ambientViewModel: AmbientViewModel by viewModels()
+    private val alarmListViewModel: AlarmListViewModel by viewModels()
+    private val alarmRingViewModel: AlarmRingViewModel by viewModels()
+
+    private val notificationPermission =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        requestNotificationPermissionIfNeeded()
         setContent {
             CozyTheme {
-                AmbientRoute(ambientViewModel)
+                HubRoot()
             }
         }
+    }
+
+    @Composable
+    private fun HubRoot() {
+        var showAlarms by rememberSaveable { mutableStateOf(false) }
+        BackHandler(enabled = showAlarms) { showAlarms = false }
+        Box {
+            if (showAlarms) {
+                AlarmListRoute(alarmListViewModel, onClose = { showAlarms = false })
+            } else {
+                AmbientRoute(ambientViewModel, onLongPress = { showAlarms = true })
+            }
+            // 울림 오버레이는 어떤 화면 위에서도 보여야 하므로 마지막에 그린다.
+            AlarmRingOverlayRoute(alarmRingViewModel, Modifier)
+        }
+    }
+
+    // Android 13 이상은 알림 권한이 꺼지면 울림 알림·전체 화면 인텐트가 표시되지 않는다.
+    private fun requestNotificationPermissionIfNeeded() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+        val granted = ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) ==
+            PackageManager.PERMISSION_GRANTED
+        if (!granted) notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
