@@ -5,6 +5,7 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
@@ -21,6 +22,7 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -45,14 +47,14 @@ private const val BACKGROUND_CENTER_Y = 0.42f
 private const val BACKGROUND_MID_STOP = 0.55f
 
 @Composable
-fun AmbientRoute(viewModel: AmbientViewModel) {
+fun AmbientRoute(viewModel: AmbientViewModel, onLongPress: () -> Unit = {}) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     WindowBrightnessEffect(state.dim.windowBrightness)
-    AmbientScreen(state)
+    AmbientScreen(state, onLongPress = onLongPress)
 }
 
 @Composable
-fun AmbientScreen(state: AmbientUiState, modifier: Modifier = Modifier) {
+fun AmbientScreen(state: AmbientUiState, modifier: Modifier = Modifier, onLongPress: () -> Unit = {}) {
     val colors = CozyTheme.clockColors
     val contentAlpha by animateFloatAsState(
         targetValue = state.dim.contentAlpha,
@@ -64,6 +66,7 @@ fun AmbientScreen(state: AmbientUiState, modifier: Modifier = Modifier) {
     BoxWithConstraints(
         modifier
             .fillMaxSize()
+            .pointerInput(onLongPress) { detectTapGestures(onLongPress = { onLongPress() }) }
             .drawBehind {
                 val radius = size.maxDimension * 0.6f
                 drawRect(
