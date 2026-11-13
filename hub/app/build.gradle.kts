@@ -36,6 +36,8 @@ android {
 
     testOptions {
         unitTests.all { it.useJUnitPlatform() }
+        // Robolectric 이 매니페스트·리소스를 읽도록 한다(Room DAO 테스트용).
+        unitTests.isIncludeAndroidResources = true
     }
 }
 
@@ -43,6 +45,10 @@ kotlin {
     compilerOptions {
         jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
     }
+}
+
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
 }
 
 // 프로토콜 정본은 저장소 루트의 protocol/ 이다. 복사하지 않고 소스 디렉터리로 직접 참조한다.
@@ -80,6 +86,10 @@ dependencies {
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
 
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
+    ksp(libs.androidx.room.compiler)
+
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.timber)
     implementation(libs.protobuf.javalite)
@@ -89,5 +99,10 @@ dependencies {
     testImplementation(libs.junit.jupiter)
     testRuntimeOnly(libs.junit.platform.launcher)
     testImplementation(libs.mockk)
+    // Room DAO 테스트만 JUnit4 기반 Robolectric 을 쓰므로 vintage 엔진으로 같은 플랫폼에서 실행한다.
+    testImplementation(libs.junit4)
+    testImplementation(libs.robolectric)
+    testImplementation(libs.androidx.test.core)
+    testRuntimeOnly(libs.junit.vintage.engine)
     testImplementation(libs.kotlinx.coroutines.test)
 }
