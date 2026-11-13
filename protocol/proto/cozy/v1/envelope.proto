@@ -6,6 +6,7 @@ import "cozy/v1/alarm.proto";
 import "cozy/v1/home.proto";
 import "cozy/v1/session.proto";
 import "cozy/v1/voice.proto";
+import "cozy/v1/weather.proto";
 
 option java_package = "app.cozybuddy.protocol.v1";
 option java_multiple_files = true;
@@ -13,7 +14,7 @@ option java_multiple_files = true;
 // 양방향(허브·앱 공통 프레임). WebSocket 바이너리 프레임 하나가 Envelope 하나다.
 //
 // body 필드 번호 대역(새 메시지는 해당 대역에서만 추가한다):
-//   10-19 session, 20-39 voice, 40-59 alarm, 60-79 home
+//   10-19 session, 20-39 voice, 40-59 alarm, 60-79 home, 80-99 weather/misc
 message Envelope {
   // 송신자별로 연결 내에서 1부터 증가하는 송신 순번. 유실·역전 감지용.
   uint64 seq = 1;
@@ -51,5 +52,8 @@ message Envelope {
     EntityCommand entity_command = 62;
     CommandResult command_result = 63;
     HubStatus hub_status = 64;
+
+    // weather/misc
+    WeatherSnapshot weather_snapshot = 80;
   }
 }

@@ -21,6 +21,7 @@ CATALOG: dict[str, int] = {
     "alarm_snapshot": 43, "alarm_sync_request": 44,
     "home_snapshot": 60, "entity_state_changed": 61, "entity_command": 62,
     "command_result": 63, "hub_status": 64,
+    "weather_snapshot": 80,
 }
 
 
@@ -28,8 +29,9 @@ def _load(gen_dir: Path):
     """생성 모듈을 임포트한다."""
     sys.path.insert(0, str(gen_dir))
     from cozy.v1 import (alarm_pb2, common_pb2, envelope_pb2, home_pb2,
-                         session_pb2, voice_pb2)
-    return alarm_pb2, common_pb2, envelope_pb2, home_pb2, session_pb2, voice_pb2
+                         session_pb2, voice_pb2, weather_pb2)
+    return (alarm_pb2, common_pb2, envelope_pb2, home_pb2, session_pb2, voice_pb2,
+            weather_pb2)
 
 
 def _gen_dir_from_env() -> Path:
@@ -41,7 +43,7 @@ def _gen_dir_from_env() -> Path:
 
 def build_bodies(gen_dir: Path) -> dict:
     """oneof 케이스별로 값이 채워진 메시지를 만든다."""
-    alarm, common, _env, home, session, voice = _load(gen_dir)
+    alarm, common, _env, home, session, voice, weather = _load(gen_dir)
     fmt = voice.AudioFormat(encoding=voice.AUDIO_ENCODING_PCM_S16LE,
                             sample_rate_hz=16000, channels=1)
     state = home.EntityState(state="on", attributes={"brightness": "128"},
@@ -97,6 +99,12 @@ def build_bodies(gen_dir: Path) -> dict:
                                              code=common.ERROR_CODE_UPSTREAM_UNAVAILABLE,
                                              message_key="err.upstream"),
         "hub_status": home.HubStatus(volume_pct=40, mic_muted=True, screen_brightness_pct=70),
+        "weather_snapshot": weather.WeatherSnapshot(
+            observed_epoch_ms=1_700_000_000_000, temperature_c=-3.5, weather_code=61, is_day=True,
+            today=weather.WeatherDaily(min_c=-6.0, max_c=2.5, precipitation_probability_pct=80,
+                                       weather_code=61),
+            tomorrow=weather.WeatherDaily(min_c=-4.0, max_c=5.0, precipitation_probability_pct=10,
+                                          weather_code=3)),
     }
 
 

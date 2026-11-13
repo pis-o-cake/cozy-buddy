@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package cozy.v1;
+
+option java_package = "app.cozybuddy.protocol.v1";
+option java_multiple_files = true;
+
+// 집 위치의 날씨. 서버가 외부 제공자에서 주기적으로 받아 캐시하고 모든 클라이언트에 보낸다.
+
+// 하루치 예보.
+message WeatherDaily {
+  double min_c = 1;
+  double max_c = 2;
+  // 강수 확률(0~100).
+  int32 precipitation_probability_pct = 3;
+  // WMO 날씨 코드.
+  int32 weather_code = 4;
+}
+
+// 서버→허브, 서버→앱. 현재 날씨와 오늘·내일 예보. 연결 직후와 값이 바뀔 때마다 온다.
+message WeatherSnapshot {
+  int64 observed_epoch_ms = 1;
+  double temperature_c = 2;
+  // WMO 날씨 코드.
+  int32 weather_code = 3;
+  bool is_day = 4;
+  WeatherDaily today = 5;
+  WeatherDaily tomorrow = 6;
+}
