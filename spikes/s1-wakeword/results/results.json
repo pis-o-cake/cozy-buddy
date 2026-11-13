@@ -1,0 +1,1736 @@
+{
+  "model": "hey_jarvis_v0.1",
+  "tts_model": "tts-1",
+  "positives": 48,
+  "negatives": 40,
+  "negative_audio_seconds": 97.8,
+  "noisy_snr_db": 10.0,
+  "consecutive_hits": 2,
+  "note": "TTS speech, not real far-field recordings; use for relative threshold choice only",
+  "by_threshold": {
+    "0.2": {
+      "phrase": {
+        "clean": {
+          "hey_jarvis_en": 1.0,
+          "hey_jarvis_ko": 0.6667,
+          "hey_jarvis_ko_cmd": 0.25,
+          "jarvis_ko": 0.0
+        },
+        "noisy": {
+          "hey_jarvis_en": 1.0,
+          "hey_jarvis_ko": 0.5,
+          "hey_jarvis_ko_cmd": 0.25,
+          "jarvis_ko": 0.0
+        }
+      },
+      "voice": {
+        "clean": {
+          "alloy": 0.5,
+          "echo": 0.625,
+          "fable": 0.625,
+          "nova": 0.375,
+          "onyx": 0.375,
+          "shimmer": 0.375
+        },
+        "noisy": {
+          "alloy": 0.25,
+          "echo": 0.625,
+          "fable": 0.5,
+          "nova": 0.375,
+          "onyx": 0.375,
+          "shimmer": 0.5
+        }
+      },
+      "overall_clean": 0.4792,
+      "overall_noisy": 0.4375,
+      "false_accepts_clean": 0,
+      "false_accepts_noisy": 3
+    },
+    "0.25": {
+      "phrase": {
+        "clean": {
+          "hey_jarvis_en": 1.0,
+          "hey_jarvis_ko": 0.5,
+          "hey_jarvis_ko_cmd": 0.25,
+          "jarvis_ko": 0.0
+        },
+        "noisy": {
+          "hey_jarvis_en": 1.0,
+          "hey_jarvis_ko": 0.4167,
+          "hey_jarvis_ko_cmd": 0.1667,
+          "jarvis_ko": 0.0
+        }
+      },
+      "voice": {
+        "clean": {
+          "alloy": 0.5,
+          "echo": 0.5,
+          "fable": 0.5,
+          "nova": 0.375,
+          "onyx": 0.375,
+          "shimmer": 0.375
+        },
+        "noisy": {
+          "alloy": 0.25,
+          "echo": 0.5,
+          "fable": 0.375,
+          "nova": 0.375,
+          "onyx": 0.375,
+          "shimmer": 0.5
+        }
+      },
+      "overall_clean": 0.4375,
+      "overall_noisy": 0.3958,
+      "false_accepts_clean": 0,
+      "false_accepts_noisy": 1
+    },
+    "0.3": {
+      "phrase": {
+        "clean": {
+          "hey_jarvis_en": 1.0,
+          "hey_jarvis_ko": 0.5,
+          "hey_jarvis_ko_cmd": 0.25,
+          "jarvis_ko": 0.0
+        },
+        "noisy": {
+          "hey_jarvis_en": 0.9167,
+          "hey_jarvis_ko": 0.3333,
+          "hey_jarvis_ko_cmd": 0.1667,
+          "jarvis_ko": 0.0
+        }
+      },
+      "voice": {
+        "clean": {
+          "alloy": 0.5,
+          "echo": 0.5,
+          "fable": 0.5,
+          "nova": 0.375,
+          "onyx": 0.375,
+          "shimmer": 0.375
+        },
+        "noisy": {
+          "alloy": 0.125,
+          "echo": 0.5,
+          "fable": 0.375,
+          "nova": 0.375,
+          "onyx": 0.25,
+          "shimmer": 0.5
+        }
+      },
+      "overall_clean": 0.4375,
+      "overall_noisy": 0.3542,
+      "false_accepts_clean": 0,
+      "false_accepts_noisy": 0
+    },
+    "0.35": {
+      "phrase": {
+        "clean": {
+          "hey_jarvis_en": 1.0,
+          "hey_jarvis_ko": 0.3333,
+          "hey_jarvis_ko_cmd": 0.1667,
+          "jarvis_ko": 0.0
+        },
+        "noisy": {
+          "hey_jarvis_en": 0.9167,
+          "hey_jarvis_ko": 0.25,
+          "hey_jarvis_ko_cmd": 0.1667,
+          "jarvis_ko": 0.0
+        }
+      },
+      "voice": {
+        "clean": {
+          "alloy": 0.25,
+          "echo": 0.5,
+          "fable": 0.5,
+          "nova": 0.375,
+          "onyx": 0.25,
+          "shimmer": 0.375
+        },
+        "noisy": {
+          "alloy": 0.125,
+          "echo": 0.375,
+          "fable": 0.375,
+          "nova": 0.375,
+          "onyx": 0.25,
+          "shimmer": 0.5
+        }
+      },
+      "overall_clean": 0.375,
+      "overall_noisy": 0.3333,
+      "false_accepts_clean": 0,
+      "false_accepts_noisy": 0
+    },
+    "0.4": {
+      "phrase": {
+        "clean": {
+          "hey_jarvis_en": 1.0,
+          "hey_jarvis_ko": 0.3333,
+          "hey_jarvis_ko_cmd": 0.1667,
+          "jarvis_ko": 0.0
+        },
+        "noisy": {
+          "hey_jarvis_en": 0.9167,
+          "hey_jarvis_ko": 0.1667,
+          "hey_jarvis_ko_cmd": 0.0833,
+          "jarvis_ko": 0.0
+        }
+      },
+      "voice": {
+        "clean": {
+          "alloy": 0.25,
+          "echo": 0.5,
+          "fable": 0.5,
+          "nova": 0.375,
+          "onyx": 0.25,
+          "shimmer": 0.375
+        },
+        "noisy": {
+          "alloy": 0.125,
+          "echo": 0.25,
+          "fable": 0.375,
+          "nova": 0.375,
+          "onyx": 0.25,
+          "shimmer": 0.375
+        }
+      },
+      "overall_clean": 0.375,
+      "overall_noisy": 0.2917,
+      "false_accepts_clean": 0,
+      "false_accepts_noisy": 0
+    },
+    "0.45": {
+      "phrase": {
+        "clean": {
+          "hey_jarvis_en": 1.0,
+          "hey_jarvis_ko": 0.25,
+          "hey_jarvis_ko_cmd": 0.0833,
+          "jarvis_ko": 0.0
+        },
+        "noisy": {
+          "hey_jarvis_en": 0.9167,
+          "hey_jarvis_ko": 0.0833,
+          "hey_jarvis_ko_cmd": 0.0,
+          "jarvis_ko": 0.0
+        }
+      },
+      "voice": {
+        "clean": {
+          "alloy": 0.25,
+          "echo": 0.5,
+          "fable": 0.375,
+          "nova": 0.25,
+          "onyx": 0.25,
+          "shimmer": 0.375
+        },
+        "noisy": {
+          "alloy": 0.125,
+          "echo": 0.25,
+          "fable": 0.375,
+          "nova": 0.25,
+          "onyx": 0.25,
+          "shimmer": 0.25
+        }
+      },
+      "overall_clean": 0.3333,
+      "overall_noisy": 0.25,
+      "false_accepts_clean": 0,
+      "false_accepts_noisy": 0
+    },
+    "0.5": {
+      "phrase": {
+        "clean": {
+          "hey_jarvis_en": 1.0,
+          "hey_jarvis_ko": 0.25,
+          "hey_jarvis_ko_cmd": 0.0,
+          "jarvis_ko": 0.0
+        },
+        "noisy": {
+          "hey_jarvis_en": 0.9167,
+          "hey_jarvis_ko": 0.0833,
+          "hey_jarvis_ko_cmd": 0.0,
+          "jarvis_ko": 0.0
+        }
+      },
+      "voice": {
+        "clean": {
+          "alloy": 0.25,
+          "echo": 0.375,
+          "fable": 0.375,
+          "nova": 0.25,
+          "onyx": 0.25,
+          "shimmer": 0.375
+        },
+        "noisy": {
+          "alloy": 0.125,
+          "echo": 0.25,
+          "fable": 0.375,
+          "nova": 0.25,
+          "onyx": 0.25,
+          "shimmer": 0.25
+        }
+      },
+      "overall_clean": 0.3125,
+      "overall_noisy": 0.25,
+      "false_accepts_clean": 0,
+      "false_accepts_noisy": 0
+    },
+    "0.55": {
+      "phrase": {
+        "clean": {
+          "hey_jarvis_en": 1.0,
+          "hey_jarvis_ko": 0.25,
+          "hey_jarvis_ko_cmd": 0.0,
+          "jarvis_ko": 0.0
+        },
+        "noisy": {
+          "hey_jarvis_en": 0.9167,
+          "hey_jarvis_ko": 0.0,
+          "hey_jarvis_ko_cmd": 0.0,
+          "jarvis_ko": 0.0
+        }
+      },
+      "voice": {
+        "clean": {
+          "alloy": 0.25,
+          "echo": 0.375,
+          "fable": 0.375,
+          "nova": 0.25,
+          "onyx": 0.25,
+          "shimmer": 0.375
+        },
+        "noisy": {
+          "alloy": 0.125,
+          "echo": 0.25,
+          "fable": 0.25,
+          "nova": 0.25,
+          "onyx": 0.25,
+          "shimmer": 0.25
+        }
+      },
+      "overall_clean": 0.3125,
+      "overall_noisy": 0.2292,
+      "false_accepts_clean": 0,
+      "false_accepts_noisy": 0
+    },
+    "0.6": {
+      "phrase": {
+        "clean": {
+          "hey_jarvis_en": 1.0,
+          "hey_jarvis_ko": 0.1667,
+          "hey_jarvis_ko_cmd": 0.0,
+          "jarvis_ko": 0.0
+        },
+        "noisy": {
+          "hey_jarvis_en": 0.8333,
+          "hey_jarvis_ko": 0.0,
+          "hey_jarvis_ko_cmd": 0.0,
+          "jarvis_ko": 0.0
+        }
+      },
+      "voice": {
+        "clean": {
+          "alloy": 0.25,
+          "echo": 0.25,
+          "fable": 0.375,
+          "nova": 0.25,
+          "onyx": 0.25,
+          "shimmer": 0.375
+        },
+        "noisy": {
+          "alloy": 0.125,
+          "echo": 0.25,
+          "fable": 0.125,
+          "nova": 0.25,
+          "onyx": 0.25,
+          "shimmer": 0.25
+        }
+      },
+      "overall_clean": 0.2917,
+      "overall_noisy": 0.2083,
+      "false_accepts_clean": 0,
+      "false_accepts_noisy": 0
+    },
+    "0.65": {
+      "phrase": {
+        "clean": {
+          "hey_jarvis_en": 1.0,
+          "hey_jarvis_ko": 0.1667,
+          "hey_jarvis_ko_cmd": 0.0,
+          "jarvis_ko": 0.0
+        },
+        "noisy": {
+          "hey_jarvis_en": 0.8333,
+          "hey_jarvis_ko": 0.0,
+          "hey_jarvis_ko_cmd": 0.0,
+          "jarvis_ko": 0.0
+        }
+      },
+      "voice": {
+        "clean": {
+          "alloy": 0.25,
+          "echo": 0.25,
+          "fable": 0.375,
+          "nova": 0.25,
+          "onyx": 0.25,
+          "shimmer": 0.375
+        },
+        "noisy": {
+          "alloy": 0.125,
+          "echo": 0.25,
+          "fable": 0.125,
+          "nova": 0.25,
+          "onyx": 0.25,
+          "shimmer": 0.25
+        }
+      },
+      "overall_clean": 0.2917,
+      "overall_noisy": 0.2083,
+      "false_accepts_clean": 0,
+      "false_accepts_noisy": 0
+    },
+    "0.7": {
+      "phrase": {
+        "clean": {
+          "hey_jarvis_en": 1.0,
+          "hey_jarvis_ko": 0.1667,
+          "hey_jarvis_ko_cmd": 0.0,
+          "jarvis_ko": 0.0
+        },
+        "noisy": {
+          "hey_jarvis_en": 0.8333,
+          "hey_jarvis_ko": 0.0,
+          "hey_jarvis_ko_cmd": 0.0,
+          "jarvis_ko": 0.0
+        }
+      },
+      "voice": {
+        "clean": {
+          "alloy": 0.25,
+          "echo": 0.25,
+          "fable": 0.375,
+          "nova": 0.25,
+          "onyx": 0.25,
+          "shimmer": 0.375
+        },
+        "noisy": {
+          "alloy": 0.125,
+          "echo": 0.25,
+          "fable": 0.125,
+          "nova": 0.25,
+          "onyx": 0.25,
+          "shimmer": 0.25
+        }
+      },
+      "overall_clean": 0.2917,
+      "overall_noisy": 0.2083,
+      "false_accepts_clean": 0,
+      "false_accepts_noisy": 0
+    },
+    "0.75": {
+      "phrase": {
+        "clean": {
+          "hey_jarvis_en": 1.0,
+          "hey_jarvis_ko": 0.1667,
+          "hey_jarvis_ko_cmd": 0.0,
+          "jarvis_ko": 0.0
+        },
+        "noisy": {
+          "hey_jarvis_en": 0.8333,
+          "hey_jarvis_ko": 0.0,
+          "hey_jarvis_ko_cmd": 0.0,
+          "jarvis_ko": 0.0
+        }
+      },
+      "voice": {
+        "clean": {
+          "alloy": 0.25,
+          "echo": 0.25,
+          "fable": 0.375,
+          "nova": 0.25,
+          "onyx": 0.25,
+          "shimmer": 0.375
+        },
+        "noisy": {
+          "alloy": 0.125,
+          "echo": 0.25,
+          "fable": 0.125,
+          "nova": 0.25,
+          "onyx": 0.25,
+          "shimmer": 0.25
+        }
+      },
+      "overall_clean": 0.2917,
+      "overall_noisy": 0.2083,
+      "false_accepts_clean": 0,
+      "false_accepts_noisy": 0
+    },
+    "0.8": {
+      "phrase": {
+        "clean": {
+          "hey_jarvis_en": 1.0,
+          "hey_jarvis_ko": 0.1667,
+          "hey_jarvis_ko_cmd": 0.0,
+          "jarvis_ko": 0.0
+        },
+        "noisy": {
+          "hey_jarvis_en": 0.8333,
+          "hey_jarvis_ko": 0.0,
+          "hey_jarvis_ko_cmd": 0.0,
+          "jarvis_ko": 0.0
+        }
+      },
+      "voice": {
+        "clean": {
+          "alloy": 0.25,
+          "echo": 0.25,
+          "fable": 0.375,
+          "nova": 0.25,
+          "onyx": 0.25,
+          "shimmer": 0.375
+        },
+        "noisy": {
+          "alloy": 0.125,
+          "echo": 0.25,
+          "fable": 0.125,
+          "nova": 0.25,
+          "onyx": 0.25,
+          "shimmer": 0.25
+        }
+      },
+      "overall_clean": 0.2917,
+      "overall_noisy": 0.2083,
+      "false_accepts_clean": 0,
+      "false_accepts_noisy": 0
+    },
+    "0.85": {
+      "phrase": {
+        "clean": {
+          "hey_jarvis_en": 1.0,
+          "hey_jarvis_ko": 0.1667,
+          "hey_jarvis_ko_cmd": 0.0,
+          "jarvis_ko": 0.0
+        },
+        "noisy": {
+          "hey_jarvis_en": 0.8333,
+          "hey_jarvis_ko": 0.0,
+          "hey_jarvis_ko_cmd": 0.0,
+          "jarvis_ko": 0.0
+        }
+      },
+      "voice": {
+        "clean": {
+          "alloy": 0.25,
+          "echo": 0.25,
+          "fable": 0.375,
+          "nova": 0.25,
+          "onyx": 0.25,
+          "shimmer": 0.375
+        },
+        "noisy": {
+          "alloy": 0.125,
+          "echo": 0.25,
+          "fable": 0.125,
+          "nova": 0.25,
+          "onyx": 0.25,
+          "shimmer": 0.25
+        }
+      },
+      "overall_clean": 0.2917,
+      "overall_noisy": 0.2083,
+      "false_accepts_clean": 0,
+      "false_accepts_noisy": 0
+    },
+    "0.9": {
+      "phrase": {
+        "clean": {
+          "hey_jarvis_en": 1.0,
+          "hey_jarvis_ko": 0.0833,
+          "hey_jarvis_ko_cmd": 0.0,
+          "jarvis_ko": 0.0
+        },
+        "noisy": {
+          "hey_jarvis_en": 0.8333,
+          "hey_jarvis_ko": 0.0,
+          "hey_jarvis_ko_cmd": 0.0,
+          "jarvis_ko": 0.0
+        }
+      },
+      "voice": {
+        "clean": {
+          "alloy": 0.25,
+          "echo": 0.25,
+          "fable": 0.375,
+          "nova": 0.25,
+          "onyx": 0.25,
+          "shimmer": 0.25
+        },
+        "noisy": {
+          "alloy": 0.125,
+          "echo": 0.25,
+          "fable": 0.125,
+          "nova": 0.25,
+          "onyx": 0.25,
+          "shimmer": 0.25
+        }
+      },
+      "overall_clean": 0.2708,
+      "overall_noisy": 0.2083,
+      "false_accepts_clean": 0,
+      "false_accepts_noisy": 0
+    },
+    "0.95": {
+      "phrase": {
+        "clean": {
+          "hey_jarvis_en": 1.0,
+          "hey_jarvis_ko": 0.0833,
+          "hey_jarvis_ko_cmd": 0.0,
+          "jarvis_ko": 0.0
+        },
+        "noisy": {
+          "hey_jarvis_en": 0.8333,
+          "hey_jarvis_ko": 0.0,
+          "hey_jarvis_ko_cmd": 0.0,
+          "jarvis_ko": 0.0
+        }
+      },
+      "voice": {
+        "clean": {
+          "alloy": 0.25,
+          "echo": 0.25,
+          "fable": 0.375,
+          "nova": 0.25,
+          "onyx": 0.25,
+          "shimmer": 0.25
+        },
+        "noisy": {
+          "alloy": 0.125,
+          "echo": 0.25,
+          "fable": 0.125,
+          "nova": 0.25,
+          "onyx": 0.25,
+          "shimmer": 0.25
+        }
+      },
+      "overall_clean": 0.2708,
+      "overall_noisy": 0.2083,
+      "false_accepts_clean": 0,
+      "false_accepts_noisy": 0
+    },
+    "1.0": {
+      "phrase": {
+        "clean": {
+          "hey_jarvis_en": 0.0,
+          "hey_jarvis_ko": 0.0,
+          "hey_jarvis_ko_cmd": 0.0,
+          "jarvis_ko": 0.0
+        },
+        "noisy": {
+          "hey_jarvis_en": 0.0,
+          "hey_jarvis_ko": 0.0,
+          "hey_jarvis_ko_cmd": 0.0,
+          "jarvis_ko": 0.0
+        }
+      },
+      "voice": {
+        "clean": {
+          "alloy": 0.0,
+          "echo": 0.0,
+          "fable": 0.0,
+          "nova": 0.0,
+          "onyx": 0.0,
+          "shimmer": 0.0
+        },
+        "noisy": {
+          "alloy": 0.0,
+          "echo": 0.0,
+          "fable": 0.0,
+          "nova": 0.0,
+          "onyx": 0.0,
+          "shimmer": 0.0
+        }
+      },
+      "overall_clean": 0.0,
+      "overall_noisy": 0.0,
+      "false_accepts_clean": 0,
+      "false_accepts_noisy": 0
+    }
+  },
+  "positive_peaks": [
+    {
+      "phrase": "hey_jarvis_en",
+      "voice": "alloy",
+      "speed": 1.0,
+      "condition": "clean",
+      "peak": 0.9798
+    },
+    {
+      "phrase": "hey_jarvis_en",
+      "voice": "alloy",
+      "speed": 1.0,
+      "condition": "noisy",
+      "peak": 0.2521
+    },
+    {
+      "phrase": "hey_jarvis_en",
+      "voice": "alloy",
+      "speed": 1.15,
+      "condition": "clean",
+      "peak": 0.994
+    },
+    {
+      "phrase": "hey_jarvis_en",
+      "voice": "alloy",
+      "speed": 1.15,
+      "condition": "noisy",
+      "peak": 0.9956
+    },
+    {
+      "phrase": "hey_jarvis_en",
+      "voice": "echo",
+      "speed": 1.0,
+      "condition": "clean",
+      "peak": 0.9988
+    },
+    {
+      "phrase": "hey_jarvis_en",
+      "voice": "echo",
+      "speed": 1.0,
+      "condition": "noisy",
+      "peak": 0.9982
+    },
+    {
+      "phrase": "hey_jarvis_en",
+      "voice": "echo",
+      "speed": 1.15,
+      "condition": "clean",
+      "peak": 0.9986
+    },
+    {
+      "phrase": "hey_jarvis_en",
+      "voice": "echo",
+      "speed": 1.15,
+      "condition": "noisy",
+      "peak": 0.9963
+    },
+    {
+      "phrase": "hey_jarvis_en",
+      "voice": "fable",
+      "speed": 1.0,
+      "condition": "clean",
+      "peak": 0.9899
+    },
+    {
+      "phrase": "hey_jarvis_en",
+      "voice": "fable",
+      "speed": 1.0,
+      "condition": "noisy",
+      "peak": 0.5767
+    },
+    {
+      "phrase": "hey_jarvis_en",
+      "voice": "fable",
+      "speed": 1.15,
+      "condition": "clean",
+      "peak": 0.9939
+    },
+    {
+      "phrase": "hey_jarvis_en",
+      "voice": "fable",
+      "speed": 1.15,
+      "condition": "noisy",
+      "peak": 0.976
+    },
+    {
+      "phrase": "hey_jarvis_en",
+      "voice": "nova",
+      "speed": 1.0,
+      "condition": "clean",
+      "peak": 0.9988
+    },
+    {
+      "phrase": "hey_jarvis_en",
+      "voice": "nova",
+      "speed": 1.0,
+      "condition": "noisy",
+      "peak": 0.9986
+    },
+    {
+      "phrase": "hey_jarvis_en",
+      "voice": "nova",
+      "speed": 1.15,
+      "condition": "clean",
+      "peak": 0.9975
+    },
+    {
+      "phrase": "hey_jarvis_en",
+      "voice": "nova",
+      "speed": 1.15,
+      "condition": "noisy",
+      "peak": 0.9962
+    },
+    {
+      "phrase": "hey_jarvis_en",
+      "voice": "onyx",
+      "speed": 1.0,
+      "condition": "clean",
+      "peak": 0.9987
+    },
+    {
+      "phrase": "hey_jarvis_en",
+      "voice": "onyx",
+      "speed": 1.0,
+      "condition": "noisy",
+      "peak": 0.9982
+    },
+    {
+      "phrase": "hey_jarvis_en",
+      "voice": "onyx",
+      "speed": 1.15,
+      "condition": "clean",
+      "peak": 0.9986
+    },
+    {
+      "phrase": "hey_jarvis_en",
+      "voice": "onyx",
+      "speed": 1.15,
+      "condition": "noisy",
+      "peak": 0.9941
+    },
+    {
+      "phrase": "hey_jarvis_en",
+      "voice": "shimmer",
+      "speed": 1.0,
+      "condition": "clean",
+      "peak": 0.9987
+    },
+    {
+      "phrase": "hey_jarvis_en",
+      "voice": "shimmer",
+      "speed": 1.0,
+      "condition": "noisy",
+      "peak": 0.9986
+    },
+    {
+      "phrase": "hey_jarvis_en",
+      "voice": "shimmer",
+      "speed": 1.15,
+      "condition": "clean",
+      "peak": 0.9983
+    },
+    {
+      "phrase": "hey_jarvis_en",
+      "voice": "shimmer",
+      "speed": 1.15,
+      "condition": "noisy",
+      "peak": 0.9955
+    },
+    {
+      "phrase": "hey_jarvis_ko",
+      "voice": "alloy",
+      "speed": 1.0,
+      "condition": "clean",
+      "peak": 0.1799
+    },
+    {
+      "phrase": "hey_jarvis_ko",
+      "voice": "alloy",
+      "speed": 1.0,
+      "condition": "noisy",
+      "peak": 0.1259
+    },
+    {
+      "phrase": "hey_jarvis_ko",
+      "voice": "alloy",
+      "speed": 1.15,
+      "condition": "clean",
+      "peak": 0.3299
+    },
+    {
+      "phrase": "hey_jarvis_ko",
+      "voice": "alloy",
+      "speed": 1.15,
+      "condition": "noisy",
+      "peak": 0.1487
+    },
+    {
+      "phrase": "hey_jarvis_ko",
+      "voice": "echo",
+      "speed": 1.0,
+      "condition": "clean",
+      "peak": 0.2493
+    },
+    {
+      "phrase": "hey_jarvis_ko",
+      "voice": "echo",
+      "speed": 1.0,
+      "condition": "noisy",
+      "peak": 0.2378
+    },
+    {
+      "phrase": "hey_jarvis_ko",
+      "voice": "echo",
+      "speed": 1.15,
+      "condition": "clean",
+      "peak": 0.5948
+    },
+    {
+      "phrase": "hey_jarvis_ko",
+      "voice": "echo",
+      "speed": 1.15,
+      "condition": "noisy",
+      "peak": 0.3405
+    },
+    {
+      "phrase": "hey_jarvis_ko",
+      "voice": "fable",
+      "speed": 1.0,
+      "condition": "clean",
+      "peak": 0.2245
+    },
+    {
+      "phrase": "hey_jarvis_ko",
+      "voice": "fable",
+      "speed": 1.0,
+      "condition": "noisy",
+      "peak": 0.1124
+    },
+    {
+      "phrase": "hey_jarvis_ko",
+      "voice": "fable",
+      "speed": 1.15,
+      "condition": "clean",
+      "peak": 0.9702
+    },
+    {
+      "phrase": "hey_jarvis_ko",
+      "voice": "fable",
+      "speed": 1.15,
+      "condition": "noisy",
+      "peak": 0.5354
+    },
+    {
+      "phrase": "hey_jarvis_ko",
+      "voice": "nova",
+      "speed": 1.0,
+      "condition": "clean",
+      "peak": 0.4361
+    },
+    {
+      "phrase": "hey_jarvis_ko",
+      "voice": "nova",
+      "speed": 1.0,
+      "condition": "noisy",
+      "peak": 0.434
+    },
+    {
+      "phrase": "hey_jarvis_ko",
+      "voice": "nova",
+      "speed": 1.15,
+      "condition": "clean",
+      "peak": 0.0498
+    },
+    {
+      "phrase": "hey_jarvis_ko",
+      "voice": "nova",
+      "speed": 1.15,
+      "condition": "noisy",
+      "peak": 0.0865
+    },
+    {
+      "phrase": "hey_jarvis_ko",
+      "voice": "onyx",
+      "speed": 1.0,
+      "condition": "clean",
+      "peak": 0.1266
+    },
+    {
+      "phrase": "hey_jarvis_ko",
+      "voice": "onyx",
+      "speed": 1.0,
+      "condition": "noisy",
+      "peak": 0.1609
+    },
+    {
+      "phrase": "hey_jarvis_ko",
+      "voice": "onyx",
+      "speed": 1.15,
+      "condition": "clean",
+      "peak": 0.331
+    },
+    {
+      "phrase": "hey_jarvis_ko",
+      "voice": "onyx",
+      "speed": 1.15,
+      "condition": "noisy",
+      "peak": 0.2946
+    },
+    {
+      "phrase": "hey_jarvis_ko",
+      "voice": "shimmer",
+      "speed": 1.0,
+      "condition": "clean",
+      "peak": 0.1901
+    },
+    {
+      "phrase": "hey_jarvis_ko",
+      "voice": "shimmer",
+      "speed": 1.0,
+      "condition": "noisy",
+      "peak": 0.1439
+    },
+    {
+      "phrase": "hey_jarvis_ko",
+      "voice": "shimmer",
+      "speed": 1.15,
+      "condition": "clean",
+      "peak": 0.8548
+    },
+    {
+      "phrase": "hey_jarvis_ko",
+      "voice": "shimmer",
+      "speed": 1.15,
+      "condition": "noisy",
+      "peak": 0.3724
+    },
+    {
+      "phrase": "jarvis_ko",
+      "voice": "alloy",
+      "speed": 1.0,
+      "condition": "clean",
+      "peak": 0.002
+    },
+    {
+      "phrase": "jarvis_ko",
+      "voice": "alloy",
+      "speed": 1.0,
+      "condition": "noisy",
+      "peak": 0.0085
+    },
+    {
+      "phrase": "jarvis_ko",
+      "voice": "alloy",
+      "speed": 1.15,
+      "condition": "clean",
+      "peak": 0.0001
+    },
+    {
+      "phrase": "jarvis_ko",
+      "voice": "alloy",
+      "speed": 1.15,
+      "condition": "noisy",
+      "peak": 0.0001
+    },
+    {
+      "phrase": "jarvis_ko",
+      "voice": "echo",
+      "speed": 1.0,
+      "condition": "clean",
+      "peak": 0.0001
+    },
+    {
+      "phrase": "jarvis_ko",
+      "voice": "echo",
+      "speed": 1.0,
+      "condition": "noisy",
+      "peak": 0.0406
+    },
+    {
+      "phrase": "jarvis_ko",
+      "voice": "echo",
+      "speed": 1.15,
+      "condition": "clean",
+      "peak": 0.0001
+    },
+    {
+      "phrase": "jarvis_ko",
+      "voice": "echo",
+      "speed": 1.15,
+      "condition": "noisy",
+      "peak": 0.0473
+    },
+    {
+      "phrase": "jarvis_ko",
+      "voice": "fable",
+      "speed": 1.0,
+      "condition": "clean",
+      "peak": 0.0
+    },
+    {
+      "phrase": "jarvis_ko",
+      "voice": "fable",
+      "speed": 1.0,
+      "condition": "noisy",
+      "peak": 0.1456
+    },
+    {
+      "phrase": "jarvis_ko",
+      "voice": "fable",
+      "speed": 1.15,
+      "condition": "clean",
+      "peak": 0.0
+    },
+    {
+      "phrase": "jarvis_ko",
+      "voice": "fable",
+      "speed": 1.15,
+      "condition": "noisy",
+      "peak": 0.0731
+    },
+    {
+      "phrase": "jarvis_ko",
+      "voice": "nova",
+      "speed": 1.0,
+      "condition": "clean",
+      "peak": 0.0001
+    },
+    {
+      "phrase": "jarvis_ko",
+      "voice": "nova",
+      "speed": 1.0,
+      "condition": "noisy",
+      "peak": 0.0012
+    },
+    {
+      "phrase": "jarvis_ko",
+      "voice": "nova",
+      "speed": 1.15,
+      "condition": "clean",
+      "peak": 0.0001
+    },
+    {
+      "phrase": "jarvis_ko",
+      "voice": "nova",
+      "speed": 1.15,
+      "condition": "noisy",
+      "peak": 0.0203
+    },
+    {
+      "phrase": "jarvis_ko",
+      "voice": "onyx",
+      "speed": 1.0,
+      "condition": "clean",
+      "peak": 0.0001
+    },
+    {
+      "phrase": "jarvis_ko",
+      "voice": "onyx",
+      "speed": 1.0,
+      "condition": "noisy",
+      "peak": 0.0191
+    },
+    {
+      "phrase": "jarvis_ko",
+      "voice": "onyx",
+      "speed": 1.15,
+      "condition": "clean",
+      "peak": 0.0
+    },
+    {
+      "phrase": "jarvis_ko",
+      "voice": "onyx",
+      "speed": 1.15,
+      "condition": "noisy",
+      "peak": 0.0013
+    },
+    {
+      "phrase": "jarvis_ko",
+      "voice": "shimmer",
+      "speed": 1.0,
+      "condition": "clean",
+      "peak": 0.0001
+    },
+    {
+      "phrase": "jarvis_ko",
+      "voice": "shimmer",
+      "speed": 1.0,
+      "condition": "noisy",
+      "peak": 0.0406
+    },
+    {
+      "phrase": "jarvis_ko",
+      "voice": "shimmer",
+      "speed": 1.15,
+      "condition": "clean",
+      "peak": 0.0003
+    },
+    {
+      "phrase": "jarvis_ko",
+      "voice": "shimmer",
+      "speed": 1.15,
+      "condition": "noisy",
+      "peak": 0.1319
+    },
+    {
+      "phrase": "hey_jarvis_ko_cmd",
+      "voice": "alloy",
+      "speed": 1.0,
+      "condition": "clean",
+      "peak": 0.1004
+    },
+    {
+      "phrase": "hey_jarvis_ko_cmd",
+      "voice": "alloy",
+      "speed": 1.0,
+      "condition": "noisy",
+      "peak": 0.0857
+    },
+    {
+      "phrase": "hey_jarvis_ko_cmd",
+      "voice": "alloy",
+      "speed": 1.15,
+      "condition": "clean",
+      "peak": 0.3355
+    },
+    {
+      "phrase": "hey_jarvis_ko_cmd",
+      "voice": "alloy",
+      "speed": 1.15,
+      "condition": "noisy",
+      "peak": 0.1176
+    },
+    {
+      "phrase": "hey_jarvis_ko_cmd",
+      "voice": "echo",
+      "speed": 1.0,
+      "condition": "clean",
+      "peak": 0.1554
+    },
+    {
+      "phrase": "hey_jarvis_ko_cmd",
+      "voice": "echo",
+      "speed": 1.0,
+      "condition": "noisy",
+      "peak": 0.3957
+    },
+    {
+      "phrase": "hey_jarvis_ko_cmd",
+      "voice": "echo",
+      "speed": 1.15,
+      "condition": "clean",
+      "peak": 0.4958
+    },
+    {
+      "phrase": "hey_jarvis_ko_cmd",
+      "voice": "echo",
+      "speed": 1.15,
+      "condition": "noisy",
+      "peak": 0.1497
+    },
+    {
+      "phrase": "hey_jarvis_ko_cmd",
+      "voice": "fable",
+      "speed": 1.0,
+      "condition": "clean",
+      "peak": 0.0646
+    },
+    {
+      "phrase": "hey_jarvis_ko_cmd",
+      "voice": "fable",
+      "speed": 1.0,
+      "condition": "noisy",
+      "peak": 0.1071
+    },
+    {
+      "phrase": "hey_jarvis_ko_cmd",
+      "voice": "fable",
+      "speed": 1.15,
+      "condition": "clean",
+      "peak": 0.4356
+    },
+    {
+      "phrase": "hey_jarvis_ko_cmd",
+      "voice": "fable",
+      "speed": 1.15,
+      "condition": "noisy",
+      "peak": 0.2025
+    },
+    {
+      "phrase": "hey_jarvis_ko_cmd",
+      "voice": "nova",
+      "speed": 1.0,
+      "condition": "clean",
+      "peak": 0.0161
+    },
+    {
+      "phrase": "hey_jarvis_ko_cmd",
+      "voice": "nova",
+      "speed": 1.0,
+      "condition": "noisy",
+      "peak": 0.1463
+    },
+    {
+      "phrase": "hey_jarvis_ko_cmd",
+      "voice": "nova",
+      "speed": 1.15,
+      "condition": "clean",
+      "peak": 0.0049
+    },
+    {
+      "phrase": "hey_jarvis_ko_cmd",
+      "voice": "nova",
+      "speed": 1.15,
+      "condition": "noisy",
+      "peak": 0.0851
+    },
+    {
+      "phrase": "hey_jarvis_ko_cmd",
+      "voice": "onyx",
+      "speed": 1.0,
+      "condition": "clean",
+      "peak": 0.1426
+    },
+    {
+      "phrase": "hey_jarvis_ko_cmd",
+      "voice": "onyx",
+      "speed": 1.0,
+      "condition": "noisy",
+      "peak": 0.1154
+    },
+    {
+      "phrase": "hey_jarvis_ko_cmd",
+      "voice": "onyx",
+      "speed": 1.15,
+      "condition": "clean",
+      "peak": 0.113
+    },
+    {
+      "phrase": "hey_jarvis_ko_cmd",
+      "voice": "onyx",
+      "speed": 1.15,
+      "condition": "noisy",
+      "peak": 0.012
+    },
+    {
+      "phrase": "hey_jarvis_ko_cmd",
+      "voice": "shimmer",
+      "speed": 1.0,
+      "condition": "clean",
+      "peak": 0.115
+    },
+    {
+      "phrase": "hey_jarvis_ko_cmd",
+      "voice": "shimmer",
+      "speed": 1.0,
+      "condition": "noisy",
+      "peak": 0.1503
+    },
+    {
+      "phrase": "hey_jarvis_ko_cmd",
+      "voice": "shimmer",
+      "speed": 1.15,
+      "condition": "clean",
+      "peak": 0.1351
+    },
+    {
+      "phrase": "hey_jarvis_ko_cmd",
+      "voice": "shimmer",
+      "speed": 1.15,
+      "condition": "noisy",
+      "peak": 0.4497
+    }
+  ],
+  "negative_peaks": [
+    {
+      "label": "neg00",
+      "voice": "alloy",
+      "peak": 0.0
+    },
+    {
+      "label": "neg01",
+      "voice": "nova",
+      "peak": 0.0009
+    },
+    {
+      "label": "neg02",
+      "voice": "onyx",
+      "peak": 0.0
+    },
+    {
+      "label": "neg03",
+      "voice": "alloy",
+      "peak": 0.0
+    },
+    {
+      "label": "neg04",
+      "voice": "nova",
+      "peak": 0.0001
+    },
+    {
+      "label": "neg05",
+      "voice": "onyx",
+      "peak": 0.0001
+    },
+    {
+      "label": "neg06",
+      "voice": "alloy",
+      "peak": 0.0
+    },
+    {
+      "label": "neg07",
+      "voice": "nova",
+      "peak": 0.0001
+    },
+    {
+      "label": "neg08",
+      "voice": "onyx",
+      "peak": 0.0
+    },
+    {
+      "label": "neg09",
+      "voice": "alloy",
+      "peak": 0.0
+    },
+    {
+      "label": "neg10",
+      "voice": "nova",
+      "peak": 0.0007
+    },
+    {
+      "label": "neg11",
+      "voice": "onyx",
+      "peak": 0.0
+    },
+    {
+      "label": "neg12",
+      "voice": "alloy",
+      "peak": 0.0
+    },
+    {
+      "label": "neg13",
+      "voice": "nova",
+      "peak": 0.0
+    },
+    {
+      "label": "neg14",
+      "voice": "onyx",
+      "peak": 0.0001
+    },
+    {
+      "label": "neg15",
+      "voice": "alloy",
+      "peak": 0.0001
+    },
+    {
+      "label": "neg16",
+      "voice": "nova",
+      "peak": 0.0274
+    },
+    {
+      "label": "neg17",
+      "voice": "onyx",
+      "peak": 0.0
+    },
+    {
+      "label": "neg18",
+      "voice": "alloy",
+      "peak": 0.0
+    },
+    {
+      "label": "neg19",
+      "voice": "nova",
+      "peak": 0.0002
+    },
+    {
+      "label": "neg20",
+      "voice": "onyx",
+      "peak": 0.0
+    },
+    {
+      "label": "neg21",
+      "voice": "alloy",
+      "peak": 0.0
+    },
+    {
+      "label": "neg22",
+      "voice": "nova",
+      "peak": 0.0001
+    },
+    {
+      "label": "neg23",
+      "voice": "onyx",
+      "peak": 0.0
+    },
+    {
+      "label": "neg24",
+      "voice": "alloy",
+      "peak": 0.0
+    },
+    {
+      "label": "neg25",
+      "voice": "nova",
+      "peak": 0.0002
+    },
+    {
+      "label": "neg26",
+      "voice": "onyx",
+      "peak": 0.0001
+    },
+    {
+      "label": "neg27",
+      "voice": "alloy",
+      "peak": 0.0005
+    },
+    {
+      "label": "neg28",
+      "voice": "nova",
+      "peak": 0.0003
+    },
+    {
+      "label": "neg29",
+      "voice": "onyx",
+      "peak": 0.0001
+    },
+    {
+      "label": "neg30",
+      "voice": "alloy",
+      "peak": 0.0
+    },
+    {
+      "label": "neg31",
+      "voice": "nova",
+      "peak": 0.0011
+    },
+    {
+      "label": "neg32",
+      "voice": "onyx",
+      "peak": 0.0
+    },
+    {
+      "label": "neg33",
+      "voice": "alloy",
+      "peak": 0.0133
+    },
+    {
+      "label": "neg34",
+      "voice": "nova",
+      "peak": 0.0
+    },
+    {
+      "label": "neg35",
+      "voice": "onyx",
+      "peak": 0.0
+    },
+    {
+      "label": "neg36",
+      "voice": "alloy",
+      "peak": 0.0
+    },
+    {
+      "label": "neg37",
+      "voice": "nova",
+      "peak": 0.0001
+    },
+    {
+      "label": "neg38",
+      "voice": "onyx",
+      "peak": 0.0
+    },
+    {
+      "label": "neg39",
+      "voice": "alloy",
+      "peak": 0.0
+    }
+  ],
+  "negative_peaks_noisy": [
+    {
+      "label": "neg00",
+      "voice": "alloy",
+      "peak": 0.0686
+    },
+    {
+      "label": "neg01",
+      "voice": "nova",
+      "peak": 0.2204
+    },
+    {
+      "label": "neg02",
+      "voice": "onyx",
+      "peak": 0.1304
+    },
+    {
+      "label": "neg03",
+      "voice": "alloy",
+      "peak": 0.0037
+    },
+    {
+      "label": "neg04",
+      "voice": "nova",
+      "peak": 0.0977
+    },
+    {
+      "label": "neg05",
+      "voice": "onyx",
+      "peak": 0.0171
+    },
+    {
+      "label": "neg06",
+      "voice": "alloy",
+      "peak": 0.0325
+    },
+    {
+      "label": "neg07",
+      "voice": "nova",
+      "peak": 0.0592
+    },
+    {
+      "label": "neg08",
+      "voice": "onyx",
+      "peak": 0.003
+    },
+    {
+      "label": "neg09",
+      "voice": "alloy",
+      "peak": 0.0878
+    },
+    {
+      "label": "neg10",
+      "voice": "nova",
+      "peak": 0.0145
+    },
+    {
+      "label": "neg11",
+      "voice": "onyx",
+      "peak": 0.1629
+    },
+    {
+      "label": "neg12",
+      "voice": "alloy",
+      "peak": 0.0388
+    },
+    {
+      "label": "neg13",
+      "voice": "nova",
+      "peak": 0.0833
+    },
+    {
+      "label": "neg14",
+      "voice": "onyx",
+      "peak": 0.1102
+    },
+    {
+      "label": "neg15",
+      "voice": "alloy",
+      "peak": 0.0688
+    },
+    {
+      "label": "neg16",
+      "voice": "nova",
+      "peak": 0.0768
+    },
+    {
+      "label": "neg17",
+      "voice": "onyx",
+      "peak": 0.098
+    },
+    {
+      "label": "neg18",
+      "voice": "alloy",
+      "peak": 0.047
+    },
+    {
+      "label": "neg19",
+      "voice": "nova",
+      "peak": 0.0941
+    },
+    {
+      "label": "neg20",
+      "voice": "onyx",
+      "peak": 0.1921
+    },
+    {
+      "label": "neg21",
+      "voice": "alloy",
+      "peak": 0.1362
+    },
+    {
+      "label": "neg22",
+      "voice": "nova",
+      "peak": 0.0747
+    },
+    {
+      "label": "neg23",
+      "voice": "onyx",
+      "peak": 0.0074
+    },
+    {
+      "label": "neg24",
+      "voice": "alloy",
+      "peak": 0.1797
+    },
+    {
+      "label": "neg25",
+      "voice": "nova",
+      "peak": 0.061
+    },
+    {
+      "label": "neg26",
+      "voice": "onyx",
+      "peak": 0.034
+    },
+    {
+      "label": "neg27",
+      "voice": "alloy",
+      "peak": 0.2879
+    },
+    {
+      "label": "neg28",
+      "voice": "nova",
+      "peak": 0.023
+    },
+    {
+      "label": "neg29",
+      "voice": "onyx",
+      "peak": 0.1023
+    },
+    {
+      "label": "neg30",
+      "voice": "alloy",
+      "peak": 0.1379
+    },
+    {
+      "label": "neg31",
+      "voice": "nova",
+      "peak": 0.0261
+    },
+    {
+      "label": "neg32",
+      "voice": "onyx",
+      "peak": 0.0593
+    },
+    {
+      "label": "neg33",
+      "voice": "alloy",
+      "peak": 0.2384
+    },
+    {
+      "label": "neg34",
+      "voice": "nova",
+      "peak": 0.0036
+    },
+    {
+      "label": "neg35",
+      "voice": "onyx",
+      "peak": 0.1472
+    },
+    {
+      "label": "neg36",
+      "voice": "alloy",
+      "peak": 0.0462
+    },
+    {
+      "label": "neg37",
+      "voice": "nova",
+      "peak": 0.002
+    },
+    {
+      "label": "neg38",
+      "voice": "onyx",
+      "peak": 0.1204
+    },
+    {
+      "label": "neg39",
+      "voice": "alloy",
+      "peak": 0.0302
+    }
+  ]
+}
