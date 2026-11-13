@@ -1,0 +1,171 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+env:
+  POETRY_VERSION: '2.4.1'
+
+jobs:
+  changes:
+    name: changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      protocol: ${{ steps.filter.outputs.protocol }}
+      server: ${{ steps.filter.outputs.server }}
+      hub: ${{ steps.filter.outputs.hub }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        id: filter
+        with:
+          filters: |
+            protocol:
+              - 'protocol/**'
+              - '.github/workflows/ci.yml'
+            server:
+              - 'server/**'
+              - 'protocol/**'
+              - '.github/workflows/ci.yml'
+            hub:
+              - 'hub/**'
+              - 'protocol/**'
+              - '.github/workflows/ci.yml'
+
+  contract:
+    name: contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Read locked engsys revision
+        id: lock
+        run: |
+          rev=$(sed -n '/^system:$/,/^profile:$/s/^  revision:[[:space:]]*//p' .engsys/lock.yaml | sed -n '1p' | tr -d "'\"")
+          case "$rev" in
+            ''|*[!0-9a-f]*) echo "invalid engsys revision: $rev" >&2; exit 1 ;;
+          esac
+          echo "revision=$rev" >> "$GITHUB_OUTPUT"
+      - name: Install engsys at locked revision
+        env:
+          ENGSYS_REVISION: ${{ steps.lock.outputs.revision }}
+        run: |
+          git clone https://github.com/pis-o-cake/engineering-system "$RUNNER_TEMP/engineering-system"
+          git -C "$RUNNER_TEMP/engineering-system" checkout --detach "$ENGSYS_REVISION"
+          echo "$RUNNER_TEMP/engineering-system/bin" >> "$GITHUB_PATH"
+      - name: Docs contract
+        run: engsys docs check --project .
+      - name: Review records
+        run: engsys review check --project .
+      - name: Secret scanner self-test
+        run: sh scripts/tests/test-check-secrets.sh
+      - name: Secret scan (tree)
+        run: sh scripts/check-secrets.sh --tree
+      - name: Secret scan (pull request range)
+        if: github.event_name == 'pull_request'
+        run: |
+          git fetch --no-tags origin main:refs/remotes/origin/main
+          sh scripts/check-secrets.sh --range origin/main HEAD
+
+  protocol:
+    name: protocol
+    needs: changes
+    if: needs.changes.outputs.protocol == 'true' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: bufbuild/buf-action@37ac33d8960807670a6e9719080e885197b09cc6 # v1.7.0
+        with:
+          setup_only: true
+          github_token: ${{ github.token }}
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+      - name: Create local main ref for buf breaking
+        run: |
+          git fetch --no-tags origin main
+          git update-ref refs/heads/main FETCH_HEAD
+      - run: sh protocol/scripts/check.sh
+
+  server:
+    name: server
+    needs: changes
+    if: needs.changes.outputs.server == 'true' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.12'
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+      - name: Install Poetry
+        run: python -m pip install "poetry==${POETRY_VERSION}"
+      - run: sh server/scripts/check.sh
+
+  hub:
+    name: hub
+    needs: changes
+    if: needs.changes.outputs.hub == 'true' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd # v4.0.4
+        with:
+          packages: 'platform-tools platforms;android-37.0 build-tools;37.0.0'
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+      - run: sh hub/scripts/check.sh
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: hub-debug-apk
+          path: hub/app/build/outputs/apk/debug/*.apk
+          retention-days: 7
+          if-no-files-found: error
+
+  ci-ok:
+    name: ci-ok
+    if: always()
+    needs: [changes, contract, protocol, server, hub]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require every job to succeed or be skipped
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          for r in $RESULTS; do
+            case "$r" in
+              success|skipped) ;;
+              *) echo "job result: $r" >&2; exit 1 ;;
+            esac
+          done
