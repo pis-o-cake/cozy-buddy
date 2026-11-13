@@ -13,6 +13,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Slider
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -25,6 +27,8 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.cozybuddy.hub.R
+import app.cozybuddy.hub.core.audio.wakeword.WakeWordFailure
+import app.cozybuddy.hub.core.audio.wakeword.WakeWordStatus
 import app.cozybuddy.hub.core.network.ConnectionState
 import app.cozybuddy.hub.core.network.UrlError
 import app.cozybuddy.hub.feature.settings.SettingsUiState
@@ -40,6 +44,9 @@ fun SettingsRoute(viewModel: SettingsViewModel, onClose: () -> Unit, modifier: M
         onClientIdChange = viewModel::onClientIdChange,
         onTokenChange = viewModel::onTokenChange,
         onSave = viewModel::onSave,
+        onWakeWordEnabledChange = viewModel::onWakeWordEnabledChange,
+        onWakeWordSensitivityChange = viewModel::onWakeWordSensitivityChange,
+        onWakeWordSensitivityCommit = viewModel::onWakeWordSensitivityCommit,
         modifier = modifier,
     )
 }
@@ -52,6 +59,9 @@ fun SettingsScreen(
     onClientIdChange: (String) -> Unit,
     onTokenChange: (String) -> Unit,
     onSave: () -> Unit,
+    onWakeWordEnabledChange: (Boolean) -> Unit,
+    onWakeWordSensitivityChange: (Float) -> Unit,
+    onWakeWordSensitivityCommit: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -120,7 +130,58 @@ fun SettingsScreen(
             "${stringResource(R.string.settings_status_label)}: ${connectionText(state.connection)}",
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+        WakeWordSection(
+            state = state,
+            onEnabledChange = onWakeWordEnabledChange,
+            onSensitivityChange = onWakeWordSensitivityChange,
+            onSensitivityCommit = onWakeWordSensitivityCommit,
+        )
     }
+}
+
+@Composable
+private fun WakeWordSection(
+    state: SettingsUiState,
+    onEnabledChange: (Boolean) -> Unit,
+    onSensitivityChange: (Float) -> Unit,
+    onSensitivityCommit: () -> Unit,
+) {
+    Text(
+        stringResource(R.string.settings_wake_word_title),
+        style = MaterialTheme.typography.titleLarge,
+        color = MaterialTheme.colorScheme.onBackground,
+        modifier = Modifier.padding(top = 16.dp),
+    )
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            stringResource(R.string.settings_wake_word_toggle),
+            color = MaterialTheme.colorScheme.onBackground,
+            modifier = Modifier.weight(1f),
+        )
+        Switch(checked = state.wakeWordEnabled, onCheckedChange = onEnabledChange)
+    }
+    Text(stringResource(R.string.settings_wake_word_sensitivity), color = MaterialTheme.colorScheme.onSurfaceVariant)
+    Slider(
+        value = state.wakeWordSensitivity,
+        onValueChange = onSensitivityChange,
+        onValueChangeFinished = onSensitivityCommit,
+        enabled = state.wakeWordEnabled,
+    )
+    Text(
+        stringResource(R.string.settings_wake_word_sensitivity_hint),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    val failure = (state.wakeWordStatus as? WakeWordStatus.Failed)?.failure
+    if (state.wakeWordEnabled && failure != null) {
+        Text(stringResource(failure.messageRes()), color = MaterialTheme.colorScheme.error)
+    }
+}
+
+private fun WakeWordFailure.messageRes(): Int = when (this) {
+    WakeWordFailure.MODEL_MISSING -> R.string.settings_wake_word_error_missing
+    WakeWordFailure.MODEL_CORRUPT -> R.string.settings_wake_word_error_corrupt
+    WakeWordFailure.RUNTIME -> R.string.settings_wake_word_error_runtime
 }
 
 @Composable

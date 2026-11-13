@@ -89,4 +89,11 @@
     <string name="conversation_notice_offline">서버에 연결할 수 없어요</string>
     <string name="conversation_notice_mic_unavailable">마이크를 쓸 수 없어요. 권한을 확인해 주세요</string>
     <string name="conversation_notice_error">문제가 생겼어요. 다시 말씀해 주세요</string>
+    <string name="settings_wake_word_title">호출어</string>
+    <string name="settings_wake_word_toggle">호출어로 깨우기 (Hey Jarvis)</string>
+    <string name="settings_wake_word_sensitivity">감도</string>
+    <string name="settings_wake_word_sensitivity_hint">높이면 더 잘 깨어나지만 엉뚱할 때 깨어날 수 있어요. 호출어 인식은 이 기기 안에서만 처리하고, 부른 뒤에야 음성이 서버로 가요.</string>
+    <string name="settings_wake_word_error_missing">호출어 모델 파일이 없어요. 앱을 다시 설치해 주세요</string>
+    <string name="settings_wake_word_error_corrupt">호출어 모델 파일이 손상됐어요. 앱을 다시 설치해 주세요</string>
+    <string name="settings_wake_word_error_runtime">호출어 엔진을 시작하지 못했어요</string>
 </resources>
