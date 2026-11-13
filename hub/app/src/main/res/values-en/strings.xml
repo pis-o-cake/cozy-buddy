@@ -75,4 +75,17 @@
     <string name="dashboard_error_not_connected">Not connected to the server</string>
     <string name="dashboard_error_timeout">No response. Try again in a moment</string>
     <string name="dashboard_error_generic">Could not control the device</string>
+
+    <string name="voice_service_channel_name">Voice assistant</string>
+    <string name="voice_service_ready">Voice assistant is ready</string>
+    <string name="voice_service_mic_missing">Microphone permission is missing, so voice is unavailable</string>
+
+    <string name="conversation_mic_button">Talk</string>
+    <string name="conversation_listening">Listening</string>
+    <string name="conversation_thinking">Thinking</string>
+    <string name="conversation_speaking_hint">Tap to interrupt and speak again</string>
+    <string name="conversation_level_description">Microphone input level</string>
+    <string name="conversation_notice_offline">Cannot reach the server</string>
+    <string name="conversation_notice_mic_unavailable">Microphone unavailable. Check the permission</string>
+    <string name="conversation_notice_error">Something went wrong. Please try again</string>
 </resources>
