@@ -14,6 +14,7 @@ from app.core.exceptions import register_exception_handlers
 from app.core.i18n import Translator
 from app.core.logging import configure_logging
 from app.core.version import get_server_version
+from app.domain.home.service import HomeService
 from app.middleware.request_log import RequestLogMiddleware
 
 
@@ -47,9 +48,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         configure_logging(settings.log_level)
         app.state.db = Database(settings.database_url)
         logger.info("Server started: version={}", get_server_version())
+        await app.state.home.start()
         try:
             yield
         finally:
+            await app.state.home.stop()
             await app.state.db.dispose()
             logger.info("Server stopped")
 
@@ -58,6 +61,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.translator = Translator(settings.locale)
     # WARNING: 연결 레지스트리는 프로세스 메모리에 있으므로 워커는 1개만 쓴다.
     app.state.connections = ConnectionManager()
+    app.state.home = HomeService(settings, app.state.connections)
     app.add_middleware(RequestLogMiddleware)
     register_exception_handlers(app)
     _include_domain_routers(app)
