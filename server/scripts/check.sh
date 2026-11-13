@@ -15,7 +15,7 @@ done
 export POETRY_VIRTUALENVS_IN_PROJECT=true
 
 echo "== poetry install"
-poetry install --quiet
+poetry install --no-interaction --quiet
 
 echo "== generate protobuf"
 sh scripts/gen_proto.sh
