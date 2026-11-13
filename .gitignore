@@ -6,3 +6,6 @@
 .vscode/
 *.log
 .claude/worktrees/
+
+# devloop 로컬 접속 정보
+infra/devloop/config.env
