@@ -86,9 +86,10 @@ def build_bodies(gen_dir: Path) -> dict:
                         one_shot=alarm.OneShot(fires_at_epoch_ms=1_700_000_600_000))]),
         "alarm_sync_request": alarm.AlarmSyncRequest(hub_id="hub-1"),
         "home_snapshot": home.HomeSnapshot(
-            areas=[home.Area(area_id="ar1", name="Living")],
+            areas=[home.Area(area_id="ar1", name="Living", aliases=["안방"])],
             entities=[home.Entity(entity_id="light.a", area_id="ar1", name="Lamp",
-                                  domain="light", state=state)]),
+                                  domain="light", state=state,
+                                  aliases=["거실 조명"])]),
         "entity_state_changed": home.EntityStateChanged(entity_id="light.a", state=state),
         "entity_command": home.EntityCommand(request_id="r3", entity_id="light.a",
                                              action="turn_on", params={"brightness": "200"}),

@@ -13,6 +13,8 @@ option java_multiple_files = true;
 message Area {
   string area_id = 1;
   string name = 2;
+  // HA 별칭(Assist 별칭). 음성 매처가 이름과 같게 취급한다.
+  repeated string aliases = 3;
 }
 
 // 서버→허브, 서버→앱. 기기 상태 값.
@@ -30,6 +32,8 @@ message Entity {
   // 예: light, switch, climate.
   string domain = 4;
   EntityState state = 5;
+  // HA 엔티티 레지스트리 별칭(Assist 별칭). 음성 매처가 이름과 같게 취급한다.
+  repeated string aliases = 6;
 }
 
 // 서버→허브, 서버→앱. 연결 직후 구역·기기 전체 목록.
