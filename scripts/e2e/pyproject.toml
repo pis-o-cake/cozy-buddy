@@ -1,0 +1,18 @@
+[project]
+name = "cozy-e2e"
+version = "0.1.0"
+description = "Virtual hub smoke tool for the Cozy Buddy dev server"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "websockets>=14",
+    "openai>=1.50",
+    "python-dotenv>=1.0",
+    "pyyaml>=6",
+    "numpy>=2",
+    "scipy>=1.14",
+    "grpcio-tools==1.85.1",
+    "protobuf==7.36.2",
+]
+
+[tool.uv]
+package = false
