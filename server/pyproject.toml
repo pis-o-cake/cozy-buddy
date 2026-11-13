@@ -15,6 +15,7 @@ dependencies = [
     "loguru>=0.7",
     "protobuf==7.36.2",
     "uvicorn-worker (>=0.4)",
+    "websockets (>=14)",
 ]
 
 [tool.poetry]
