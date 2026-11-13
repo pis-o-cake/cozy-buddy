@@ -1,14 +1,12 @@
 engsys-document-review: 1
 document: docs/review/2026-11-13-legacy-design-adversarial-review.md
-blob: 7049f353aec14c34e740851a41638c367e7dca7e
+blob: bbeb4ccbe4759a1b28a311d37fc79e1161fff2c4
 decision: pass
 reviewer: claude-opus-5-5
 audience: 재설계 책임자(프로젝트 소유자)
 purpose: 이전 설계의 어떤 결함이 어떤 영향을 주며 무엇부터 해결해야 하는가
 
-- 결론(v3.4 비계승, 3대 결함: 정체성 흔들림·재구현·위험 순서 역전)을 도입 문단과 검토 요약에 두고, 근거는 발견 사항 표의 위치(L 번호)로 연결
-- 리뷰어 원안의 사실 오류 정정: 남은 산출물에 2026-07 main 브랜치 서버 Phase 0~2 구현을 추가하고 C6에 연결
-- 외부 변화 표에서 1차 출처를 직접 연 3건(Supertonic 아카이브, Android 17 오디오 제한, Kiosk Satellite 라이선스)만 '확인'으로 표시하고 나머지는 미확인 성격을 잔여 위험에 명시
-- 조치 절은 기본 가설 1개와 S1~S9 순서·확인 항목·결정 대상을 표로 정리, 실측 미포함 한계를 남김
-- 한계: 레거시 줄 번호 인용은 리뷰어 산출을 표본 대조(R-wakeword L30-33, R-android-audio L35-54)로만 확인
+- 레거시 사본 제거에 따라 검토 대상 위치 문장을 cozy-buddy-server docs/ revision 6f8fbe6 permalink 기준으로 바꾸고, 줄 번호가 그 revision 기준임을 명시한 것을 확인
+- v3/FS/R-* 표기, 발견 사항, 결론, 날짜는 변경 없음을 diff로 확인 (기록 성격 보존)
+- 유지 목록의 hub-ambient.html 참조가 permalink로 바뀐 것 외 수정 없음
 
