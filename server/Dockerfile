@@ -23,7 +23,8 @@ ENV PYTHONPATH=/app/gen:/app \
     PYTHONUNBUFFERED=1 \
     COZY_DATABASE_URL=sqlite+aiosqlite:////app/data/cozy.db
 
-RUN useradd --system --uid 10001 cozy && mkdir -p /app/data && chown cozy /app/data
+# IMPORTANT: Gunicorn 컨트롤 서버가 ~/.gunicorn 에 소켓을 만들므로 홈 디렉터리가 쓰기 가능해야 한다.
+RUN useradd --system --uid 10001 --create-home --home-dir /home/cozy cozy && mkdir -p /app/data && chown cozy /app/data
 USER cozy
 VOLUME /app/data
 EXPOSE 8000
