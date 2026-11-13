@@ -88,4 +88,11 @@
     <string name="conversation_notice_offline">Cannot reach the server</string>
     <string name="conversation_notice_mic_unavailable">Microphone unavailable. Check the permission</string>
     <string name="conversation_notice_error">Something went wrong. Please try again</string>
+    <string name="settings_wake_word_title">Wake word</string>
+    <string name="settings_wake_word_toggle">Wake with the wake word (Hey Jarvis)</string>
+    <string name="settings_wake_word_sensitivity">Sensitivity</string>
+    <string name="settings_wake_word_sensitivity_hint">Higher wakes more easily but may wake by mistake. Detection runs on this device only; audio reaches the server only after the wake word.</string>
+    <string name="settings_wake_word_error_missing">Wake word model files are missing. Reinstall the app</string>
+    <string name="settings_wake_word_error_corrupt">Wake word model files are corrupted. Reinstall the app</string>
+    <string name="settings_wake_word_error_runtime">Wake word engine failed to start</string>
 </resources>
