@@ -1,0 +1,50 @@
+#!/bin/sh
+
+# Engineering System push gate. `engsys init --hooks` writes this file and points
+# core.hooksPath at it. Edit it in the project; the standard does not overwrite it.
+set -eu
+
+root=$(git rev-parse --show-toplevel)
+cd "$root"
+
+# 검사기를 실행하지 못하면 검사하지 않은 push 를 통과시키지 않는다.
+if ! command -v engsys >/dev/null 2>&1; then
+  printf 'pre-push: engsys is not on PATH; Engineering System checks did not run\n' >&2
+  printf 'pre-push: run install.sh in the system checkout, then engsys doctor\n' >&2
+  exit 1
+fi
+
+refs=$(mktemp)
+trap 'rm -f "$refs"' 0
+trap 'exit 129' 1
+trap 'exit 130' 2
+trap 'exit 143' 15
+cat >"$refs"
+
+# 표준을 아직 올리지 않은 engsys 에는 이 subcommand 가 없다. 그 경우에만 건너뛴다.
+# engsys 가 다른 이유로 죽은 것이라면 검사하지 않은 push 를 통과시키지 않는다.
+if probe=$(engsys vcs --help 2>&1); then
+  engsys vcs check-branch --project "$root"
+else
+  case "$probe" in
+    *'unknown command: vcs'*)
+      printf 'pre-push: this engsys has no vcs check-branch; upgrade the system checkout\n' >&2
+      ;;
+    *)
+      printf 'pre-push: engsys failed before the branch contract could be checked\n' >&2
+      printf '%s\n' "$probe" >&2
+      exit 1
+      ;;
+  esac
+fi
+
+# 각 ref 의 commit 과 working tree 가 같은지 verify 가 확인한다.
+# 다른 내용을 전송하려면 해당 commit 을 checkout 하고 다시 push 한다.
+while read -r local_ref local_oid remote_ref remote_oid; do
+  case "$local_oid" in ''|*[!0]*) ;; *) continue ;; esac
+  engsys verify --project "$root" --revision "$local_oid"
+  # 검토 기록은 전송할 commit 에 있어야 한다. working tree 의 기록으로 대신하지 않는다.
+  if grep -q '^  review:' .engsys/project.yaml; then
+    engsys review check --project "$root" --revision "$local_oid"
+  fi
+done <"$refs"

@@ -1,0 +1,80 @@
+system:
+  profile: 'baseline'
+
+project:
+  name: 'cozy-buddy'
+  source-of-truth:
+    design: 'docs/'
+
+commands:
+  verify: 'engsys docs check --project . && engsys review check --project .'
+
+vcs:
+  commit:
+    subject-language: 'en'
+    subject-ending: 'imperative'
+    scopes:
+      - 'adr'
+      - 'architecture'
+      - 'design'
+      - 'engsys'
+      - 'legacy'
+      - 'plan'
+      - 'review'
+      - 'scope'
+      - 'spike'
+      - 'ui'
+  branch:
+    model: 'single-main'
+    roles:
+      - role: 'production'
+        branch: 'main'
+    protected:
+      - 'main'
+  merge-request:
+    target: 'main'
+
+documentation:
+  generated: []
+  architecture: 'docs/architecture/README.md'
+  authoring:
+    assign:
+      - path: 'README.md'
+        type: 'guide'
+      - path: 'docs/review'
+        type: 'review-report'
+      - path: 'docs/scope'
+        type: 'project-scope'
+      - path: 'docs/adr'
+        type: 'decision-record'
+      - path: 'docs/design'
+        type: 'design-proposal'
+      - path: 'docs/architecture'
+        type: 'architecture'
+      - path: 'docs/spike'
+        type: 'experiment-report'
+      - path: 'docs/plan'
+        type: 'work-plan'
+      - path: 'docs/ui'
+        type: 'ui-guideline'
+    exempt:
+      - '.claude'
+      - 'docs/legacy'
+  review:
+    scopes:
+      - 'README.md'
+      - 'docs/review'
+      - 'docs/scope'
+      - 'docs/adr'
+      - 'docs/design'
+      - 'docs/architecture'
+      - 'docs/spike'
+      - 'docs/plan'
+      - 'docs/ui'
+  lifecycle:
+    design:
+      path: 'docs/design'
+      frozen-status: ['implemented']
+    adr:
+      path: 'docs/adr'
+      frozen-status: ['accepted']

@@ -1,0 +1,30 @@
+#!/bin/sh
+
+# Engineering System commit message gate. `engsys init --hooks` writes this file.
+# Edit it in the project; the standard does not overwrite it.
+set -eu
+
+root=$(git rev-parse --show-toplevel)
+
+# 활성화하지 않은 개발자의 commit 을 막지 않는다. 막힌 이유를 설명하지 못하는 gate 는
+# 고쳐지지 않고 삭제된다.
+if ! command -v engsys >/dev/null 2>&1; then
+  printf 'commit-msg: engsys is not on PATH; the commit message contract was not checked\n' >&2
+  exit 0
+fi
+
+# 표준을 아직 올리지 않은 개발자의 engsys 에는 이 subcommand 가 없다. 같은 이유로 막지 않는다.
+# 그 밖의 실패는 통과시키지 않는다. 죽은 이유를 가리지 않고 넘기면 gate 가 조용히 사라진다.
+if ! probe=$(engsys vcs --help 2>&1); then
+  case "$probe" in
+    *'unknown command: vcs'*)
+      printf 'commit-msg: this engsys has no vcs check-message; upgrade the system checkout\n' >&2
+      exit 0
+      ;;
+  esac
+  printf 'commit-msg: engsys failed before the commit message contract could be checked\n' >&2
+  printf '%s\n' "$probe" >&2
+  exit 1
+fi
+
+exec engsys vcs check-message "$1" --project "$root"
