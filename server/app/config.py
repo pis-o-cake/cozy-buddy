@@ -65,6 +65,8 @@ class Settings(BaseSettings):
     ha_url: str = ""
     ha_token: SecretStr = SecretStr("")
     ha_request_timeout_seconds: float = 5.0
+    ha_backoff_min_seconds: float = 1.0
+    ha_backoff_max_seconds: float = 30.0
 
     @model_validator(mode="after")
     def _validate_tokens(self) -> Self:

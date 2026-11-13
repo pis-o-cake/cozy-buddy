@@ -100,6 +100,16 @@ class ConnectionManager:
             return False
         return True
 
+    async def broadcast(self, envelope: Envelope) -> None:
+        """연결된 모든 허브와 앱에 보낸다. 개별 실패는 로그만 남기고 계속한다."""
+        for conn in [*self._hubs.values(), *self._mobiles.values()]:
+            copy = Envelope()
+            copy.CopyFrom(envelope)
+            try:
+                await conn.send(copy)
+            except Exception:
+                logger.exception("Failed to broadcast to client: {}", conn.client_id)
+
     async def broadcast_to_mobiles(self, envelope: Envelope) -> None:
         """연결된 모든 앱에 보낸다. 개별 실패는 로그만 남기고 계속한다."""
         for conn in list(self._mobiles.values()):
