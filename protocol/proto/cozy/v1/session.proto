@@ -1,0 +1,59 @@
+syntax = "proto3";
+
+package cozy.v1;
+
+import "cozy/v1/common.proto";
+
+option java_package = "app.cozybuddy.protocol.v1";
+option java_multiple_files = true;
+
+// 클라이언트 종류.
+enum ClientKind {
+  CLIENT_KIND_UNSPECIFIED = 0;
+  CLIENT_KIND_HUB = 1;
+  CLIENT_KIND_MOBILE = 2;
+}
+
+// 허브→서버, 앱→서버. 연결 직후 첫 메시지로 종류·인증 토큰·프로토콜 버전을 밝힌다.
+message ClientHello {
+  ClientKind kind = 1;
+  string client_id = 2;
+  string token = 3;
+  string app_version = 4;
+  uint32 protocol_version = 5;
+}
+
+// 서버→허브, 서버→앱. ClientHello 수락 응답. 서버 시각으로 클라이언트 시계 편차를 보정한다.
+message ServerHello {
+  string server_version = 1;
+  int64 server_time_epoch_ms = 2;
+  // 허브 연결에만 채운다.
+  HubConfig hub_config = 3;
+}
+
+// 서버→허브. 서버가 허브에 내려주는 설정.
+message HubConfig {
+  string name = 1;
+  string area_id = 2;
+}
+
+// 양방향(앱 포함). 요청 실패 통지.
+message ErrorMessage {
+  ErrorCode code = 1;
+  // i18n 키이며 사용자에게 보일 문구가 아니다. 문구는 각 클라이언트 언어팩이 해석한다.
+  string message_key = 2;
+  // 실패한 요청의 request_id. 해당 없으면 빈 문자열.
+  string request_id = 3;
+  // 실패한 오디오 스트림의 stream_id. 해당 없으면 빈 문자열.
+  string stream_id = 4;
+}
+
+// 양방향(앱 포함). 연결 생존 확인 요청.
+message Ping {
+  int64 sent_epoch_ms = 1;
+}
+
+// 양방향(앱 포함). Ping 응답. RTT 계산용으로 원본 송신 시각을 되돌려 준다.
+message Pong {
+  int64 ping_sent_epoch_ms = 1;
+}

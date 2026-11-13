@@ -1,0 +1,71 @@
+syntax = "proto3";
+
+package cozy.v1;
+
+import "cozy/v1/common.proto";
+
+option java_package = "app.cozybuddy.protocol.v1";
+option java_multiple_files = true;
+
+// 집(Home Assistant) 기기 상태와 제어, 허브 장치 상태.
+
+// 서버→허브, 서버→앱. 구역(방) 정보.
+message Area {
+  string area_id = 1;
+  string name = 2;
+}
+
+// 서버→허브, 서버→앱. 기기 상태 값.
+message EntityState {
+  string state = 1;
+  map<string, string> attributes = 2;
+  int64 changed_epoch_ms = 3;
+}
+
+// 서버→허브, 서버→앱. 제어 대상 기기 한 건.
+message Entity {
+  string entity_id = 1;
+  string area_id = 2;
+  string name = 3;
+  // 예: light, switch, climate.
+  string domain = 4;
+  EntityState state = 5;
+}
+
+// 서버→허브, 서버→앱. 연결 직후 구역·기기 전체 목록.
+message HomeSnapshot {
+  repeated Area areas = 1;
+  repeated Entity entities = 2;
+}
+
+// 서버→허브, 서버→앱. 기기 상태 변경 통지.
+message EntityStateChanged {
+  string entity_id = 1;
+  EntityState state = 2;
+}
+
+// 허브→서버, 앱→서버. 기기 제어 요청.
+message EntityCommand {
+  string request_id = 1;
+  string entity_id = 2;
+  // 예: turn_on, turn_off.
+  string action = 3;
+  map<string, string> params = 4;
+}
+
+// 서버→허브, 서버→앱. EntityCommand 처리 결과.
+message CommandResult {
+  string request_id = 1;
+  bool ok = 2;
+  // ok가 false일 때만 의미가 있다.
+  ErrorCode code = 3;
+  // i18n 키이며 사용자 문구가 아니다.
+  string message_key = 4;
+}
+
+// 허브→서버, 허브→앱(서버 중계). 허브 장치의 현재 상태.
+message HubStatus {
+  uint32 volume_pct = 1;
+  bool mic_muted = 2;
+  uint32 screen_brightness_pct = 3;
+}
