@@ -35,7 +35,13 @@ android {
     }
 
     testOptions {
-        unitTests.all { it.useJUnitPlatform() }
+        // 라이브 서버 통합 테스트(@Tag("integration"))는 -Pintegration 일 때만 돌고, 기본 검사에서는 제외된다.
+        val integration = project.hasProperty("integration")
+        unitTests.all {
+            it.useJUnitPlatform {
+                if (integration) includeTags("integration") else excludeTags("integration")
+            }
+        }
         // Robolectric 이 매니페스트·리소스를 읽도록 한다(Room DAO 테스트용).
         unitTests.isIncludeAndroidResources = true
     }
@@ -92,6 +98,8 @@ dependencies {
 
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.timber)
+    implementation(libs.okhttp)
+    implementation(libs.androidx.datastore.preferences)
     implementation(libs.protobuf.javalite)
     implementation(libs.protobuf.kotlin.lite)
 
@@ -105,4 +113,5 @@ dependencies {
     testImplementation(libs.androidx.test.core)
     testRuntimeOnly(libs.junit.vintage.engine)
     testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.okhttp.mockwebserver)
 }
