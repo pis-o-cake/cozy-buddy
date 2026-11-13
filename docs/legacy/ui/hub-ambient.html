@@ -1,0 +1,446 @@
+<title>Cozy Buddy — 허브 앰비언트 목업</title>
+<style>
+  /* 숫자 서브셋(0-9) 임베드 — OFL 라이선스, 원본: Google Fonts */
+  @font-face {
+    font-family: "Outfit Digits";
+    font-weight: 100 900;
+    src: url(data:font/woff2;base64,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) format("woff2");
+  }
+  @font-face {
+    font-family: "Manrope Digits";
+    font-weight: 100 900;
+    src: url(data:font/woff2;base64,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) format("woff2");
+  }
+  @font-face {
+    font-family: "Grotesk Digits";
+    font-weight: 100 900;
+    src: url(data:font/woff2;base64,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) format("woff2");
+  }
+
+@font-face {
+    font-family: "Selawik Digits";
+    font-weight: 400;
+    src: url(data:font/woff2;base64,d09GMgABAAAAAAUsAA0AAAAACLwAAATdAAECjwAAAAAAAAAAAAAAAAAAAAAAAAAAGyAcKgZgADQRDAqHfIZuATYCJAMaCxgABCAFhCgHIBszBygeB7mJ9WIymVyJ/rLj4b97874587c2Xl6qScdoaxSg4JKFEtIIVdAu8I+n037eblJsamxFxxU3NZPWaU9gDvDi7sOsqLj/O5V/hvfAOoHrJa1Ixvp3HWPQWNgEj/oOsEugwg2VQxGrUQGxgFxzaw9NP0KK1oh5LTtGFFkADXYcoKP0XCHo4AHK/wFAlXHnCXvO4KG6pw2stOB1zgVoBfBBseI9BvB08FI4Dk6ZOnxMEJEX8zEcQACxHl+SJCQKFFW8+g/S19mFYQACkPGfAUzhQAIhM4JDhIeEDIjtUdXmZS2/WLMJGEQrE9AMZQL0QOwAxC94sAYDMlsZyx+Ew/rG2k6eApy0NdJ2MDKyNviQfQsp3+YEoGbewMRrmpCoubeR8i2WWKBfwwTDCIarxLWCQUKi5DgJx3FIqbdAC0PFEZxA/SFM0LSQpmkwZHT7gBGoOTSpJ17ClbesaDOxB6eNxoBKCAzDwMQHxAIb3m2AhkVaAiASgfObUHPOF1ppCHp3GeezPTNg3f8+OaVpYvEtfPJtrjRFwgdqwluJvjttbAtfsP9877EBMhYNEB8WinZrsAw1qMyYdf7mUEZ7FL0rBv9+g6le6y2IJa9LcBLaNlv+KUGs2oy/qQWbR/uphI9+KXt9ZiO2/OFhKuuLbzsKXh/faLyudHwumae5lqQ/siirmFqeZnLrbMr/yukycN7861frsky9shvMX45B8+F+xWfr1APFFYlUaYZK+qtL8pCJ1Ehiva1P46q6iw6/Way4Md3fll0W1yzPnCrdur8X9p2b2GSTt3S2c976Cn9hhc7UZmo4kjJI01car12dSvTrp2p+WXfT7qMCnoQYqYlfLfzW/TJbdtBmEY7Z71rmVfvdUfhUs07juOvsD198DztuY0fcJOrTym3Lb6zc7bVNezLw9foD/9utQDftdnKtTTdG//N8xmbOm9TYEOD/OHV5TPKwa+PAm8dto8SNCUPnYcW/h+82jFnY7640Em89NZL5Nr57cmNGT+8/I/tUwoilEWlN63zqET0dbNzxzPDsOARv/rmzbQUqczgbdxHWW7zooa53luVuHGhMsS4PbdlVU1V+4GzDaI2msH/vYE3LzrKwZOt+KndDaVfLjZddq/Bb9fXhSYqs2GBFbXJamiIuWpEUFdZMpWWVPR8viVUNR8VKZVJGuZCMn8yozvtDxOVB0Pj0i+Kk0X810fJ6E9MD1eaF09t7cljd7cKmL1suNnU8XTXXwbwYUOvV4uk9BJwMezlQ1bRyaPeYIn3FUEYeAAQQafmdSzb3Kw1jf9XBdQDwmnq5BICvsbxtoF9+mnX5FwFUYQABqv//AShmoC8j6wJSMV1/AeQzEGGghRr0qaBdjTJiCGiKh6sck7AqORzKugBxDyDkEIOoAExtyeEcYuicp8zxWcUG0IrzBBwEUrBAQcKQ8lBqdWnXrV2DHqQU7bp09FgtI5UCbUie+rXL/lpR4q/W38qLL1J/Ij2a3ilWr1u9Ln3q1SGlW2olRcpXjfUJS/phi2r4cjN/GckeujfVSD1sWBc2rap1aR7ZrsERpXqD1KRAkQSUxTks0QOU6xdj2xUNsDHXmaAhmL6Hvdq4GIUI/OnNLxg26pWFXc54GhBPu3RzDoL4/xUPLeTXxNVi5VkIBg==) format("woff2");
+  }
+  @font-face {
+    font-family: "Selawik Digits";
+    font-weight: 600;
+    src: url(data:font/woff2;base64,d09GMgABAAAAAAUgAA0AAAAACJgAAATOAAECjwAAAAAAAAAAAAAAAAAAAAAAAAAAGyAcKgZgADQRDAqHYIZVATYCJAMaCxgABCAFhB4HIBsQB1GULU6G4GdCNge6bqUMggHFuR0L9etygyBfzrMRPL9Gm/f275lp0nb1kiAWEiGLZTJEQqdRyiWse6beDs/f7FVjzfhHj2xSOEw/DZLCwU7AB8GI8v//VH4nQB/LPR+4XtIKJft2rkzvxDUop4BToGCp/oY6rFSgGmnVjSGaUgRYN2StY0ugjwU6TJGDOMea4wCXAk0DYMkVJyGv43sKB3oDCZjcL+Vt3gPs1IdlE++tlTHiII252LOzNUtOzQqBty4uIQiwR7U+uA3eto+ZaKKoP1Tn0JRUYcjkojA2c1Qockda5b2mKtwM6oUUulIHdcYyAugDYguIH6bQrZ3iUMjyE5V8Zz8/5+HjGBQkxcMpxy8gwfuIeRsRd4eFARmMW8BNOpqYcQcRdxudTqcDDAYmwplAxoShiXEsFpHFYiHigACnQFBujWEyHgH0AjoxFQHiEAOTgY3xELIQcUy4iyOcyGMMsDNgVG3gYU/MVArgQ0TgOTAAnWgUu+sNVr03TVeI4MfxXFUe2fS9yzz+pzVJp6Mzb6MS7jzZq3hc6tFxLMw9usvEMd56gw8hiA/lecRkIlbtrD3n0nGMp2p/WKTxvdy99sYy++cWMv4pTzqB+LIykZ50t+49IhPW0h+daqn9Fi/tx18Drz0crEYW7nZ4mrx8F2h1v6dK8BXFi+39T3c+2IgceeVda/nl287+BuBwYrGu3cVnD/OygejEP+Cv0eT0NDndw9ZW2/6qVqTd6FPtRDFTwVTJb8mW/FUidmvsHbfSiSsRsbAlVsXKQgHWUH0dAQY+b6WJYmOa7MhPI9i/Wh44pZt7OPpJCO41mKDDebEz/4rnZVBWbCR0OglbgHt3YfKeU7fUJFjirq8/RX7/CcxW71Rjnt/GRhuCLpDTDNlG1ZBD/RoDMk7XcxYgr4jOID9uCqjBl0VLN/xIy3H/L+3cM8sSokpJgb2DjLFowrp/RfjdXd9Yia1Y/sNx7pwd2+4JYrJf7PlMU2rtTVq4wn2IVQbjDnFUB1qMdxIbXgMZKlpCCfcAF542RXwbRtjL4jXRoFfstmfgTDjBtCjO21qGciWs1cGN1jLtGBM0RfRq9rMPaoUVLGWifIyL8OGBszc98lFH6kxOnbFSNMOTTBUsz56xvHzxlJXleQWDXYr6FRcdA3UyVUHLkKqmQNY0VqVRFXXB5aaBR7a6UVyjxo7uQsI/rwuZtVfNC01dtx7xHHf13c5P9WXshWZUjmHtUennGp3MrD3to2BbFV9YSUsNAIHId8vLX4ac0vjPVbWBG4PPlwA/oy+qHW2eFVP2cUCrBEHrv1ug3nCUcjEFCBUSiALlJUdDApTG+RyeEsAcGN7pDOoQfOJaPYASpZ14AsAVD3PhyFNPPAtX/XAJvDYWmWgJ32zUBnLZRZcoglhwQ+bPRwAfNIEg+nz48zWAO3DL8I72SSGHw+d50ew88rSXU86ChGQWyPURW1QBqPwFo6KAYF2VcWJLMC9UEDtUnmD+sIfzHUCGAnowSKAcKLHnBeYPXdIHbaacm5FVVQ0bz1tcE7XtBDIF6uieN4oLTi7Eh5Wv1MntIN5iOTdq/3n9nJ2u2A2JD08UtqhcBKG2P4JjKUDOvuT8D+1wS3+uhlJlaj65DAAAAA==) format("woff2");
+  }
+
+  /* 숫자 폰트 후보 (OFL — 앱 번들 가능). 서브셋: 0-9만 임베드 */
+  .screen.font-selawik .fd span { font-family: "Selawik Digits", "Segoe UI", sans-serif; }
+  .screen.font-outfit .fd span { font-family: "Outfit Digits", "Segoe UI", sans-serif; }
+  .screen.font-manrope .fd span { font-family: "Manrope Digits", "Segoe UI", sans-serif; }
+  .screen.font-grotesk .fd span { font-family: "Grotesk Digits", "Segoe UI", sans-serif; }
+
+  /* ── 프레젠테이션 스테이지 ────────────────────────────────── */
+  :root {
+    --stage-bg: #101318;
+    --stage-ink: #b8bec8;
+    --stage-ink-dim: #6d7480;
+    --stage-accent: #d9a06b;
+  }
+  html, body { background: var(--stage-bg); }
+  body {
+    margin: 0;
+    font-family: "Segoe UI", Roboto, "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
+    color: var(--stage-ink);
+    display: grid; place-items: center;
+    min-height: 100vh; padding: 32px 16px; box-sizing: border-box;
+  }
+  .stage { width: min(100%, 1100px); }
+  .stage-head {
+    display: flex; align-items: baseline; justify-content: space-between;
+    gap: 16px; margin-bottom: 14px; flex-wrap: wrap;
+  }
+  .stage-head h1 {
+    font-size: 15px; font-weight: 600; letter-spacing: 0.02em; margin: 0; color: var(--stage-ink);
+  }
+  .stage-head h1 small { color: var(--stage-ink-dim); font-weight: 400; margin-left: 8px; }
+  .mode-switch { display: flex; gap: 6px; }
+  .mode-switch button {
+    font: inherit; font-size: 12.5px; padding: 6px 14px; border-radius: 999px;
+    border: 1px solid #2a3038; background: transparent; color: var(--stage-ink-dim); cursor: pointer;
+  }
+  .mode-switch button[aria-pressed="true"] {
+    background: #1c2129; color: var(--stage-ink); border-color: #3a424d;
+  }
+  .mode-switch button:focus-visible { outline: 2px solid var(--stage-accent); outline-offset: 2px; }
+  .font-switch {
+    display: flex; align-items: center; gap: 6px; margin-bottom: 14px; flex-wrap: wrap;
+  }
+  .font-switch .label { font-size: 12px; color: var(--stage-ink-dim); margin-right: 4px; }
+  .font-switch button {
+    font: inherit; font-size: 12px; padding: 5px 12px; border-radius: 999px;
+    border: 1px solid #2a3038; background: transparent; color: var(--stage-ink-dim); cursor: pointer;
+  }
+  .font-switch button[aria-pressed="true"] {
+    background: #1c2129; color: var(--stage-ink); border-color: #3a424d;
+  }
+  .font-switch button:focus-visible { outline: 2px solid var(--stage-accent); outline-offset: 2px; }
+  .stage-note {
+    margin-top: 14px; font-size: 12.5px; line-height: 1.7; color: var(--stage-ink-dim); max-width: 70ch;
+  }
+  .stage-note b { color: var(--stage-ink); font-weight: 600; }
+
+  /* ── 태블릿 스크린 (1280×800) ─────────────────────────────── */
+  .screen {
+    container-type: inline-size;
+    aspect-ratio: 1280 / 800;
+    border-radius: 18px; overflow: hidden; position: relative;
+    box-shadow: 0 30px 80px rgba(0,0,0,.55), 0 0 0 1px #262c34;
+    user-select: none; cursor: pointer;
+  }
+
+  /* 포토 프레임 배경 (사진 자리표시) */
+  .photo {
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(60% 42% at 68% 58%, rgba(255,214,150,.85) 0%, rgba(255,190,120,.28) 45%, rgba(255,190,120,0) 72%),
+      linear-gradient(180deg, #35507a 0%, #6d7fa6 34%, #c98d6e 62%, #e8b184 78%, #3c3f52 100%);
+    transition: opacity 1.1s ease;
+  }
+  .photo svg { position: absolute; inset: auto 0 0 0; width: 100%; height: 46%; display: block; }
+  .haze { position: absolute; left: 0; right: 0; bottom: 34%; height: 12%;
+          background: rgba(255,214,170,.35); filter: blur(28px); }
+  .vignette {
+    position: absolute; inset: 0;
+    background: linear-gradient(180deg, rgba(10,12,20,.22) 0%, rgba(10,12,20,0) 22%,
+                rgba(10,12,20,0) 55%, rgba(10,12,20,.42) 100%);
+    transition: opacity 1.1s ease;
+  }
+
+  /* 시계/야간 공용 배경 — 순흑 대신 은은한 근흑 라디얼 (중앙이 살짝 밝음) */
+  .darkbg {
+    position: absolute; inset: 0; opacity: 0; transition: opacity 1.1s ease;
+    background: radial-gradient(115% 100% at 50% 42%, #1a1a1a 0%, #101010 55%, #0a0a0a 100%);
+  }
+
+  .ink { color: #fff; transition: color 1.1s ease, opacity 1.1s ease; }
+  .screen.is-night .ink { color: #97907f; }
+
+  .statusbar { position: absolute; top: 2.2cqi; right: 2.6cqi; display: flex; gap: 1.4cqi; opacity: .6; z-index: 6; }
+  .statusbar svg { width: 1.7cqi; height: 1.7cqi; display: block; }
+  .screen.is-night .statusbar { opacity: .25; }
+
+  /* ── 포토 프레임: 좌하단 정보 스택 ─────────────────────────── */
+  .info {
+    position: absolute; left: 3.4cqi; bottom: 3cqi;
+    display: flex; flex-direction: column; gap: 0.4cqi;
+    text-shadow: 0 0.15cqi 1.6cqi rgba(0,0,0,.45);
+    transition: opacity 1.1s ease;
+  }
+  .info .date { font-size: 2.2cqi; font-weight: 400; opacity: .95; }
+  .info .time {
+    font-size: 9.5cqi; font-weight: 300; line-height: 1.02;
+    letter-spacing: -0.01em; font-variant-numeric: tabular-nums;
+  }
+  .info .weather { display: flex; align-items: center; gap: 0.9cqi;
+                   font-size: 2.2cqi; opacity: .95; margin-top: 0.5cqi; }
+  .info .weather svg { width: 2.6cqi; height: 2.6cqi; display: block; }
+  .info .weather .indoor { opacity: .75; margin-left: 0.6cqi; }
+
+  /* ── 시계 모드: 스플릿-플랩(Flip) 카드 ─────────────────────── */
+  .clockface {
+    position: absolute; inset: 0;
+    opacity: 0; pointer-events: none; transition: opacity 1.1s ease;
+  }
+  /* 시계는 화면 정중앙 고정 */
+  .flipclock {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    display: flex; align-items: center; gap: 1.9cqi;
+  }
+  .screen.is-night .flipclock { filter: brightness(.45); }
+
+  .fd {
+    position: relative; width: 18cqi; height: 28cqi; perspective: 78cqi;
+    filter: drop-shadow(0 1cqi 2.4cqi rgba(0,0,0,.45));  /* 배경에서 카드 띄우기 */
+  }
+  .fd-half, .fd-flap {
+    position: absolute; left: 0; right: 0; height: 50%; overflow: hidden;
+  }
+  /* 중립 다크 그레이 — 배경(순흑)과 같은 색 온도, 푸른 기 제거 */
+  .fd-half.top, .fd-flap.top {
+    top: 0; border-radius: 2.7cqi 2.7cqi 0.5cqi 0.5cqi;
+    background: linear-gradient(#242424, #1d1d1d);
+  }
+  .fd-half.bottom, .fd-flap.bottom {
+    top: 50%; border-radius: 0.5cqi 0.5cqi 2.7cqi 2.7cqi;
+    background: linear-gradient(#181818, #141414);
+  }
+  .fd span {
+    position: absolute; left: 0; width: 100%; height: 200%;
+    display: grid; place-items: center;
+    font-size: 22.5cqi; font-weight: 500; color: #f4f4f2;
+    font-variant-numeric: tabular-nums; line-height: 1;
+    /* 폰트 메트릭상 숫자가 살짝 아래로 보이는 것 광학 보정 */
+    transform: translateY(-1.1cqi);
+  }
+  .fd-half.top span, .fd-flap.top span { top: 0; }
+  .fd-half.bottom span, .fd-flap.bottom span { top: -100%; }
+  .fd-flap { z-index: 3; backface-visibility: hidden; will-change: transform; }
+  .fd-flap.top { transform-origin: 50% 100%; }
+  .fd-flap.bottom { transform-origin: 50% 0%; transform: rotateX(90deg); }
+  .fd-seam {
+    position: absolute; top: 50%; left: 0; right: 0; height: 0.35cqi; z-index: 4;
+    transform: translateY(-50%); background: rgba(0,0,0,.65);
+  }
+
+  .colon { display: flex; flex-direction: column; gap: 3.8cqi; margin: 0 0.7cqi; }
+  .colon i { width: 1.7cqi; height: 1.7cqi; border-radius: 50%; background: #3a3a3a; display: block; }
+  .screen.is-night .colon i { background: #242424; }
+
+  /* 날짜 · 요일 · 온도 — 하단 중앙 한 줄 */
+  .clockbottom {
+    position: absolute; left: 0; right: 0; bottom: 3.4cqi;
+    display: flex; align-items: center; justify-content: center; gap: 1.2cqi;
+    font-size: 2.3cqi; font-weight: 400; opacity: .6;
+  }
+  .clockbottom .sep { opacity: .5; }
+  .clockbottom .weather { display: inline-flex; align-items: center; gap: 0.7cqi; }
+  .clockbottom .weather svg { width: 2.4cqi; height: 2.4cqi; display: block; }
+  .screen.is-night .clockbottom { opacity: .35; }
+  .screen.is-night .clockbottom .sep,
+  .screen.is-night .clockbottom .weather { display: none; }  /* 야간: 날짜만 (§10-4) */
+
+  /* ── 모드 전환 규칙 ────────────────────────────────────────── */
+  .screen.is-clock .photo, .screen.is-clock .vignette, .screen.is-clock .info { opacity: 0; }
+  .screen.is-clock .darkbg { opacity: 1; }
+  .screen.is-clock .clockface { opacity: 1; }
+
+  .screen.is-night .photo, .screen.is-night .vignette, .screen.is-night .info { opacity: 0; }
+  .screen.is-night .darkbg { opacity: 1; }
+  .screen.is-night .clockface { opacity: 1; }
+  .screen.is-night .clockface .weather { opacity: 0; }  /* 야간: 시계만 (§10-4) */
+</style>
+
+<div class="stage">
+  <div class="stage-head">
+    <h1>Cozy Buddy · 앰비언트 <small>1280 × 800 — 설계서 §2-3 · §10-5</small></h1>
+    <div class="mode-switch" role="group" aria-label="화면 모드">
+      <button id="btn-clock" aria-pressed="true">플립 시계</button>
+      <button id="btn-photo" aria-pressed="false">포토 프레임</button>
+      <button id="btn-night" aria-pressed="false">야간 디밍</button>
+    </div>
+  </div>
+
+  <div class="font-switch" role="group" aria-label="숫자 폰트">
+    <span class="label">숫자 폰트</span>
+    <button data-font="font-selawik" aria-pressed="true">Selawik (Segoe 대체·번들 가능)</button>
+    <button data-font="" aria-pressed="false">Segoe UI (시스템·번들 불가)</button>
+    <button data-font="font-outfit" aria-pressed="false">Outfit</button>
+    <button data-font="font-manrope" aria-pressed="false">Manrope</button>
+    <button data-font="font-grotesk" aria-pressed="false">Space Grotesk</button>
+  </div>
+
+  <div class="screen is-clock font-selawik" id="screen" title="화면을 클릭하면 플립 애니메이션 미리보기">
+    <div class="photo">
+      <div class="haze"></div>
+      <svg viewBox="0 0 1280 370" preserveAspectRatio="none" aria-hidden="true">
+        <polygon points="0,205 150,130 300,190 430,95 560,175 640,140 760,210 900,120 1030,185 1160,150 1280,200 1280,370 0,370"
+                 fill="#2c3550" opacity="0.85"/>
+        <polygon points="0,268 120,225 260,262 400,205 560,258 700,220 840,270 980,225 1120,262 1280,235 1280,370 0,370"
+                 fill="#1d2438" opacity="0.95"/>
+        <polygon points="0,330 200,295 420,325 640,290 860,328 1080,300 1280,322 1280,370 0,370"
+                 fill="#12172a"/>
+      </svg>
+    </div>
+    <div class="vignette"></div>
+    <div class="darkbg"></div>
+
+    <div class="statusbar ink" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+        <rect x="9" y="3" width="6" height="11" rx="3"/>
+        <path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>
+      </svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+        <path d="M3 9.5a13.5 13.5 0 0 1 18 0M6.2 13a9 9 0 0 1 11.6 0M9.4 16.4a4.6 4.6 0 0 1 5.2 0"/>
+        <circle cx="12" cy="19.4" r="1.1" fill="currentColor" stroke="none"/>
+      </svg>
+    </div>
+
+    <!-- 포토 프레임: 좌하단 (날짜 → 시계 → 날씨) -->
+    <div class="info ink">
+      <div class="date js-date">7월 16일 수요일</div>
+      <div class="time js-timetext">00:00</div>
+      <div class="weather">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+          <circle cx="11" cy="11" r="4"/>
+          <path d="M11 2.5v2M11 17.5v2M2.5 11h2M17.5 11h2M5 5l1.4 1.4M16.6 16.6 18 18M18 4 16.6 5.4M5.4 16.6 4 18"/>
+        </svg>
+        <span>23°</span>
+        <span class="indoor">실내 24.5°</span>
+      </div>
+    </div>
+
+    <!-- 플립 시계 (스플릿-플랩 카드, 다크) -->
+    <div class="clockface ink">
+      <div class="flipclock" id="flipclock" aria-label="현재 시각">
+        <!-- 숫자 카드는 JS가 생성 -->
+      </div>
+      <div class="clockbottom">
+        <span class="js-date">7월 16일 수요일</span>
+        <span class="sep">·</span>
+        <span class="weather">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+            <circle cx="11" cy="11" r="4"/>
+            <path d="M11 2.5v2M11 17.5v2M2.5 11h2M17.5 11h2M5 5l1.4 1.4M16.6 16.6 18 18M18 4 16.6 5.4M5.4 16.6 4 18"/>
+          </svg>
+          <span>23°</span>
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <p class="stage-note">
+    <b>플립 시계(기본)</b>: Nest Hub "Flip" 페이스 다크 변형 — 24시간 <b>00:00</b> 고정
+    포맷이라 자릿수 변화 없이 항상 정중앙. 분이 바뀔 때 카드가 절반씩 꺾여 넘어가는
+    스플릿-플랩 애니메이션(<b>화면 클릭으로 미리보기</b>). <b>포토 프레임</b>: 2세대 홈 화면
+    레이아웃(좌하단 스택 + 전면 사진 — 목업은 CSS 자리표시). <b>야간 디밍</b>: 카드·시계
+    휘도만 낮추고 날씨는 소등(§10-4). Compose 구현 시 플립은 digit별
+    graphicsLayer.rotationX로 동일하게 재현합니다.
+  </p>
+</div>
+
+<script>
+  const screen = document.getElementById("screen");
+  const buttons = {
+    clock: document.getElementById("btn-clock"),
+    photo: document.getElementById("btn-photo"),
+    night: document.getElementById("btn-night"),
+  };
+  function setMode(mode) {
+    screen.classList.toggle("is-clock", mode === "clock");
+    screen.classList.toggle("is-night", mode === "night");
+    for (const [name, button] of Object.entries(buttons)) {
+      button.setAttribute("aria-pressed", String(name === mode));
+    }
+  }
+  buttons.clock.addEventListener("click", () => setMode("clock"));
+  buttons.photo.addEventListener("click", () => setMode("photo"));
+  buttons.night.addEventListener("click", () => setMode("night"));
+
+  /* 숫자 폰트 전환 */
+  const FONT_CLASSES = ["font-selawik", "font-outfit", "font-manrope", "font-grotesk"];
+  for (const button of document.querySelectorAll(".font-switch button")) {
+    button.addEventListener("click", () => {
+      screen.classList.remove(...FONT_CLASSES);
+      if (button.dataset.font) screen.classList.add(button.dataset.font);
+      for (const other of document.querySelectorAll(".font-switch button")) {
+        other.setAttribute("aria-pressed", String(other === button));
+      }
+    });
+  }
+
+  /* ── 스플릿-플랩 디지트 ─────────────────────────────────────── */
+  const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const flipclock = document.getElementById("flipclock");
+
+  function makeHalf(kind, value, isFlap) {
+    const el = document.createElement("div");
+    el.className = (isFlap ? "fd-flap " : "fd-half ") + kind;
+    const span = document.createElement("span");
+    span.textContent = value;
+    el.appendChild(span);
+    return el;
+  }
+
+  function makeDigit() {
+    const fd = document.createElement("div");
+    fd.className = "fd";
+    fd.dataset.digit = "0";
+    fd.append(makeHalf("top", "0", false), makeHalf("bottom", "0", false));
+    const seam = document.createElement("div");
+    seam.className = "fd-seam";
+    fd.appendChild(seam);
+    return fd;
+  }
+
+  function makeColon() {
+    const colon = document.createElement("div");
+    colon.className = "colon";
+    colon.innerHTML = "<i></i><i></i>";
+    return colon;
+  }
+
+  const digits = [makeDigit(), makeDigit(), makeDigit(), makeDigit()];
+  flipclock.append(digits[0], digits[1], makeColon(), digits[2], digits[3]);
+
+  let animating = 0;
+  function flipTo(fd, next, force = false) {
+    const current = fd.dataset.digit;
+    if (current === next && !force) return;
+    const topSpan = fd.querySelector(".fd-half.top span");
+    const bottomSpan = fd.querySelector(".fd-half.bottom span");
+    fd.dataset.digit = next;
+    if (reducedMotion) {
+      topSpan.textContent = next;
+      bottomSpan.textContent = next;
+      return;
+    }
+    animating += 1;
+    const flapTop = makeHalf("top", current, true);      // 떨어지는 구 값
+    const flapBottom = makeHalf("bottom", next, true);   // 올라와 닫히는 새 값
+    fd.append(flapTop, flapBottom);
+    topSpan.textContent = next;  // 상단 정적은 새 값 (플랩이 걷히며 드러남)
+    flapTop.animate(
+      [{ transform: "rotateX(0deg)" }, { transform: "rotateX(-90deg)" }],
+      { duration: 150, easing: "ease-in", fill: "forwards" }
+    ).finished.then(() => {
+      flapTop.remove();
+      return flapBottom.animate(
+        [{ transform: "rotateX(90deg)" }, { transform: "rotateX(0deg)" }],
+        { duration: 180, easing: "cubic-bezier(.2,.9,.3,1.12)", fill: "forwards" }
+      ).finished;
+    }).then(() => {
+      bottomSpan.textContent = next;
+      flapBottom.remove();
+      animating -= 1;
+    });
+  }
+
+  const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
+  let introDone = false;
+
+  function nowParts() {
+    const now = new Date();
+    const hh = String(now.getHours()).padStart(2, "0");
+    const mm = String(now.getMinutes()).padStart(2, "0");
+    return { now, hh, mm };
+  }
+
+  function updateTexts() {
+    const { now, hh, mm } = nowParts();
+    const date = (now.getMonth() + 1) + "월 " + now.getDate() + "일 " + WEEKDAYS[now.getDay()] + "요일";
+    for (const el of document.querySelectorAll(".js-date")) el.textContent = date;
+    for (const el of document.querySelectorAll(".js-timetext")) el.textContent = hh + ":" + mm;
+  }
+
+  function tick() {
+    updateTexts();
+    if (!introDone) return;  // 인트로 캐스케이드가 끝나기 전엔 플립 갱신 보류
+    const { hh, mm } = nowParts();
+    const values = [hh[0], hh[1], mm[0], mm[1]];
+    digits.forEach((fd, i) => flipTo(fd, values[i]));
+  }
+
+  // 최초 진입: 00:00 → 현재 시각으로 자릿수 캐스케이드 플립
+  updateTexts();
+  setTimeout(() => {
+    const { hh, mm } = nowParts();
+    [hh[0], hh[1], mm[0], mm[1]].forEach((value, i) => {
+      setTimeout(() => flipTo(digits[i], value, true), i * 110);
+    });
+    setTimeout(() => { introDone = true; }, 4 * 110 + 400);
+  }, 400);
+  setInterval(tick, 1000);
+
+  // 화면 클릭 → 플립 애니메이션 미리보기 (전 자릿수 강제 재플립)
+  screen.addEventListener("click", () => {
+    if (animating > 0 || !screen.classList.contains("is-clock") && !screen.classList.contains("is-night")) return;
+    digits.forEach((fd, i) => {
+      setTimeout(() => flipTo(fd, fd.dataset.digit, true), i * 110);
+    });
+  });
+</script>
