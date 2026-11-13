@@ -1,5 +1,6 @@
 """home 브리지: 가짜 HA 서버를 상대로 스냅샷, 상태 중계, 제어, 재연결을 검증한다."""
 
+import time
 from collections.abc import Iterator
 from contextlib import contextmanager
 
@@ -223,6 +224,109 @@ def test_state_change_of_unbridged_entity_is_ignored(
         fake_ha.push_state("switch.plug", "off")
         changed = recv(mobile)
     assert changed.entity_state_changed.entity_id == "switch.plug"
+
+
+# --- 레지스트리 변경 -----------------------------------------------------------
+
+
+def test_area_reassignment_pushes_new_snapshot(
+    ha_client: TestClient, fake_ha: FakeHomeAssistant
+) -> None:
+    with connect_mobile(ha_client) as mobile, connect_hub(ha_client) as hub:
+        fake_ha.assign_area("light.living", "bedroom")
+        for ws in (mobile, hub):
+            snapshot = recv_until(ws, "home_snapshot").home_snapshot
+            entities = {e.entity_id: e for e in snapshot.entities}
+            assert entities["light.living"].area_id == "bedroom"
+            assert set(entities) == EXPECTED_ENTITIES
+
+
+def test_area_registry_rename_pushes_new_snapshot(
+    ha_client: TestClient, fake_ha: FakeHomeAssistant
+) -> None:
+    with connect_mobile(ha_client) as ws:
+        fake_ha.areas[0]["name"] = "Salon"
+        fake_ha.emit("area_registry_updated", {"action": "update", "area_id": "living_room"})
+        snapshot = recv_until(ws, "home_snapshot").home_snapshot
+    assert {a.area_id: a.name for a in snapshot.areas}["living_room"] == "Salon"
+
+
+def test_device_area_change_pushes_new_snapshot(
+    ha_client: TestClient, fake_ha: FakeHomeAssistant
+) -> None:
+    with connect_mobile(ha_client) as ws:
+        fake_ha.devices[0]["area_id"] = "living_room"
+        fake_ha.emit("device_registry_updated", {"action": "update", "device_id": "dev-bed"})
+        snapshot = recv_until(ws, "home_snapshot").home_snapshot
+    assert by_id(snapshot)["light.bed"].area_id == "living_room"  # type: ignore[attr-defined]
+
+
+def test_unexposed_entity_is_removed_from_snapshot(
+    ha_client: TestClient, fake_ha: FakeHomeAssistant
+) -> None:
+    with connect_mobile(ha_client) as ws:
+        fake_ha.set_exposed("switch.plug", False)
+        snapshot = recv_until(ws, "home_snapshot").home_snapshot
+    assert {e.entity_id for e in snapshot.entities} == EXPECTED_ENTITIES - {"switch.plug"}
+
+
+def test_newly_exposed_entity_is_added(ha_client: TestClient, fake_ha: FakeHomeAssistant) -> None:
+    with connect_mobile(ha_client) as ws:
+        fake_ha.set_exposed("light.hidden", True)
+        snapshot = recv_until(ws, "home_snapshot").home_snapshot
+    assert "light.hidden" in {e.entity_id for e in snapshot.entities}
+
+
+def test_registry_event_burst_rebuilds_once(
+    ha_client: TestClient, fake_ha: FakeHomeAssistant
+) -> None:
+    before = fake_ha.registry_list_calls
+    with connect_mobile(ha_client) as ws:
+        fake_ha.assign_area("light.living", "bedroom")
+        for _ in range(4):
+            fake_ha.emit("entity_registry_updated", {"action": "update", "entity_id": "x.y"})
+        snapshot = recv_until(ws, "home_snapshot").home_snapshot
+        # 디바운스 창보다 길게 기다려 추가 재구성이 없음을 확인한다.
+        time.sleep(0.4)
+    assert by_id(snapshot)["light.living"].area_id == "bedroom"  # type: ignore[attr-defined]
+    assert fake_ha.registry_list_calls == before + 1
+
+
+def test_unrelated_registry_change_sends_no_snapshot(
+    ha_client: TestClient, fake_ha: FakeHomeAssistant
+) -> None:
+    before = fake_ha.registry_list_calls
+    with connect_mobile(ha_client) as ws:
+        fake_ha.emit(
+            "entity_registry_updated",
+            {"action": "update", "entity_id": "light.hidden", "changes": {"icon": None}},
+        )
+        eventually(lambda: fake_ha.registry_list_calls > before)
+        fake_ha.push_state("switch.plug", "off")
+        # 스냅샷이 잘못 나갔다면 상태 변경보다 먼저 도착한다.
+        assert recv(ws).WhichOneof("body") == "entity_state_changed"
+
+
+def test_state_change_during_refresh_is_not_lost(
+    ha_client: TestClient, fake_ha: FakeHomeAssistant
+) -> None:
+    with connect_mobile(ha_client) as ws:
+        fake_ha.emit("entity_registry_updated", {"action": "update", "entity_id": "x.y"})
+        fake_ha.push_state("switch.plug", "off")
+        changed = recv_until(ws, "entity_state_changed").entity_state_changed
+    assert (changed.entity_id, changed.state.state) == ("switch.plug", "off")
+
+
+def test_exposure_poll_catches_change_without_event(
+    ha_settings: Settings, fake_ha: FakeHomeAssistant
+) -> None:
+    polled = ha_settings.model_copy(update={"ha_expose_poll_seconds": 0.1})
+    with running_app(polled) as client:
+        eventually(lambda: home_of(client).ready)
+        with connect_mobile(client) as ws:
+            fake_ha.set_exposed("switch.plug", False, emit=False)
+            snapshot = recv_until(ws, "home_snapshot").home_snapshot
+    assert "switch.plug" not in {e.entity_id for e in snapshot.entities}
 
 
 # --- 제어 --------------------------------------------------------------------

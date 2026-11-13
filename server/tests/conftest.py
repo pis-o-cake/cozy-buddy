@@ -71,6 +71,8 @@ def ha_settings(settings: Settings, fake_ha: FakeHomeAssistant) -> Settings:
             "ha_request_timeout_seconds": 0.5,
             "ha_backoff_min_seconds": 0.05,
             "ha_backoff_max_seconds": 0.1,
+            "ha_registry_debounce_seconds": 0.1,
+            "ha_expose_poll_seconds": 0.0,
         }
     )
 

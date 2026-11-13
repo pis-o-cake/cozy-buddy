@@ -72,7 +72,8 @@ class FakeHomeAssistant:
         self._loop = asyncio.new_event_loop()
         self._thread = threading.Thread(target=self._loop.run_forever, daemon=True)
         self._server: Server | None = None
-        self._subscribers: dict[ServerConnection, int] = {}
+        self._subscribers: dict[ServerConnection, dict[str, int]] = {}
+        self.registry_list_calls = 0
 
     @property
     def url(self) -> str:
@@ -98,6 +99,18 @@ class FakeHomeAssistant:
         """상태를 바꾸고 구독자에게 state_changed 를 보낸다."""
         self._wait(self._push_state(entity_id, state, attributes))
 
+    def assign_area(self, entity_id: str, area_id: str | None) -> None:
+        """엔티티 레지스트리의 area 를 바꾸고 entity_registry_updated 를 보낸다."""
+        self._wait(self._assign_area(entity_id, area_id))
+
+    def set_exposed(self, entity_id: str, exposed: bool, *, emit: bool = True) -> None:
+        """Assist 노출을 바꾼다. HA 는 등록된 엔티티의 노출 변경을 options 갱신 이벤트로 알린다."""
+        self._wait(self._set_exposed(entity_id, exposed, emit))
+
+    def emit(self, event_type: str, data: dict[str, Any]) -> None:
+        """구독자에게 임의의 이벤트를 보낸다."""
+        self._wait(self._emit(event_type, data))
+
     def _wait(self, coro: Awaitable[Any]) -> Any:
         future: Future[Any] = asyncio.run_coroutine_threadsafe(coro, self._loop)  # type: ignore[arg-type]
         return future.result(timeout=5)
@@ -114,6 +127,37 @@ class FakeHomeAssistant:
         self._server = None
         self._subscribers.clear()
 
+    async def _assign_area(self, entity_id: str, area_id: str | None) -> None:
+        for entry in self.entity_registry:
+            if entry["entity_id"] == entity_id:
+                entry["area_id"] = area_id
+        await self._emit(
+            "entity_registry_updated",
+            {"action": "update", "entity_id": entity_id, "changes": {"area_id": None}},
+        )
+
+    async def _set_exposed(self, entity_id: str, exposed: bool, emit: bool) -> None:
+        if exposed:
+            self.exposed.add(entity_id)
+        else:
+            self.exposed.discard(entity_id)
+        if emit:
+            await self._emit(
+                "entity_registry_updated",
+                {"action": "update", "entity_id": entity_id, "changes": {"options": {}}},
+            )
+
+    async def _emit(self, event_type: str, data: dict[str, Any]) -> None:
+        event = {"event_type": event_type, "data": data}
+        for ws, subs in list(self._subscribers.items()):
+            sub_id = subs.get(event_type)
+            if sub_id is None:
+                continue
+            try:
+                await ws.send(json.dumps({"id": sub_id, "type": "event", "event": event}))
+            except ConnectionClosed:
+                self._subscribers.pop(ws, None)
+
     async def _push_state(
         self, entity_id: str, state: str, attributes: dict[str, Any] | None
     ) -> None:
@@ -127,11 +171,7 @@ class FakeHomeAssistant:
             "event_type": "state_changed",
             "data": {"entity_id": entity_id, "old_state": old, "new_state": current},
         }
-        for ws, sub_id in list(self._subscribers.items()):
-            try:
-                await ws.send(json.dumps({"id": sub_id, "type": "event", "event": event}))
-            except ConnectionClosed:
-                self._subscribers.pop(ws, None)
+        await self._emit(event["event_type"], event["data"])
 
     async def _handle(self, ws: ServerConnection) -> None:
         await ws.send(json.dumps({"type": "auth_required", "ha_version": "fake"}))
@@ -152,7 +192,7 @@ class FakeHomeAssistant:
         kind = msg["type"]
         msg_id = msg["id"]
         if kind == "subscribe_events":
-            self._subscribers[ws] = msg_id
+            self._subscribers.setdefault(ws, {})[msg["event_type"]] = msg_id
             await self._reply(ws, msg_id, None)
         elif kind == "get_states":
             await self._reply(ws, msg_id, self.states)
@@ -161,6 +201,7 @@ class FakeHomeAssistant:
         elif kind == "config/device_registry/list":
             await self._reply(ws, msg_id, self.devices)
         elif kind == "config/entity_registry/list":
+            self.registry_list_calls += 1
             await self._reply(ws, msg_id, self.entity_registry)
         elif kind == "homeassistant/expose_entity/list":
             await self._expose_list(ws, msg_id)
