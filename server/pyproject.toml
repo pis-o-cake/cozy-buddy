@@ -5,7 +5,7 @@ description = "Cozy Buddy server: hub and mobile gateway"
 requires-python = ">=3.12,<3.13"
 dependencies = [
     "fastapi>=0.115",
-    "uvicorn>=0.32",
+    "uvicorn[standard]>=0.32",
     "gunicorn>=23.0",
     "pydantic>=2.9",
     "pydantic-settings>=2.6",
