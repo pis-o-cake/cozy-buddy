@@ -31,6 +31,7 @@ from app.domain.home.service import HomeService
 from app.domain.hub.service import HubService
 
 CLOSE_POLICY_VIOLATION = 1008
+CANCEL_GRACE_SECONDS = 5.0
 
 KEY_UNAUTHENTICATED = "error.unauthenticated"
 KEY_VERSION = "error.protocol_version_unsupported"
@@ -58,7 +59,23 @@ class GatewayService:
         self._home = home
 
     async def serve(self, websocket: WebSocket) -> None:
-        """연결을 받아 hello 검증 후 메시지 루프를 돌린다."""
+        """연결을 받아 hello 검증 후 메시지 루프를 돌린다.
+
+        취소돼도 진행 중인 DB 작업과 정리는 끝낼 시간을 준다.
+        """
+        # IMPORTANT: DB 호출 도중 취소되면 SQLAlchemy 가 커넥션을 무효화하고 aiosqlite 닫기를
+        # shield 태스크로 띄우는데, 그 태스크가 끝나지 않아 이벤트 루프 종료가 멈춘다.
+        # TestClient 는 클라이언트가 WebSocket 을 닫는 즉시 엔드포인트를 취소한다.
+        task = asyncio.ensure_future(self._serve(websocket))
+        try:
+            await asyncio.shield(task)
+        except asyncio.CancelledError:
+            await asyncio.wait({task}, timeout=CANCEL_GRACE_SECONDS)
+            task.cancel()
+            await asyncio.gather(task, return_exceptions=True)
+            raise
+
+    async def _serve(self, websocket: WebSocket) -> None:
         await websocket.accept()
         conn = ClientConnection(websocket)
         try:
