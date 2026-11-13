@@ -7,6 +7,14 @@
       }
     }
   },
+  "permissions": {
+    "deny": [
+      "Read(./.env)",
+      "Read(./**/.env)",
+      "Read(./.env.local)",
+      "Read(./**/.env.local)"
+    ]
+  },
   "enabledPlugins": {
     "engsys@engineering-system": true
   }

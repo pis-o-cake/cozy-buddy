@@ -1,0 +1,7 @@
+#!/bin/sh
+# 스테이징된 변경에 API 키가 들어가면 commit 을 막는다.
+set -eu
+
+root=$(git rev-parse --show-toplevel)
+cd "$root"
+exec sh scripts/check-secrets.sh --staged
