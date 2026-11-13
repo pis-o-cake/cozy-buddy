@@ -6,6 +6,18 @@
     <string name="ambient_date_pattern">M월 d일 EEEE</string>
     <string name="ambient_time_description">현재 시각 %1$s</string>
 
+    <!-- 앰비언트 날씨 줄: 상태 단어, 현재 기온, 오늘 최고, 오늘 최저 -->
+    <string name="ambient_weather_line">%1$s %2$d° · 최고 %3$d° 최저 %4$d°</string>
+    <string name="weather_condition_clear">맑음</string>
+    <string name="weather_condition_partly_cloudy">구름 조금</string>
+    <string name="weather_condition_cloudy">흐림</string>
+    <string name="weather_condition_fog">안개</string>
+    <string name="weather_condition_drizzle">이슬비</string>
+    <string name="weather_condition_rain">비</string>
+    <string name="weather_condition_snow">눈</string>
+    <string name="weather_condition_thunder">뇌우</string>
+    <string name="weather_condition_unknown">날씨</string>
+
     <string name="alarm_default_label">알람</string>
     <string name="alarm_default_label_timer">타이머</string>
     <string name="alarm_ring_stop">정지</string>
