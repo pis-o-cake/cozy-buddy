@@ -1,12 +1,13 @@
 engsys-document-review: 1
 document: docs/plan/development-plan.md
-blob: bcb3d0c0c232e80c1fae9fa0f3f405f6944e118a
+blob: a446c163f73a82dfbbce956548a771b659f215ad
 decision: pass
 reviewer: claude-opus-5-5
 audience: 프로젝트 소유자와 실행 담당자
 purpose: 누가 무엇을 어떤 순서로 하며 무엇이 막고 있는가
 
-- T3·T4 완료(#8, #10), T5·T8 진행, Windows devloop를 T13으로 추가
-- B1을 갤럭시 탭 A7(Android 12 최종) 잠정 결정으로, B4를 iPhone 사용·하이브리드·마지막 단계로 해소 처리
-- T12 설명과 선행 조건에서 B4를 빼고 스택 ADR을 산출물로 명시
+- 작업표를 병합된 PR 번호 기준으로 전면 갱신(T1~T19), 새로 생긴 T13~T19와 실기기 확인 이슈(#9, #13), S2b(#18) 연결
+- 작업 방식 문단에 병렬 5개, 로컬 verify 병합 기준, CI 비대기 규칙을 반영
+- B3를 데모 HA로 장소 해소·실기기 대기로 바꾸고, 사람 음성 녹음을 B5로 추가
+- 각 작업의 선행 관계가 단계 표와 모순 없는지 대조
 
