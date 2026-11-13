@@ -12,6 +12,7 @@ from openai import AsyncOpenAI
 from s2 import pricing
 from s2.audio import duration_s, pcm_to_wav
 from s2.config import RESPONSE_VOICE, Models
+from s2 import fast_path
 from s2.home import CHAT_TOOLS, SYSTEM_PROMPT, execute_tool
 
 _SENT_END = re.compile(r"(?<=[.!?。…])\s+|(?<=[.!?。…])$|\n+")
@@ -42,7 +43,8 @@ async def _tts_worker(
 
 
 async def run_cascade(
-    client: AsyncOpenAI, models: Models, pcm: bytes, reasoning_effort: str | None
+    client: AsyncOpenAI, models: Models, pcm: bytes, reasoning_effort: str | None,
+    stt_model: str | None = None, stt_prompt: str | None = None, fast: bool = False,
 ) -> dict[str, Any]:
     """Run one utterance through the cascade; all timings are seconds since t0 (upload start)."""
     rec: dict[str, Any] = {"tool_calls": [], "final_text": ""}
@@ -50,9 +52,12 @@ async def run_cascade(
     in_s = duration_s(pcm)
 
     t0 = time.perf_counter()
+    stt_model = stt_model or models.stt
+    stt_kwargs: dict[str, Any] = {"prompt": stt_prompt} if stt_prompt else {}
     stt = await client.audio.transcriptions.create(
-        model=models.stt, file=("utt.wav", wav, "audio/wav"), language="ko"
+        model=stt_model, file=("utt.wav", wav, "audio/wav"), language="ko", **stt_kwargs
     )
+    rec["stt_model"], rec["stt_prompt_used"] = stt_model, bool(stt_prompt)
     rec["t_stt_done"] = time.perf_counter() - t0
     rec["transcript"] = stt.text
     stt_usage = getattr(stt, "usage", None)
@@ -65,6 +70,23 @@ async def run_cascade(
     queue: asyncio.Queue[str | None] = asyncio.Queue()
     tts_task = asyncio.create_task(_tts_worker(client, models.tts, queue, rec, t0))
     usage = {"prompt": 0, "cached": 0, "completion": 0}
+    matched = fast_path.match(stt.text) if fast else None
+    if fast:
+        rec["fast_matched"] = matched is not None
+    if matched:
+        rec["tool_calls"] = [{"name": c["name"], "args": c["args"]} for c in matched]
+        for c in matched:
+            execute_tool(c["name"], c["args"])
+        rec["final_text"] = " ".join(fast_path.render(c) for c in matched)
+        queue.put_nowait(rec["final_text"])
+        queue.put_nowait(None)
+        await tts_task
+        rec["t_done"] = time.perf_counter() - t0
+        rec["usage"] = {"stt_audio_s": in_s, "llm": usage, "tts_audio_s": rec.get("tts_audio_s", 0.0)}
+        rec["cost_usd"] = pricing.stt_cost(stt_model, in_s) + pricing.tts_cost(rec.get("tts_audio_s", 0.0))
+        rec["t_end_to_first_audio"] = rec.get("t_first_audio_byte")
+        rec["stt_time"] = rec["t_stt_done"]
+        return rec
     extra: dict[str, Any] = {"reasoning_effort": reasoning_effort} if reasoning_effort else {}
 
     try:
@@ -132,7 +154,7 @@ async def run_cascade(
         "stt_audio_s": in_s, "llm": usage, "tts_audio_s": rec.get("tts_audio_s", 0.0),
     }
     rec["cost_usd"] = (
-        pricing.stt_cost(models.stt, in_s)
+        pricing.stt_cost(stt_model, in_s)
         + pricing.llm_cost(models.llm, usage["prompt"], usage["cached"], usage["completion"])
         + pricing.tts_cost(rec.get("tts_audio_s", 0.0))
     )
