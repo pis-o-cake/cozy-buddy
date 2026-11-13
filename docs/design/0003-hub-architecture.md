@@ -189,7 +189,8 @@ sequenceDiagram
 | 설정 | 서버 주소와 연결, 웨이크 감도, 마이크 음소거, 오디오 진단 | 첫 설정 때 마이크 캡처 점검 포함 |
 
 UI 규칙과 디자인 토큰은 `docs/ui/`의 UI 가이드로 분리한다. 이전 목업은
-`docs/legacy/ui/hub-ambient.html`, 이전 Compose 화면은 `docs/legacy/SOURCE.md`에 적은 revision에 있다.
+[hub-ambient.html](https://github.com/pis-o-cake/cozy-buddy-server/blob/6f8fbe6fbdc7d00c33e03d11dc9cec4eafe6d6ac/docs/design/hub-ambient.html), 이전 Compose 화면은
+[cozy-buddy-hub `app/`](https://github.com/pis-o-cake/cozy-buddy-hub/tree/e8505c84115a1b8ebc2d41317b7655800fcb21d7/app)(revision `e8505c8`)에 있다.
 
 ### 서버와의 통신
 

@@ -15,8 +15,9 @@ Home Assistant가 태블릿 음성 위성과 MCP 서버를 정식 지원하게 �
 
 ## 검토 요약
 
-검토 대상은 `docs/legacy/`에 보존한 이전 시도의 원문이다. 설계서 v3.4(`cozy-buddy-design-v3.md`),
-기능 명세, v2 설계서, 리서치 8편이 여기에 들어 있다. 원본 revision은 `docs/legacy/SOURCE.md`에 있다.
+검토 대상은 이전 시도의 원문, 곧 cozy-buddy-server 레포의 `docs/`(revision `6f8fbe6`)다. 설계서
+v3.4(`cozy-buddy-design-v3.md`), 기능 명세, v2 설계서, 리서치 8편이 여기에 들어 있다. 파일은
+`https://github.com/pis-o-cake/cozy-buddy-server/blob/6f8fbe6fbdc7d00c33e03d11dc9cec4eafe6d6ac/docs/<파일명>`에서 열며(v2 설계서는 `docs/archive/`, 리서치는 `docs/research/`), 아래 줄 번호는 이 revision 기준이다.
 검토는 두 갈래로 진행했다. 하나는 원문을 독립적으로 반박하는 설계 검토이고, 다른 하나는 2026-11-13
 기준 외부 기술 현황 조사다. 아래 위치 표기에서 `v3`는 설계서 v3, `FS`는 기능 명세, `R-*`는
 `research/` 문서이며, `L`은 줄 번호다.
@@ -36,7 +37,7 @@ Home Assistant가 태블릿 음성 위성과 MCP 서버를 정식 지원하게 �
 검토를 통과해 유지하는 부분은 다음과 같다.
 
 - 앰비언트 허브 UI 방향: 시계 화면, 그 위에 얹는 대화 오버레이, 야간 디밍과 번인 대책
-  (v3 §10-5, `docs/legacy/ui/hub-ambient.html`).
+  (v3 §10-5, [hub-ambient.html](https://github.com/pis-o-cake/cozy-buddy-server/blob/6f8fbe6fbdc7d00c33e03d11dc9cec4eafe6d6ac/docs/design/hub-ambient.html)).
 - 오디오 버퍼 패턴: 온디바이스 웨이크, pre-roll 링버퍼, 단일 AudioRecord 팬아웃(v3 L417·L887-888).
   패턴만 유지하고 엔진은 정하지 않는다.
 - 가설 하나: 지연의 지배 요인은 VAD 종료 판정이다(v3 L419). 사실이 아니라 1순위 측정 대상으로 둔다.
