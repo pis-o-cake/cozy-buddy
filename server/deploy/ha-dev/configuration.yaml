@@ -1,0 +1,3 @@
+# 개발용 HA: 데모 통합이 area가 있는 가짜 조명·스위치를 만든다.
+default_config:
+demo:
