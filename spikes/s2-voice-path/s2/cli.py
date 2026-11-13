@@ -32,10 +32,12 @@ def _build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--seconds", type=float, default=4.0)
     sp = sub.add_parser("run", help="run the measurement")
     add_models(sp)
-    sp.add_argument("--paths", default="a,b")
+    sp.add_argument("--paths", default="a,b", help="a,b,a_prompt,a_mini,a_mini_prompt,fast")
+    sp.add_argument("--mini-stt-model", default="gpt-4o-mini-transcribe")
+    sp.add_argument("--fast-stt", default="a_prompt", help="STT variant used by path fast")
     sp.add_argument("--repeat", type=int, default=3)
     sp.add_argument("--limit", type=int, help="use only the first N commands")
-    sp.add_argument("--budget-usd", type=float, default=5.0)
+    sp.add_argument("--budget-usd", type=float, default=3.0)
     sp.add_argument("--reasoning-effort", default="none", help="chat model reasoning_effort, e.g. none/minimal/low")
     sp.add_argument("--out", default=str(ROOT / "results"))
     return p
@@ -65,4 +67,5 @@ def main() -> None:
     from s2.runner import run
 
     paths = [p.strip() for p in args.paths.split(",") if p.strip()]
-    asyncio.run(run(paths, args.repeat, args.budget_usd, models, args.limit, args.reasoning_effort, Path(args.out)))
+    asyncio.run(run(paths, args.repeat, args.budget_usd, models, args.limit, args.reasoning_effort, Path(args.out),
+                        args.mini_stt_model, args.fast_stt))
