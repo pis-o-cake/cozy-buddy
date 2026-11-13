@@ -5,7 +5,7 @@
 """
 
 import re
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime
 
@@ -23,6 +23,7 @@ from app.domain.agent.model import (
     TimerIntent,
 )
 from app.domain.agent.normalize import entity_base_name
+from app.domain.alarm.schemas import AlarmRead
 
 _HANGUL_BASE = 0xAC00
 _HANGUL_LAST = 0xD7A3
@@ -42,6 +43,8 @@ _JOSA_FORMS = {
 }
 _SPACE_RE = re.compile(r"\s+")
 _MINUTES_HALF = 30
+_TIMER_KIND = "timer"
+_DATE_KEYS = {0: "agent.date.today", 1: "agent.date.tomorrow", 2: "agent.date.day_after"}
 _EVERY_DAY = (1, 2, 3, 4, 5, 6, 7)
 _WEEKDAYS = (1, 2, 3, 4, 5)
 _WEEKEND = (6, 7)
@@ -188,10 +191,9 @@ def _days_text(days: tuple[int, ...], translate: Translate) -> str:
 
 def _date_text(epoch_ms: int, now: datetime, translate: Translate) -> str:
     target = datetime.fromtimestamp(epoch_ms / 1000, tz=now.tzinfo)
-    keys = {0: "agent.date.today", 1: "agent.date.tomorrow", 2: "agent.date.day_after"}
     offset = (target.date() - now.date()).days
-    if offset in keys:
-        return translate(keys[offset])
+    if offset in _DATE_KEYS:
+        return translate(_DATE_KEYS[offset])
     return translate("agent.date.month_day").format(month=target.month, day=target.day)
 
 
@@ -208,8 +210,9 @@ def _alarm(result: AlarmIntent, now: datetime, translate: Translate) -> Template
     return TemplateResponse(f"agent.alarm.{suffix}{'_label' if result.label else ''}", args)
 
 
-def _timer(result: TimerIntent, translate: Translate) -> TemplateResponse:
-    hours, rest = divmod(result.duration_seconds, _SECONDS_PER_HOUR)
+def duration_text(total_seconds: int, translate: Translate) -> str:
+    """ "1시간 5분" 같은 길이 문구."""
+    hours, rest = divmod(total_seconds, _SECONDS_PER_HOUR)
     minutes, seconds = divmod(rest, _SECONDS_PER_MINUTE)
     parts = [
         translate(key).format(n=value)
@@ -220,18 +223,57 @@ def _timer(result: TimerIntent, translate: Translate) -> TemplateResponse:
         )
         if value
     ]
-    args = {"duration": " ".join(parts), "label": result.label or ""}
+    return " ".join(parts)
+
+
+def _timer(result: TimerIntent, translate: Translate) -> TemplateResponse:
+    duration = duration_text(result.duration_seconds, translate)
+    args = {"duration": duration, "label": result.label or ""}
     return TemplateResponse(f"agent.timer.set{'_label' if result.label else ''}", args)
 
 
 def _cancel(result: CancelAlarmIntent, translate: Translate) -> TemplateResponse:
     kind = "timer" if result.is_timer else "alarm"
+    if result.duration_seconds is not None:
+        duration = duration_text(result.duration_seconds, translate)
+        return TemplateResponse("agent.timer.cancel_duration", {"duration": duration})
     if result.label:
         return TemplateResponse(f"agent.{kind}.cancel_label", {"label": result.label})
     if result.hour is not None and result.minute is not None:
         text = _time_text(result.hour, result.minute, translate, meridiem=not result.hour_ambiguous)
+        if result.day_offset in _DATE_KEYS:
+            day = translate(_DATE_KEYS[result.day_offset])
+            return TemplateResponse("agent.alarm.cancel_day_time", {"day": day, "time": text})
         return TemplateResponse("agent.alarm.cancel_time", {"time": text})
     return TemplateResponse(f"agent.{kind}.cancel")
+
+
+def describe_alarm(row: AlarmRead, now: datetime, translate: Translate) -> str:
+    """확인 질문에 나열할 알람·타이머 한 건의 설명. 타이머는 남은 시간, 알람은 날짜·시각."""
+    if row.kind == _TIMER_KIND:
+        remaining = max(int((row.fires_at_epoch_ms or 0) / 1000 - now.timestamp()), 1)
+        return translate("agent.alarm.option_timer").format(
+            duration=duration_text(remaining, translate)
+        )
+    if row.fires_at_epoch_ms is not None:
+        fires = datetime.fromtimestamp(row.fires_at_epoch_ms / 1000, tz=now.tzinfo)
+        when = f"{_date_text(row.fires_at_epoch_ms, now, translate)} "
+        time_text = _time_text(fires.hour, fires.minute, translate, meridiem=True)
+    elif row.hour is not None and row.minute is not None:
+        when = f"{_days_text(tuple(row.days), translate)} " if row.days else ""
+        time_text = _time_text(row.hour, row.minute, translate, meridiem=True)
+    else:
+        return row.label
+    return f"{when}{time_text} {row.label}".strip()
+
+
+def which_alarm_response(rows: Sequence[AlarmRead], now: datetime, translate: Translate) -> str:
+    """후보를 "첫 번째 ..., 두 번째 ..." 로 나열한 되묻기 문장."""
+    options = ", ".join(
+        f"{translate(f'agent.ordinal.{i}')} {describe_alarm(row, now, translate)}"
+        for i, row in enumerate(rows, start=1)
+    )
+    return translate("agent.alarm.which_options").format(options=options)
 
 
 def build_response(

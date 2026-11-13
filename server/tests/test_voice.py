@@ -1,6 +1,7 @@
 """음성 파이프라인: WebSocket 전체 흐름을 가짜 OpenAIGateway 와 가짜 HA 로 검증한다."""
 
 from collections.abc import Iterator
+from datetime import timedelta
 
 import pytest
 from cozy.v1.alarm_pb2 import (
@@ -10,6 +11,7 @@ from cozy.v1.alarm_pb2 import (
     Alarm,
     AlarmAck,
     AlarmSnapshot,
+    OneShot,
     Repeating,
 )
 from cozy.v1.common_pb2 import ERROR_CODE_UPSTREAM_UNAVAILABLE
@@ -489,3 +491,124 @@ def test_hub_disconnect_cancels_in_flight_work(
             ),
         )
     eventually(lambda: gateway.stt_cancelled)
+
+
+_TOMORROW_7_MS = int(NOW.replace(day=14, hour=7, minute=0).timestamp() * 1000)
+_TIMER_5M_MS = int(NOW.timestamp() * 1000) + 300_000
+_DAY_MS = 86_400_000
+
+
+def _seed(client: TestClient, hub: WebSocketTestSession, alarms: list[Alarm]) -> None:
+    send(hub, Envelope(alarm_snapshot=AlarmSnapshot(hub_id=HUB_ID, alarms=alarms)))
+    eventually(
+        lambda: len(client.get("/api/alarm", params={"hub_id": HUB_ID}).json()) == len(alarms)
+    )
+
+
+def _one_shot(alarm_id: str, fires_ms: int, *, timer: bool = False, label: str = "") -> Alarm:
+    return Alarm(
+        alarm_id=alarm_id,
+        kind=ALARM_KIND_TIMER if timer else ALARM_KIND_ALARM,
+        label=label,
+        one_shot=OneShot(fires_at_epoch_ms=fires_ms),
+        enabled=True,
+        revision=1,
+        hub_id=HUB_ID,
+    )
+
+
+def _repeating(alarm_id: str, hour: int, label: str = "") -> Alarm:
+    return Alarm(
+        alarm_id=alarm_id,
+        kind=ALARM_KIND_ALARM,
+        label=label,
+        repeating=Repeating(hour=hour, minute=0, days=[DAY_OF_WEEK_MONDAY]),
+        enabled=True,
+        revision=1,
+        hub_id=HUB_ID,
+    )
+
+
+def _deleted_ids(hub: WebSocketTestSession, frames: list[Envelope]) -> list[str]:
+    deletes = of_body(frames, "alarm_delete") or [
+        recv_until(hub, lambda e: e.WhichOneof("body") == "alarm_delete")[-1]
+    ]
+    return [d.alarm_delete.alarm_id for d in deletes]
+
+
+def test_timer_cancel_by_duration_skips_llm_and_deletes_timer(
+    voice_client: TestClient, gateway: FakeOpenAI
+) -> None:
+    timers = [
+        _one_shot("t5", _TIMER_5M_MS, timer=True),
+        _one_shot("t10", _TIMER_5M_MS + 300_000, timer=True),
+    ]
+    with connect_hub(voice_client) as hub:
+        _seed(voice_client, hub, timers)
+        frames = _text_query(hub, "5분 타이머 취소해줘")
+        assert _deleted_ids(hub, frames) == ["t5"]
+    assert "5분 타이머를 취소했어요" in spoken_text(frames)
+    assert gateway.chat_calls == []
+
+
+def test_timer_cancel_uses_original_duration_after_time_passed(
+    voice_client: TestClient, gateway: FakeOpenAI
+) -> None:
+    with connect_hub(voice_client) as hub:
+        created = _text_query(hub, "5분 타이머 맞춰줘")
+        upserts = of_body(created, "alarm_upsert") or [
+            recv_until(hub, lambda e: e.WhichOneof("body") == "alarm_upsert")[-1]
+        ]
+        timer_id = upserts[0].alarm_upsert.alarm.alarm_id
+        agent = voice_client.app.state.agent  # type: ignore[attr-defined]
+        agent._clock = lambda: NOW + timedelta(minutes=3)
+        frames = _text_query(hub, "5분짜리 타이머 꺼줘", "q2")
+        assert _deleted_ids(hub, frames) == [timer_id]
+    assert gateway.chat_calls == []
+
+
+def test_alarm_cancel_by_day_and_time_skips_llm(
+    voice_client: TestClient, gateway: FakeOpenAI
+) -> None:
+    alarms = [
+        _one_shot("a-tomorrow", _TOMORROW_7_MS),
+        _one_shot("a-today", _TOMORROW_7_MS - _DAY_MS),
+    ]
+    with connect_hub(voice_client) as hub:
+        _seed(voice_client, hub, alarms)
+        frames = _text_query(hub, "내일 아침 7시 알람 취소해줘")
+        assert _deleted_ids(hub, frames) == ["a-tomorrow"]
+    assert "내일 오전 7시 알람을 취소했어요" in spoken_text(frames)
+    assert gateway.chat_calls == []
+
+
+def test_cancel_without_match_answers_not_found(
+    voice_client: TestClient, gateway: FakeOpenAI
+) -> None:
+    with connect_hub(voice_client) as hub:
+        assert spoken_text(_text_query(hub, "5분 타이머 취소해줘")) == "해당 알람이 없어요."
+    assert gateway.chat_calls == []
+
+
+def test_ambiguous_cancel_lists_candidates_and_ordinal_resolves(
+    voice_client: TestClient, gateway: FakeOpenAI
+) -> None:
+    with connect_hub(voice_client) as hub:
+        _seed(voice_client, hub, [_repeating("am", 7, "운동"), _repeating("pm", 19)])
+        question = spoken_text(_text_query(hub, "알람 취소해줘"))
+        assert "첫 번째" in question and "두 번째" in question
+        assert "어떤 걸 취소할까요" in question
+        frames = _text_query(hub, "두 번째", "q2")
+        assert _deleted_ids(hub, frames) == ["pm"]
+    assert gateway.chat_calls == []
+
+
+def test_ambiguous_cancel_follow_up_by_clock_word(
+    voice_client: TestClient, gateway: FakeOpenAI
+) -> None:
+    with connect_hub(voice_client) as hub:
+        _seed(voice_client, hub, [_repeating("am", 7), _repeating("pm", 19)])
+        _text_query(hub, "알람 취소해줘")
+        frames = _text_query(hub, "저녁 7시 꺼", "q2")
+        assert _deleted_ids(hub, frames) == ["pm"]
+    assert gateway.chat_calls == []

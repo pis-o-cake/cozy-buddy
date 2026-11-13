@@ -28,7 +28,12 @@ from app.core.exceptions import CozyError
 from app.core.i18n import Translator
 from app.core.openai_gateway import OpenAIGateway, OpenAIGatewayError, ToolCall
 from app.domain.agent import tools as tool_defs
-from app.domain.agent.followup import Answer, classify_answer, narrow_candidates
+from app.domain.agent.followup import (
+    Answer,
+    classify_answer,
+    narrow_candidates,
+    parse_ordinal,
+)
 from app.domain.agent.home_view import HomeView, build_home_view, home_names
 from app.domain.agent.matcher import match
 from app.domain.agent.model import (
@@ -47,8 +52,14 @@ from app.domain.agent.model import (
     TimerIntent,
     UtteranceContext,
 )
-from app.domain.agent.normalize import compact_form
-from app.domain.agent.responses import build_response, build_state_response, render
+from app.domain.agent.normalize import compact_form, normalize
+from app.domain.agent.responses import (
+    build_response,
+    build_state_response,
+    render,
+    which_alarm_response,
+)
+from app.domain.agent.schedule import match_cancel
 from app.domain.alarm.schemas import AlarmRead
 from app.domain.alarm.service import AlarmService
 from app.domain.home.service import HomeService
@@ -62,6 +73,8 @@ MIN_BRIGHTNESS_PCT = 1
 MAX_BRIGHTNESS_PCT = 100
 _PENDING_DELETE = "pending_delete"
 _TIMER_KIND = "timer"
+_MAX_LISTED_CANDIDATES = 5
+_TIMER_REMAINING_TOLERANCE_SECONDS = 30
 
 
 class _CancelStatus(StrEnum):
@@ -75,6 +88,7 @@ class _CancelStatus(StrEnum):
 class _CancelOutcome:
     status: _CancelStatus
     error_key: str = ""
+    rows: tuple[AlarmRead, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -119,6 +133,8 @@ class AgentService:
         self._clock = clock
         self._monotonic: Callable[[], float] = time.monotonic
         self._pending: dict[str, _Pending] = {}
+        # 원래 맞춘 타이머 길이. 허브 스냅샷에는 만든 시각이 없어 서버가 기억한다.
+        self._timer_seconds: dict[tuple[str, str], int] = {}
 
     def now(self) -> datetime:
         """시간대가 있는 현재 시각."""
@@ -181,6 +197,8 @@ class AgentService:
         answer = classify_answer(text)
         if answer is Answer.NO:
             return self._t("agent.clarify.cancelled")
+        if clarify.reason is ClarifyReason.AMBIGUOUS_ALARM:
+            return await self._pick_alarm(clarify, answer, text, ctx)
         if clarify.reason is ClarifyReason.BROAD_ACTION:
             return await self._confirm_broad(clarify, answer, ctx)
         return await self._pick_candidate(clarify, answer, text, ctx)
@@ -362,20 +380,73 @@ class AgentService:
             fires_at = datetime.fromtimestamp((intent.one_shot_epoch_ms or 0) / 1000, tz=self._tz)
             alarm = self._new_alarm(alarm_pb2.ALARM_KIND_ALARM, intent.label, fires_at=fires_at)
         error_key = await self._upsert_alarm(ctx.hub_id, alarm)
-        return self._t(error_key) if error_key else self._template(intent, ctx)
+        if error_key:
+            return self._t(error_key)
+        if isinstance(intent, TimerIntent):
+            self._timer_seconds[(ctx.hub_id, alarm.alarm_id)] = intent.duration_seconds
+        return self._template(intent, ctx)
 
     async def _run_cancel(self, intent: CancelAlarmIntent, ctx: _Ctx) -> str:
-        outcome = await self._cancel_matching(ctx.hub_id, intent)
+        outcome = await self._cancel_matching(ctx.hub_id, intent, ctx.now)
         if outcome.status is _CancelStatus.ERROR:
             return self._t(outcome.error_key)
         if outcome.status is _CancelStatus.NONE:
             return self._t("agent.alarm.not_found")
         if outcome.status is _CancelStatus.AMBIGUOUS:
-            return self._t("agent.alarm.which")
+            return self._ask_which_alarm(outcome.rows, ctx)
         return self._template(intent, ctx)
 
+    def _ask_which_alarm(self, rows: tuple[AlarmRead, ...], ctx: _Ctx) -> str:
+        if len(rows) > _MAX_LISTED_CANDIDATES:
+            return self._t("agent.alarm.which")
+        ids = tuple(r.alarm_id for r in rows)
+        self._remember(ctx.hub_id, Clarify(ClarifyReason.AMBIGUOUS_ALARM, candidate_alarm_ids=ids))
+        return which_alarm_response(rows, ctx.now, self._t)
+
+    async def _pick_alarm(
+        self, clarify: Clarify, answer: Answer | None, text: str, ctx: _Ctx
+    ) -> str | None:
+        """어느 알람인지 되물은 질문에 대한 답("첫 번째", "7시 꺼")을 처리한다."""
+        try:
+            wanted = set(clarify.candidate_alarm_ids)
+            rows = [r for r in await self._live_rows(ctx.hub_id) if r.alarm_id in wanted]
+            if not rows:
+                return self._t("agent.alarm.not_found")
+            chosen = self._choose_alarm(rows, answer, text, ctx)
+            if chosen is None:
+                return None
+            if len(chosen) > 1 and answer is not Answer.ALL:
+                return self._ask_which_alarm(tuple(chosen), ctx)
+            await self._delete_rows(ctx.hub_id, chosen)
+        except CozyError as exc:
+            logger.warning("Alarm cancel rejected: {}", exc)
+            return self._t(exc.message_key)
+        if len(chosen) > 1:
+            return self._t("agent.alarm.cancel_all")
+        key = "agent.timer.cancel" if chosen[0].kind == _TIMER_KIND else "agent.alarm.cancel"
+        return self._t(key)
+
+    def _choose_alarm(
+        self, rows: list[AlarmRead], answer: Answer | None, text: str, ctx: _Ctx
+    ) -> list[AlarmRead] | None:
+        """답으로 후보를 고른다. 가르지 못하면 None(일반 발화로 다시 처리한다)."""
+        if answer is Answer.ALL:
+            return rows
+        if answer is Answer.YES:
+            return None
+        ordinal = parse_ordinal(text)
+        if ordinal is not None:
+            return [rows[ordinal - 1]] if ordinal <= len(rows) else None
+        noun = "타이머" if all(r.kind == _TIMER_KIND for r in rows) else "알람"
+        result = match_cancel(normalize(f"{text} {noun}"), ctx.now)
+        if not isinstance(result, CancelAlarmIntent):
+            return None
+        return [r for r in rows if self._matches(r, result, ctx.now)] or None
+
     async def _cancel_everything(self, ctx: _Ctx) -> str:
-        outcome = await self._cancel_matching(ctx.hub_id, CancelAlarmIntent(), everything=True)
+        outcome = await self._cancel_matching(
+            ctx.hub_id, CancelAlarmIntent(), ctx.now, everything=True
+        )
         if outcome.status is _CancelStatus.ERROR:
             return self._t(outcome.error_key)
         if outcome.status is _CancelStatus.NONE:
@@ -390,11 +461,38 @@ class AgentService:
         fires = datetime.fromtimestamp(row.fires_at_epoch_ms / 1000, tz=self._tz)
         return fires.hour, fires.minute
 
-    def _matches(self, row: AlarmRead, intent: CancelAlarmIntent) -> bool:
+    def _timer_matches(self, row: AlarmRead, seconds: int, now: datetime) -> bool:
+        """타이머가 원래 `seconds` 길이였는지 본다.
+
+        서버가 맞춘 타이머는 기억해 둔 원래 길이로 정확히 비교한다. 앱이나 서버 재시작 전에
+        만든 타이머처럼 기억이 없으면 남은 시간이 말한 길이에 가까운(±30초) 것만 인정한다.
+        """
+        original = self._timer_seconds.get((row.hub_id, row.alarm_id))
+        if original is not None:
+            return original == seconds
+        if row.fires_at_epoch_ms is None:
+            return False
+        remaining = row.fires_at_epoch_ms / 1000 - now.timestamp()
+        return abs(remaining - seconds) <= _TIMER_REMAINING_TOLERANCE_SECONDS
+
+    def _day_matches(self, row: AlarmRead, day_offset: int, now: datetime) -> bool:
+        """일회성 알람이 day_offset 일 뒤에 울리는지 본다. 반복 알람은 날짜로 지목하지 않는다."""
+        if row.fires_at_epoch_ms is None:
+            return False
+        fires = datetime.fromtimestamp(row.fires_at_epoch_ms / 1000, tz=self._tz)
+        return (fires.date() - now.astimezone(self._tz).date()).days == day_offset
+
+    def _matches(self, row: AlarmRead, intent: CancelAlarmIntent, now: datetime) -> bool:
         if intent.label:
             wanted, have = compact_form(intent.label), compact_form(row.label)
             if wanted not in have and have not in wanted:
                 return False
+        if intent.duration_seconds is not None and not self._timer_matches(
+            row, intent.duration_seconds, now
+        ):
+            return False
+        if intent.day_offset is not None and not self._day_matches(row, intent.day_offset, now):
+            return False
         if intent.hour is None or intent.minute is None:
             return True
         clock = self._local_time(row)
@@ -404,32 +502,40 @@ class AgentService:
             return clock[0] % 12 == intent.hour % 12
         return clock[0] == intent.hour
 
+    async def _live_rows(self, hub_id: str) -> list[AlarmRead]:
+        async with self._alarm_service() as service:
+            rows = await service.list_alarms(hub_id)
+        return [r for r in rows if r.sync_state != _PENDING_DELETE]
+
+    async def _delete_rows(self, hub_id: str, rows: list[AlarmRead]) -> None:
+        """AlarmDelete 를 허브로 보낸다. 거부되면 CozyError 를 그대로 올린다."""
+        async with self._alarm_service() as service:
+            for row in rows:
+                await service.handle_mobile_delete(
+                    alarm_pb2.AlarmDelete(
+                        request_id=uuid.uuid4().hex, alarm_id=row.alarm_id, hub_id=hub_id
+                    )
+                )
+                self._timer_seconds.pop((hub_id, row.alarm_id), None)
+
     async def _cancel_matching(
-        self, hub_id: str, intent: CancelAlarmIntent, *, everything: bool = False
+        self, hub_id: str, intent: CancelAlarmIntent, now: datetime, *, everything: bool = False
     ) -> _CancelOutcome:
-        """조건에 맞는 알람·타이머를 허브에서 지운다."""
+        """조건에 맞는 알람·타이머를 허브에서 지운다. 대상이 둘 이상이면 지우지 않고 알린다."""
         if not hub_id:
             return _CancelOutcome(_CancelStatus.ERROR, KEY_HUB_REQUIRED)
         try:
-            async with self._alarm_service() as service:
-                rows = [
-                    r
-                    for r in await service.list_alarms(hub_id)
-                    if r.sync_state != _PENDING_DELETE
-                    and (everything or (r.kind == _TIMER_KIND) == intent.is_timer)
-                ]
-                targets = rows if everything else [r for r in rows if self._matches(r, intent)]
-                has_filter = bool(intent.label) or intent.hour is not None
-                if not targets:
-                    return _CancelOutcome(_CancelStatus.NONE)
-                if len(targets) > 1 and not (has_filter or everything):
-                    return _CancelOutcome(_CancelStatus.AMBIGUOUS)
-                for row in targets:
-                    await service.handle_mobile_delete(
-                        alarm_pb2.AlarmDelete(
-                            request_id=uuid.uuid4().hex, alarm_id=row.alarm_id, hub_id=hub_id
-                        )
-                    )
+            rows = [
+                r
+                for r in await self._live_rows(hub_id)
+                if everything or (r.kind == _TIMER_KIND) == intent.is_timer
+            ]
+            targets = rows if everything else [r for r in rows if self._matches(r, intent, now)]
+            if not targets:
+                return _CancelOutcome(_CancelStatus.NONE)
+            if len(targets) > 1 and not everything:
+                return _CancelOutcome(_CancelStatus.AMBIGUOUS, rows=tuple(targets))
+            await self._delete_rows(hub_id, targets)
         except CozyError as exc:
             logger.warning("Alarm cancel rejected: {}", exc)
             return _CancelOutcome(_CancelStatus.ERROR, exc.message_key)
@@ -592,6 +698,7 @@ class AgentService:
         error_key = await self._upsert_alarm(ctx.hub_id, alarm)
         if error_key:
             return {"ok": False, "error": self._t(error_key)}
+        self._timer_seconds[(ctx.hub_id, alarm.alarm_id)] = seconds
         return {"ok": True, "duration_seconds": seconds}
 
     async def _tool_cancel(self, args: dict[str, Any], ctx: _Ctx) -> dict[str, Any]:
@@ -603,7 +710,7 @@ class AgentService:
             minute=(minute or 0) if hour is not None else None,
             is_timer=bool(args.get("is_timer")),
         )
-        outcome = await self._cancel_matching(ctx.hub_id, intent)
+        outcome = await self._cancel_matching(ctx.hub_id, intent, ctx.now)
         if outcome.status is _CancelStatus.ERROR:
             return {"ok": False, "error": self._t(outcome.error_key)}
         if outcome.status is _CancelStatus.DONE:
