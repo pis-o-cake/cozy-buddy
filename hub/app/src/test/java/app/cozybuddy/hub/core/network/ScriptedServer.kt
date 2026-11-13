@@ -22,7 +22,7 @@ import okio.ByteString.Companion.toByteString
 /** MockWebServer 위에서 Cozy Server 의 핸드셰이크 동작을 흉내 내는 테스트 서버. */
 class ScriptedServer : AutoCloseable {
 
-    enum class HelloMode { ACCEPT, REJECT_UNAUTHENTICATED, CLOSE_SILENTLY }
+    enum class HelloMode { ACCEPT, REJECT_UNAUTHENTICATED, CLOSE_SILENTLY, IGNORE }
 
     private val server = MockWebServer()
     val received = Channel<Envelope>(Channel.UNLIMITED)
@@ -90,7 +90,7 @@ class ScriptedServer : AutoCloseable {
                     messageKey = "error.unauthenticated"
                 }
             }
-            HelloMode.CLOSE_SILENTLY -> return
+            HelloMode.CLOSE_SILENTLY, HelloMode.IGNORE -> return
         }
         webSocket.send(reply.toByteArray().toByteString())
         if (helloMode == HelloMode.REJECT_UNAUTHENTICATED) webSocket.close(CLOSE_POLICY_VIOLATION, null)

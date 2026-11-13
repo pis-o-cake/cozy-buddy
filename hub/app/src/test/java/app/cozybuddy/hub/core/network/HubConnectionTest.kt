@@ -154,6 +154,21 @@ class HubConnectionTest {
     }
 
     @Test
+    fun `missing server hello times out and reconnects`() = runBlocking {
+        server.start(upgrades = 2)
+        server.helloMode = ScriptedServer.HelloMode.IGNORE
+        val connection = connection(config = HubConnectionConfig(pingIntervalMs = 10_000, handshakeTimeoutMs = 150))
+        settings.value = configFor()
+        connection.start()
+
+        withTimeout(ScriptedServer.TIMEOUT_MS) {
+            while (server.connectionCount < 2) delay(20)
+        }
+
+        assertTrue(connection.state.value !is ConnectionState.Connected)
+    }
+
+    @Test
     fun `answered pings keep the connection alive`() = runBlocking {
         server.start()
         val connection = connection(config = HubConnectionConfig(pingIntervalMs = 60, maxMissedPongs = 2))
