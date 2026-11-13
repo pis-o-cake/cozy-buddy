@@ -4,11 +4,14 @@ import app.cozybuddy.hub.core.time.TimeSource
 import app.cozybuddy.hub.domain.model.Alarm
 import app.cozybuddy.hub.domain.model.AlarmKind
 import app.cozybuddy.hub.domain.model.AlarmSchedule
+import app.cozybuddy.hub.domain.model.Snooze
 import app.cozybuddy.hub.domain.repository.AlarmRepository
+import app.cozybuddy.hub.domain.repository.SnoozeRepository
 import app.cozybuddy.hub.domain.scheduling.AlarmScheduler
 import io.mockk.mockk
 import io.mockk.verify
 import java.time.DayOfWeek
+import java.time.Instant
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import kotlinx.coroutines.flow.Flow
@@ -48,9 +51,24 @@ class AlarmCoordinatorTest {
         override suspend fun currentRevision(): Long = revision
     }
 
+    private class FakeSnoozeRepository : SnoozeRepository {
+        val items = mutableMapOf<String, Snooze>()
+
+        override suspend fun put(snooze: Snooze) {
+            items[snooze.alarmId] = snooze
+        }
+
+        override suspend fun clear(alarmId: String) {
+            items.remove(alarmId)
+        }
+
+        override suspend fun getAll(): List<Snooze> = items.values.toList()
+    }
+
     private val repository = FakeRepository()
+    private val snoozes = FakeSnoozeRepository()
     private val scheduler = mockk<AlarmScheduler>(relaxed = true)
-    private val coordinator = AlarmCoordinator(repository, scheduler, timeSource)
+    private val coordinator = AlarmCoordinator(repository, snoozes, scheduler, timeSource)
 
     private fun daily(id: String, hour: Int, minute: Int, enabled: Boolean = true) = Alarm(
         id = id,
@@ -160,5 +178,94 @@ class AlarmCoordinatorTest {
 
         verify { scheduler.scheduleSnooze("t", now.plusMinutes(9).toInstant()) }
         assertTrue(repository.get("t")!!.enabled)
+    }
+
+    private fun snoozeAt(minutes: Long): Instant = now.plusMinutes(minutes).toInstant()
+
+    @Test
+    fun `snooze is persisted with its fire time and does not change the revision`() = runBlocking {
+        repository.upsert(daily("a", 18, 30))
+        val revisionBefore = repository.currentRevision()
+
+        coordinator.onRingFinished("a", snoozed = true)
+
+        assertEquals(Snooze("a", snoozeAt(9)), snoozes.items["a"])
+        assertEquals(revisionBefore, repository.currentRevision())
+    }
+
+    @Test
+    fun `stopping a ring clears the persisted snooze`() = runBlocking {
+        repository.upsert(daily("a", 18, 30))
+        snoozes.put(Snooze("a", snoozeAt(5)))
+
+        coordinator.onRingFinished("a", snoozed = false)
+
+        assertTrue(snoozes.items.isEmpty())
+    }
+
+    @Test
+    fun `firing consumes the persisted snooze`() = runBlocking {
+        repository.upsert(daily("a", 18, 30))
+        snoozes.put(Snooze("a", snoozeAt(5)))
+
+        coordinator.onFired("a")
+
+        assertTrue(snoozes.items.isEmpty())
+    }
+
+    @Test
+    fun `deleting an alarm clears its snooze`() = runBlocking {
+        coordinator.save(daily("a", 18, 30))
+        snoozes.put(Snooze("a", snoozeAt(5)))
+
+        coordinator.delete("a")
+
+        assertTrue(snoozes.items.isEmpty())
+    }
+
+    @Test
+    fun `disabling an alarm clears its snooze`() = runBlocking {
+        coordinator.save(daily("a", 18, 30))
+        snoozes.put(Snooze("a", snoozeAt(5)))
+
+        coordinator.setEnabled("a", false)
+
+        assertTrue(snoozes.items.isEmpty())
+    }
+
+    @Test
+    fun `rescheduleAll re-arms a snooze that is still in the future`() = runBlocking {
+        repository.upsert(daily("a", 18, 30))
+        snoozes.put(Snooze("a", snoozeAt(4)))
+
+        coordinator.rescheduleAll()
+
+        verify(exactly = 1) { scheduler.scheduleSnooze("a", snoozeAt(4)) }
+        assertEquals(snoozeAt(4), snoozes.items["a"]?.fireAt)
+    }
+
+    @Test
+    fun `rescheduleAll drops a snooze that expired while powered off without ringing`() = runBlocking {
+        repository.upsert(daily("a", 18, 30))
+        repository.upsert(daily("b", 18, 30))
+        snoozes.put(Snooze("a", snoozeAt(-3)))
+        snoozes.put(Snooze("b", now.toInstant()))
+
+        coordinator.rescheduleAll()
+
+        verify(exactly = 0) { scheduler.scheduleSnooze(any(), any()) }
+        assertTrue(snoozes.items.isEmpty())
+    }
+
+    @Test
+    fun `rescheduleAll drops snoozes of disabled or missing alarms`() = runBlocking {
+        repository.upsert(daily("off", 18, 30, enabled = false))
+        snoozes.put(Snooze("off", snoozeAt(4)))
+        snoozes.put(Snooze("ghost", snoozeAt(4)))
+
+        coordinator.rescheduleAll()
+
+        verify(exactly = 0) { scheduler.scheduleSnooze(any(), any()) }
+        assertTrue(snoozes.items.isEmpty())
     }
 }
