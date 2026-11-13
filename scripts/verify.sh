@@ -13,6 +13,7 @@ engsys review check --project . || failed=1
 
 # 기밀 검사는 변경 여부와 무관하게 항상 돈다. base 가 있으면 그 이후 추가분도 아래에서 검사한다.
 sh scripts/tests/test-check-secrets.sh || failed=1
+sh scripts/tests/test-verify-deps.sh || failed=1
 sh scripts/check-secrets.sh --tree || failed=1
 
 # origin/main 이 없거나 HEAD 가 같은 커밋이면 비교 기준이 없으므로 전부 변경으로 본다.
