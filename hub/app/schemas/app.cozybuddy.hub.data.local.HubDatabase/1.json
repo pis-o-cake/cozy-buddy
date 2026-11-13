@@ -1,0 +1,112 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 1,
+    "identityHash": "341259dc0e8f3535a6a6db52b27917e9",
+    "entities": [
+      {
+        "tableName": "alarms",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`alarm_id` TEXT NOT NULL, `kind` TEXT NOT NULL, `label` TEXT NOT NULL, `fires_at_epoch_ms` INTEGER, `hour` INTEGER, `minute` INTEGER, `days_mask` INTEGER NOT NULL, `enabled` INTEGER NOT NULL, `sunrise` INTEGER NOT NULL, `revision` INTEGER NOT NULL, `updated_at` INTEGER NOT NULL, PRIMARY KEY(`alarm_id`))",
+        "fields": [
+          {
+            "fieldPath": "alarmId",
+            "columnName": "alarm_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "kind",
+            "columnName": "kind",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "label",
+            "columnName": "label",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "firesAtEpochMs",
+            "columnName": "fires_at_epoch_ms",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "hour",
+            "columnName": "hour",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "minute",
+            "columnName": "minute",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "daysMask",
+            "columnName": "days_mask",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "enabled",
+            "columnName": "enabled",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sunrise",
+            "columnName": "sunrise",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "revision",
+            "columnName": "revision",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updated_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "alarm_id"
+          ]
+        }
+      },
+      {
+        "tableName": "hub_revision",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `value` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "value",
+            "columnName": "value",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '341259dc0e8f3535a6a6db52b27917e9')"
+    ]
+  }
+}
