@@ -1,0 +1,14 @@
+engsys-document-review: 1
+document: docs/adr/0002-protocol-buffers-over-websocket.md
+blob: 71f647c323a8715ec6e50b2c213810b911e6abed
+decision: pass
+reviewer: claude-opus-5-5
+audience: 기술 책임자와 구현 담당자
+purpose: 클라이언트-서버 계약을 어떤 형식으로 정의하는가
+
+- 결정 절에 연결·인코딩·메시지 구조·정본과 생성·호환성·REST 범위를 나눠 적어 구현자가 바로 따를 수 있게 함
+- 검토 M3(오디오 프레임 세션·순번 부재, 방송·응답 구분 불가)를 AudioChunk 구조로 해소한다는 근거를 링크
+- 대안 4개(JSON Schema, 손작성 JSON, gRPC 포함)의 판단 이유를 표로 정리
+- 배경 절의 어색한 '둘 중 하나로 정한다' 문장을 요구사항 서술로 고침
+- 영향 절에 디버깅 도구, buf 의존, 0004 설계안 표현과의 관계를 명시
+
