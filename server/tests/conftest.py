@@ -8,12 +8,17 @@ import pytest
 from alembic import command
 from alembic.config import Config
 from cozy.v1.envelope_pb2 import Envelope
+from cozy.v1.home_pb2 import HomeSnapshot
 from cozy.v1.session_pb2 import CLIENT_KIND_HUB, CLIENT_KIND_MOBILE, ClientHello
 from fastapi.testclient import TestClient
+from pydantic import SecretStr
 from starlette.testclient import WebSocketTestSession
 
 from app.config import Settings
+from app.domain.home.service import HomeService
 from app.main import create_app
+from tests.fake_ha import TOKEN as FAKE_HA_TOKEN
+from tests.fake_ha import FakeHomeAssistant
 
 SERVER_DIR = Path(__file__).resolve().parent.parent
 HUB_ID = "hub-1"
@@ -49,6 +54,37 @@ def client(settings: Settings) -> Iterator[TestClient]:
         yield c
 
 
+@pytest.fixture
+def fake_ha() -> Iterator[FakeHomeAssistant]:
+    fake = FakeHomeAssistant()
+    fake.start()
+    yield fake
+    fake.close()
+
+
+@pytest.fixture
+def ha_settings(settings: Settings, fake_ha: FakeHomeAssistant) -> Settings:
+    return settings.model_copy(
+        update={
+            "ha_url": fake_ha.url,
+            "ha_token": SecretStr(FAKE_HA_TOKEN),
+            "ha_request_timeout_seconds": 0.5,
+            "ha_backoff_min_seconds": 0.05,
+            "ha_backoff_max_seconds": 0.1,
+        }
+    )
+
+
+@pytest.fixture
+def ha_client(ha_settings: Settings) -> Iterator[TestClient]:
+    """가짜 HA 에 연결된 앱. 캐시가 만들어질 때까지 기다렸다 돌려준다."""
+    migrate(ha_settings.database_url)
+    with TestClient(create_app(ha_settings)) as c:
+        home: HomeService = c.app.state.home  # type: ignore[attr-defined]
+        eventually(lambda: home.ready)
+        yield c
+
+
 def hello_envelope(
     kind: int = CLIENT_KIND_HUB,
     client_id: str = HUB_ID,
@@ -80,7 +116,8 @@ def connect_hub(
 ) -> "_Connected":
     """허브로 hello 까지 마친 WebSocket 컨텍스트를 연다.
 
-    ServerHello 를 소비하고, 기본값으로 뒤따르는 AlarmSyncRequest 도 소비한다.
+    ServerHello 와 HomeSnapshot 을 소비하고, 기본값으로 뒤따르는 AlarmSyncRequest 도 소비한다.
+    소비한 스냅샷은 컨텍스트 객체의 `home_snapshot` 으로 볼 수 있다.
     """
     return _Connected(client, CLIENT_KIND_HUB, hub_id, token, consume_sync_request)
 
@@ -98,11 +135,15 @@ class _Connected:
         self._cm = client.websocket_connect("/ws")
         self._hello = hello_envelope(kind, client_id, token)
         self.server_hello: Envelope | None = None
+        self.home_snapshot: HomeSnapshot | None = None
 
     def __enter__(self) -> WebSocketTestSession:
         ws = self._cm.__enter__()
         send(ws, self._hello)
         self.server_hello = recv(ws)
+        snapshot = recv(ws)
+        assert snapshot.WhichOneof("body") == "home_snapshot"
+        self.home_snapshot = snapshot.home_snapshot
         if self._consume_sync:
             assert recv(ws).WhichOneof("body") == "alarm_sync_request"
         return ws
