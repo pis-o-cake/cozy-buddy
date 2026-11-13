@@ -22,26 +22,34 @@ baseline-date: 2026-11-13
 | 3. 첫 루프 | 스파이크 결과로 음성 경로와 기기 제어 구현 | 가족이 1주 동안 매일 사용하고 실패율을 잴 수 있다 |
 | 4. 확장 | 휴대폰 앱, 대시보드, 방송 | 첫 루프 1주 사용 결과로 범위 재조정 |
 
-작업 방식: 구현은 Sonnet 서브에이전트가 별도 브랜치(worktree)에서 하고, Claude가 diff를 검토한 뒤 PR로
-main에 fast-forward 병합한다. 설계·ADR·계획 같은 판단 문서는 Claude가 작성한다.
+작업 방식: 구현은 Sonnet 서브에이전트가 별도 브랜치(worktree)에서 최대 5개까지 병렬로 하고, Claude가 diff를
+검토한 뒤 PR로 main에 병합한다. 병합 기준은 로컬 `scripts/verify.sh`이며 CI 결과는 기다리지 않는다. 설계·ADR·계획 같은 판단 문서는 Claude가 작성한다.
 
 ## 작업표
 
+상태 열의 번호는 병합된 PR이다.
+
 | ID | 작업 | 담당 | 선행 | 상태 | 산출물 |
 |---|---|---|---|---|---|
-| T1 | 레포 정리: 레거시 사본 제거와 영구 링크 치환, 브랜치 접두사·트래커 선언, 컴포넌트별 검사 스크립트 | 서브에이전트 | 없음 | 완료 (#2) | `.engsys/project.yaml`, `scripts/verify.sh` |
-| T2 | 프로토콜 v1: [ADR 0002](../adr/0002-protocol-buffers-over-websocket.md)에 따른 `.proto`, buf 설정, 디코더 도구 | 서브에이전트 | 없음 | 완료 (#3) | `protocol/` |
-| T3 | 서버 골격: gateway(WebSocket + protobuf), hub, alarm 도메인, home 도메인 HA 클라이언트 자리, Docker Compose | 서브에이전트 | T1, T2 | 완료 (#8) | `server/` |
-| T4 | 허브 골격: Compose·Hilt 프로젝트, HOME 앱 지정, 앰비언트 플립 시계 화면 | 서브에이전트 | T1 | 완료 (#10) | `hub/` |
-| T5 | 허브 로컬 알람: Room 저장, `setAlarmClock`, `USAGE_ALARM` 재생, 재부팅 재예약 | 서브에이전트 | T4 | 진행 | `hub/` |
-| T6 | 허브-서버 연결: WsClient, `ClientHello`, 알람 동기화 | 서브에이전트 | T2, T3, T5 | 대기 | `hub/`, `server/` |
-| T7 | S3 Home Assistant 반증 스파이크 | 서브에이전트 + 소유자 | T3, 장애 B3 | 대기 | `docs/spike/` 보고서 |
-| T8 | S2 음성 경로 비교 하네스와 측정 (OpenAI 선택지) | 서브에이전트 + 소유자 | T3 | 진행 | `docs/spike/` 보고서, 음성 경로 ADR |
-| T9 | S1 웨이크워드 스파이크 앱과 원거리 측정 | 서브에이전트(앱) + 소유자(측정) | T4, 장애 B1 | 대기 | `docs/spike/` 보고서, 웨이크워드 ADR |
+| T1 | 레포 정리: 레거시 사본 제거, 브랜치·트래커 선언, 컴포넌트별 검사 스크립트 | 서브에이전트 | 없음 | 완료 (#2) | `.engsys/project.yaml`, `scripts/verify.sh` |
+| T2 | 프로토콜 v1 ([ADR 0002](../adr/0002-protocol-buffers-over-websocket.md)) | 서브에이전트 | 없음 | 완료 (#3) | `protocol/` |
+| T3 | 서버 골격: gateway, hub, alarm, Docker | 서브에이전트 | T1, T2 | 완료 (#8) | `server/` |
+| T4 | 허브 골격과 앰비언트 플립 시계 | 서브에이전트 | T1 | 완료 (#10) | `hub/` |
+| T5 | 허브 로컬 알람·타이머, 스누즈 복구와 동시 알람 대기열 | 서브에이전트 | T4 | 완료 (#15, #24) | `hub/` |
+| T6 | 허브-서버 연결과 알람 동기화 | 서브에이전트 | T2, T3, T5 | 완료 (#21) | `hub/` |
+| T7 | S3 Home Assistant 반증 스파이크 | 서브에이전트 + 소유자 | T14, 장애 B3 | 데모 HA로 연동 확인, 실기기 대기 | `docs/spike/` 보고서 |
+| T8 | S2 음성 경로 비교 (OpenAI) | 서브에이전트 | T3 | 완료 (#19), 후속 S2b 진행 (#18) | [S2 보고서](../spike/2026-11-13-s2-voice-path.md) |
+| T9 | S1 웨이크워드 엔진과 원거리 측정 | 서브에이전트(엔진) + 소유자(측정) | T18, 장애 B1 | 엔진 진행(T19), 측정 대기 | `docs/spike/` 보고서, 웨이크워드 ADR |
 | T10 | S4 상시 서버 하드웨어 결정 | 소유자 | 없음 | 대기 | ADR |
-| T11 | S5·S6·S7 상시 구동, 에코, 알람 신뢰성 스파이크 | 서브에이전트 + 소유자 | T5, T9 | 대기 | `docs/spike/` 보고서 |
+| T11 | S5·S6·S7 상시 구동, 에코, 알람 신뢰성 (실기기 확인 #9, #13) | 소유자 | T5, T18, 장애 B1 | 대기 | `docs/spike/` 보고서 |
 | T12 | 휴대폰 앱 (iOS·Android 하이브리드, 마지막 단계) | 서브에이전트 | 첫 루프 완료 | 대기 | `mobile/`, 스택 ADR |
-| T13 | Windows 개발 서버 devloop: Mac 소스를 WSL로 동기화하고 Docker는 Windows에서 실행 | 서브에이전트 | T3 | 진행 | `infra/devloop/` |
+| T13 | Windows 개발 서버 devloop와 컨테이너 수정 | 서브에이전트 | T3 | 완료 (#12, #27) | `infra/devloop/` |
+| T14 | 서버 Home Assistant 브리지와 레지스트리 실시간 반영 | 서브에이전트 | T3 | 완료 (#20, #23) | `server/app/domain/home/` |
+| T15 | 한국어 결정론 명령 매처 | 서브에이전트 | T3 | 완료 (#22) | `server/app/domain/agent/` |
+| T16 | GitHub Actions CI (참고용, 병합을 막지 않음) | 서브에이전트 | T2 | 완료 (#26) | `.github/workflows/ci.yml` |
+| T17 | 서버 음성 파이프라인: STT → 매처 → LLM 폴백 → TTS | 서브에이전트 | T14, T15 | 진행 | `server/app/domain/voice/` |
+| T18 | 허브 음성 클라이언트(탭으로 말하기)와 대시보드 | 서브에이전트 | T6 | 완료 (#25, #28) | `hub/` |
+| T19 | 허브 웨이크워드 엔진(openWakeWord ONNX) | 서브에이전트 | T18 | 진행 | `hub/`, `spikes/s1-wakeword/` |
 
 ## 장애 요인과 조치
 
@@ -49,7 +57,8 @@ main에 fast-forward 병합한다. 설계·ADR·계획 같은 판단 문서는 C
 |---|---|---|---|---|
 | B1 | 허브용 태블릿 실기기 | T9, T11, #9 | 기종은 갤럭시 탭 A7(2020, Android 12 최종)로 잠정 결정. 실기기가 준비되면 측정 시작 | 소유자 |
 | B2 | 클라우드 AI API 키 | T7, T8 | 해소(2026-11-13): OpenAI 키를 레포 루트 `.env`에 저장. 공급자는 [ADR 0003](../adr/0003-openai-as-llm-provider.md) | 소유자 |
-| B3 | Home Assistant를 띄울 장소와 테스트 기기가 정해지지 않았다 | T7 | 개발 PC의 Docker로 시작할 수 있다. 실제 Tapo 또는 Matter 기기 1종이 필요 | 소유자 |
+| B3 | Home Assistant 실기기 | T7 | 장소는 해소: Windows 개발 서버에 데모 HA(`cozy-ha-dev`, 포트 8124)로 연동 확인. 실제 Tapo 또는 Matter 기기 1종이 필요 | 소유자 |
 | B4 | 휴대폰 앱 플랫폼 | T12 | 해소(2026-11-13): 소유자가 iPhone 사용. iOS·Android를 함께 지원하는 하이브리드 앱으로, 모든 단계의 마지막에 구현 | 소유자 |
+| B5 | 사람 음성 녹음 | T8 후속(#18), 음성 경로 ADR | 명령 50개를 `spikes/s2-voice-path`의 `record` 명령으로 녹음 | 소유자 |
 
 블록이 풀리면 해당 작업을 바로 시작한다. 장기 추적이 필요한 항목은 GitHub 이슈로 등록한다.
