@@ -16,6 +16,8 @@ android {
         targetSdk = 37
         versionCode = 1
         versionName = "0.1.0"
+        // ONNX Runtime 네이티브 라이브러리가 ABI 당 수십 MB 라 실기기 ARM 만 담는다. 에뮬레이터는 쓰지 않는다.
+        ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a") }
     }
 
     buildTypes {
