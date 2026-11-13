@@ -61,6 +61,10 @@ class Settings(BaseSettings):
     hello_timeout_seconds: float = 10.0
     log_level: str = "INFO"
     locale: str = "ko"
+    # 둘 중 하나라도 비어 있으면 HA 브리지는 꺼진다.
+    ha_url: str = ""
+    ha_token: SecretStr = SecretStr("")
+    ha_request_timeout_seconds: float = 5.0
 
     @model_validator(mode="after")
     def _validate_tokens(self) -> Self:
@@ -71,3 +75,8 @@ class Settings(BaseSettings):
     def token_entries(self) -> tuple[TokenEntry, ...]:
         """파싱된 정적 토큰 목록."""
         return parse_static_tokens(self.static_tokens.get_secret_value())
+
+    @property
+    def ha_enabled(self) -> bool:
+        """HA 브리지를 켤 수 있는지(URL 과 토큰이 모두 있는지)."""
+        return bool(self.ha_url.strip()) and bool(self.ha_token.get_secret_value().strip())
