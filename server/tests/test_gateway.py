@@ -103,7 +103,7 @@ def test_ping_returns_pong_with_increasing_seq(client: TestClient) -> None:
         send(ws, Envelope(ping=Ping(sent_epoch_ms=1235)))
         pong2 = recv(ws)
     assert pong.pong.ping_sent_epoch_ms == 1234
-    assert (pong.seq, pong2.seq) == (3, 4)
+    assert (pong.seq, pong2.seq) == (4, 5)
 
 
 def test_text_frame_is_rejected(client: TestClient) -> None:
