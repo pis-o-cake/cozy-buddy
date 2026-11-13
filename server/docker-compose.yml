@@ -8,6 +8,8 @@ services:
       additional_contexts:
         protocol: ../protocol/proto
     env_file:
+      - path: ../.env
+        required: false
       - path: .env
         required: false
     volumes:
