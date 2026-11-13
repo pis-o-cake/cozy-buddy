@@ -124,7 +124,8 @@ flowchart LR
     ALARMP["알람 Player<br/>USAGE_ALARM"]
 ```
 
-이전 설계에서 유지한 원칙은 세 가지다. `AudioRecord`는 하나만 두고 앱 안에서 나눠 쓴다. 웨이크 감지
+AI 추론은 클라우드에서만 하지만([ADR 0001](../adr/0001-cloud-only-ai-inference.md)) 웨이크워드와 VAD는 허브에서
+실행한다. 호출어 이전의 상시 오디오를 허브 밖으로 보내지 않기 위해서다. 이전 설계에서 유지한 원칙은 세 가지다. `AudioRecord`는 하나만 두고 앱 안에서 나눠 쓴다. 웨이크 감지
 이전 오디오도 pre-roll로 보내 첫 음절을 잃지 않는다. 추론 엔진마다 스레드 하나로 호출을 직렬화한다.
 엔진은 정하지 않았다. 웨이크워드는 microWakeWord, LiveKit wakeword, 직접 학습한 한국어 모델을 S1에서
 비교한다. AEC 적용 여부와 재생 중 웨이크 허용(끼어들기)은 S6에서 정한다. S6 결과가 나오기 전 기본값은
@@ -149,7 +150,9 @@ stateDiagram-v2
     OFFLINE --> IDLE: 재연결
     note right of OFFLINE
         시계 · 알람은 계속 동작.
-        웨이크 감지 시 "서버에 연결할 수 없어요" 표시
+        웨이크 감지 시 "서버에 연결할 수 없어요" 표시.
+        서버는 살아 있고 인터넷만 끊기면
+        IDLE에 머물고 "인터넷 연결 없음" 안내
     end note
 ```
 

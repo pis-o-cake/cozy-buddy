@@ -1,0 +1,14 @@
+engsys-document-review: 1
+document: docs/adr/0001-cloud-only-ai-inference.md
+blob: ac13e350cb644bc6c37c4291b1fe1c1c4c40c763
+decision: pass
+reviewer: claude-opus-5-5
+audience: 기술 책임자와 유지보수자
+purpose: AI 추론을 어디서 하며 그 대가는 무엇인가
+
+- 결정(STT·LLM·TTS 클라우드 전용, 웨이크워드·VAD는 허브 유지)과 범위 밖(공급자·구성은 S2 후 별도 ADR)을 결정 절에서 분리
+- 근거가 소유자 판단이며 이 프로젝트의 비교 실측은 없다는 사실을 배경 절에 명시해 측정처럼 읽히지 않게 함
+- 실제 검토한 대안 3개와 기각 이유를 표로, Supertonic 개발 종료(2026-09-09, 원문 확인)를 근거로 연결
+- 영향 절에 인터넷 단절 시 동작, 프라이버시 주장 철회, 오탐과 비용의 연관, 공급자 의존, 반영 문서 경로를 기록
+- 한계: 월 비용은 S2 실측 전이라 추정하지 않음
+

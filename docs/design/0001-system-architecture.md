@@ -10,7 +10,8 @@ Cozy Buddy는 세 가지로 구성한다. 집 안 상시 서버, 방마다 두�
 UI, 휴대폰 앱이다. 이 문서는 [이전 설계 검토](../review/2026-11-13-legacy-design-adversarial-review.md)의
 기본 가설을 목표 구조로 옮긴 초안이다. 스파이크 결과에 따라 바뀌는 지점은 각 절에 표시한다.
 컴포넌트별 상세는 [서버](0002-server-architecture.md), [허브](0003-hub-architecture.md),
-[휴대폰 앱](0004-mobile-architecture.md) 설계안에 있다.
+[휴대폰 앱](0004-mobile-architecture.md) 설계안에 있다. 네 설계안의 구조를 한 장씩 그린 그림은
+[`docs/diagrams/architecture.html`](../diagrams/architecture.html)에 있다.
 
 ## 제안 요약
 
@@ -28,8 +29,8 @@ UI, 휴대폰 앱이다. 이 문서는 [이전 설계 검토](../review/2026-11-
 |---|---|---|
 | 위임 우선 | 기기 연결, 방(area), 상태, 자동화, Matter는 HA가 소유한다. 자체 코드는 HA가 하지 않는 일만 맡는다 | 검토 C4 |
 | 실패할 수 없는 기능은 가장자리에 | 알람·타이머는 허브가 로컬에서 소유하고, 서버는 동기화만 한다 | 검토 C3 |
-| 오프라인 핵심 경로 | 인터넷이 끊겨도 터치 제어와 알람은 동작한다. 음성 제어의 오프라인 범위는 S2·S9 결과로 정한다 | 검토 C1 |
-| 상시 가동은 저전력 | 상시 서버는 저전력 Linux 머신이다. GPU 데스크톱은 필요할 때만 쓰는 추론 노드다 | 검토 C2 |
+| 오프라인 핵심 경로 | 인터넷이 끊겨도 터치 제어와 알람은 동작한다. 음성은 인터넷이 있어야 동작한다 | 검토 C1, ADR 0001 |
+| AI 추론은 클라우드 | STT·LLM·TTS는 클라우드 API만 쓴다. 상시 서버는 GPU 없는 저전력 Linux 머신이다 | 검토 C2, [ADR 0001](../adr/0001-cloud-only-ai-inference.md) |
 | 측정 후 결정 | 지연·정확도·비용 수치는 스파이크 실측값만 근거로 쓴다 | 검토 M1 |
 | 두 번째 구현 때 추상화 | 인터페이스는 교체 구현이 실제로 생길 때 추출한다 | 검토 M4 |
 
@@ -57,8 +58,6 @@ flowchart TB
             HA --> MS
         end
 
-        GPU["GPU 추론 노드 (선택)<br/>RTX 5080 데스크톱 · 필요 시 기동"]
-
         subgraph DEV["기기"]
             TAPO["Tapo / Kasa"]
             MATTER["Matter 기기"]
@@ -69,7 +68,7 @@ flowchart TB
     end
 
     subgraph CLOUD["외부 서비스"]
-        AI["클라우드 AI<br/>STT · LLM · TTS 또는 실시간 음성 API"]
+        AI["클라우드 AI<br/>STT · LLM · TTS 또는 실시간 음성 API<br/>(공급자는 S2 결정)"]
         THINQ["LG ThinQ 등 제조사 클라우드"]
     end
 
@@ -79,12 +78,11 @@ flowchart TB
     OUT --> PHONE
     HUB <-->|"WebSocket<br/>제어 JSON + 오디오"| CS
     PHONE <-->|"Tailscale<br/>REST + WebSocket"| CS
-    CS -.->|"S2 결과에 따라"| AI
-    CS -.->|"S2·S4 결과에 따라"| GPU
+    CS -->|"발화 · 응답"| AI
     HA -->|공식 통합| THINQ
 ```
 
-점선은 스파이크 결과에 따라 쓸지 말지가 정해지는 연결이다. 허브와 휴대폰 앱은 Cozy Server만 상대하고
+AI 추론은 모두 클라우드에서 한다([ADR 0001](../adr/0001-cloud-only-ai-inference.md)). 허브와 휴대폰 앱은 Cozy Server만 상대하고
 HA에 직접 연결하지 않는다. 클라이언트가 아는 계약을 `protocol/` 하나로 유지하고, HA 버전 변화를 서버
 한 곳에서 흡수하기 위해서다.
 
@@ -96,7 +94,6 @@ HA에 직접 연결하지 않는다. 클라이언트가 아는 계약을 `protoc
 | Cozy Server | 허브·앱 API, 음성 세션, 결정론 명령 처리, LLM 대화 에이전트, HA 상태 중계, 알람 동기화, 허브 간 방송 | 기기 프로토콜, 방·기기 원장, 자동화 스케줄 | [0002](0002-server-architecture.md) |
 | Home Assistant | 기기 통합, area(방), 엔티티 상태, 장면·스크립트·자동화, MCP 서버, Matter 컨트롤러 | 한국어 음성 경험, 허브 UI | 외부 |
 | Cozy Mobile | 외부에서의 기기 제어, 장면 실행, 허브 알람 조회·설정, 텍스트 대화 | 비즈니스 로직 (서버가 판단) | [0004](0004-mobile-architecture.md) |
-| GPU 추론 노드 (선택) | 로컬 STT·TTS·LLM 추론 | 상시 가동 | S2·S4 이후 결정 |
 
 ### 주요 흐름
 
@@ -172,10 +169,9 @@ sequenceDiagram
 
 | 상황 | 동작하는 것 | 멈추는 것 |
 |---|---|---|
-| 인터넷 단절 | 터치 제어(로컬 통합 기기), 알람, HA 자동화. 결정론 명령은 S2에서 로컬 STT를 고르면 동작 | 클라우드 AI를 쓰는 음성 처리, 제조사 클라우드 기기, 휴대폰 원격 제어 |
+| 인터넷 단절 | 터치 제어(로컬 통합 기기), 알람, HA 자동화. 호출어 감지 후 "인터넷 연결 없음" 안내 | 음성 처리 전체, 제조사 클라우드 기기, 휴대폰 원격 제어 |
 | Cozy Server 중단 | 알람, HA 자동화, 허브 시계 화면 | 음성, 대시보드 제어, 휴대폰 앱 |
 | Home Assistant 중단 | 알람, 음성 대화(기기 제어 제외) | 기기 제어와 상태 표시 |
-| GPU 노드 꺼짐 | 클라우드 경로로 폴백(채택 시) | 로컬 추론 |
 | 허브 오프라인 | 해당 허브의 알람 | 해당 방의 음성·대시보드 |
 
 ### 컴포넌트 간 계약
@@ -197,7 +193,6 @@ Kotlin(허브·앱)과 Python(서버) 양쪽 모델을 같은 정의에서 생�
 | 상시 서버 | Docker Compose: `cozy-server`, `homeassistant`, `matter-server` | 하드웨어는 S4로 결정. HA OS에 Cozy Server를 HA 앱(add-on)으로 올리는 안도 비교 대상 |
 | 태블릿 | Cozy Hub APK, HOME 앱으로 지정 | 기종은 S1로 결정 |
 | 휴대폰 | Cozy Mobile | 외부 접속은 Tailscale |
-| GPU 데스크톱 | 추론 서버 프로세스 | 채택 시에만 |
 
 레포 구성은 모노레포의 `server/`, `hub/`, `mobile/`, `protocol/`에 대응한다.
 
@@ -205,10 +200,10 @@ Kotlin(허브·앱)과 Python(서버) 양쪽 모델을 같은 정의에서 생�
 
 | 결정 | 근거가 될 스파이크 | 기본 가설 |
 |---|---|---|
-| 음성 경로 구조(캐스케이드 / 클라우드 / 실시간 API / 혼합) | S2, S9 | 짧은 명령은 결정론 경로, 자유 대화만 LLM |
+| 음성 경로 구조(클라우드 단계별 API / 실시간 음성 API / 혼합)와 공급자 | S2, S9 | 짧은 명령은 결정론 경로, 자유 대화만 LLM |
 | HA 위임 여부와 범위 | S3 | 기기·area·자동화 전부 위임 |
 | 허브를 HA 음성 위성(ESPHome 프로토콜)으로 만들지, 자체 프로토콜로 만들지 | S3, S2 | 자체 프로토콜. 한국어 음성 경로를 직접 통제하기 위해서다. HA 위성 방식이 S3에서 한국어 요건을 충족하면 재검토 |
-| 상시 서버 하드웨어와 GPU 필요 여부 | S4, S2 | 저전력 미니PC, GPU 없음 |
+| 상시 서버 하드웨어 | S4 | 저전력 미니PC |
 | 웨이크워드 엔진과 호출어 | S1 | microWakeWord 또는 LiveKit wakeword |
 | 키오스크 수준 | S5 | HOME 앱 + 상시 Activity, Device Owner 없음 |
 | 휴대폰 앱의 iOS 지원 | 가족 기기 확인 | 0004 참조 |
