@@ -76,5 +76,19 @@
   "agent.date.today": "오늘",
   "agent.date.tomorrow": "내일",
   "agent.date.day_after": "모레",
-  "agent.date.month_day": "{month}월 {day}일"
+  "agent.date.month_day": "{month}월 {day}일",
+  "voice.unavailable": "지금은 음성 명령을 처리할 수 없어요. 화면에서 직접 조작해 주세요.",
+  "voice.not_heard": "잘 못 들었어요. 다시 말씀해 주세요.",
+  "voice.stream_invalid": "음성 스트림이 올바르지 않아요.",
+  "voice.utterance_too_long": "말씀이 너무 길어요.",
+  "voice.stt_prompt": "집 안의 방과 기기 이름: {names}",
+  "agent.hub_required": "알람과 타이머는 허브에서 말씀해 주세요.",
+  "agent.alarm.not_found": "취소할 알람이 없어요.",
+  "agent.alarm.which": "여러 개예요. 시각이나 이름을 함께 말씀해 주세요.",
+  "agent.alarm.cancel_all": "알람과 타이머를 모두 취소했어요.",
+  "agent.clarify.cancelled": "알겠어요, 취소할게요.",
+  "agent.llm.apology": "죄송해요, 지금은 답을 드리기 어려워요.",
+  "agent.llm.area_unknown": "알 수 없음",
+  "agent.llm.context": "허브가 있는 방: {area}. 현재 시각: {now}.",
+  "agent.llm.system": "당신은 집 안 스피커로 말하는 한국어 홈 어시스턴트 '코지'입니다. 답은 한두 문장으로 짧게, 존댓말로 하세요. 음성으로 읽히므로 마크다운, 목록, 이모지, 특수기호를 쓰지 마세요. 숫자와 단위는 말하듯 쓰세요. 기기 제어, 상태 확인, 알람, 타이머는 반드시 제공된 툴로 실행하고, 실행하지 않은 일을 했다고 말하지 마세요. 툴 결과가 실패면 사실대로 짧게 알리세요. 방을 말하지 않은 기기 요청은 허브가 있는 방을 기준으로 하세요."
 }
