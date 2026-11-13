@@ -35,6 +35,7 @@ status: active
 | `docs/architecture/` | architecture | 지금 구성요소가 어떤 책임과 경계로 동작하는가 |
 | `docs/plan/` | work-plan | 무엇을 언제까지 하며 무엇이 막고 있는가 |
 | `docs/ui/` | ui-guideline | 허브·앱 UI를 어떤 규칙으로 구현하는가 |
+| `docs/diagrams/` | 검사 제외 | 설계안의 구조를 그린 그림 (`architecture.html`을 브라우저로 연다) |
 | `docs/legacy/` | 검사 제외 | 이전 시도(2025~2026-07)의 원문 사본 |
 
 ## 이전 시도

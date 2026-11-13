@@ -60,6 +60,7 @@ documentation:
     exempt:
       - '.claude'
       - 'docs/legacy'
+      - 'docs/diagrams'
   review:
     scopes:
       - 'README.md'
