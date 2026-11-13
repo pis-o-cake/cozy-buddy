@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
+    alias(libs.plugins.protobuf)
 }
 
 android {
@@ -44,6 +45,25 @@ kotlin {
     }
 }
 
+// 프로토콜 정본은 저장소 루트의 protocol/ 이다. 복사하지 않고 소스 디렉터리로 직접 참조한다.
+(android.sourceSets.getByName("main") as ExtensionAware).extensions
+    .getByName<SourceDirectorySet>("proto")
+    .srcDir("../../protocol/proto")
+
+protobuf {
+    protoc {
+        artifact = libs.protobuf.protoc.get().toString()
+    }
+    generateProtoTasks {
+        all().forEach { task ->
+            task.builtins {
+                register("java") { option("lite") }
+                register("kotlin") { option("lite") }
+            }
+        }
+    }
+}
+
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)
@@ -62,6 +82,8 @@ dependencies {
 
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.timber)
+    implementation(libs.protobuf.javalite)
+    implementation(libs.protobuf.kotlin.lite)
 
     testImplementation(platform(libs.junit.bom))
     testImplementation(libs.junit.jupiter)
