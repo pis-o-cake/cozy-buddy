@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package cozy.v1;
+
+option java_package = "app.cozybuddy.protocol.v1";
+option java_multiple_files = true;
+
+// 여러 영역이 공유하는 열거형. 시각은 모두 int64 epoch 밀리초로 표현한다.
+
+// 양방향. 오류 분류 코드. 사용자 표시 문구가 아니라 클라이언트 분기용이다.
+enum ErrorCode {
+  ERROR_CODE_UNSPECIFIED = 0;
+  ERROR_CODE_UNAUTHENTICATED = 1;
+  ERROR_CODE_PROTOCOL_VERSION_UNSUPPORTED = 2;
+  ERROR_CODE_BAD_REQUEST = 3;
+  ERROR_CODE_NOT_FOUND = 4;
+  // HA 또는 클라우드 AI가 응답하지 않음.
+  ERROR_CODE_UPSTREAM_UNAVAILABLE = 5;
+  ERROR_CODE_INTERNAL = 6;
+}

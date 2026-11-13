@@ -1,0 +1,126 @@
+syntax = "proto3";
+
+package cozy.v1;
+
+option java_package = "app.cozybuddy.protocol.v1";
+option java_multiple_files = true;
+
+// 음성 스트림. 발화(올림)와 응답/방송(내림) 모두 AudioChunk 하나로 나른다.
+
+// 오디오 인코딩.
+enum AudioEncoding {
+  AUDIO_ENCODING_UNSPECIFIED = 0;
+  AUDIO_ENCODING_PCM_S16LE = 1;
+  // 예약: 추후 AUDIO_ENCODING_OPUS = 2 를 추가한다. 지금은 정의하지 않는다.
+}
+
+// 오디오 스트림 종류. 방송과 응답을 구분하기 위해 청크마다 싣는다.
+enum StreamKind {
+  STREAM_KIND_UNSPECIFIED = 0;
+  STREAM_KIND_UTTERANCE_UP = 1;
+  STREAM_KIND_RESPONSE_DOWN = 2;
+  STREAM_KIND_BROADCAST_DOWN = 3;
+}
+
+// 발화 시작 계기.
+enum WakeSource {
+  WAKE_SOURCE_UNSPECIFIED = 0;
+  WAKE_SOURCE_WAKE_WORD = 1;
+  WAKE_SOURCE_TAP = 2;
+}
+
+// 발화 취소 사유.
+enum CancelReason {
+  CANCEL_REASON_UNSPECIFIED = 0;
+  CANCEL_REASON_TIMEOUT = 1;
+  CANCEL_REASON_USER = 2;
+  CANCEL_REASON_BARGE_IN = 3;
+}
+
+// 오디오 포맷 기술. UtteranceStart·ResponseAudioStart에서 한 번만 알린다.
+message AudioFormat {
+  AudioEncoding encoding = 1;
+  uint32 sample_rate_hz = 2;
+  uint32 channels = 3;
+}
+
+// 허브→서버(발화 올림), 서버→허브(응답·방송 내림). 오디오 조각(PCM 20ms 단위 권장).
+message AudioChunk {
+  StreamKind kind = 1;
+  // 스트림 식별자. 같은 연결 안에서 유일해야 한다.
+  string stream_id = 2;
+  // 스트림 내 0부터 증가하는 순번. 유실·역전 감지용.
+  uint32 index = 3;
+  bytes data = 4;
+  // 스트림의 마지막 조각이면 true.
+  bool last = 5;
+}
+
+// 허브→서버. 발화 스트림 시작 선언.
+message UtteranceStart {
+  string stream_id = 1;
+  AudioFormat format = 2;
+  string area_id = 3;
+  WakeSource source = 4;
+  // 웨이크워드 이전에 버퍼링해 앞에 붙인 오디오 길이(ms).
+  uint32 pre_roll_ms = 5;
+}
+
+// 허브→서버. 발화 정상 종료(마지막 AudioChunk 뒤에 보낸다).
+message UtteranceEnd {
+  string stream_id = 1;
+}
+
+// 허브→서버. 발화 중단. 서버는 해당 스트림 처리를 버린다.
+message UtteranceCancel {
+  string stream_id = 1;
+  CancelReason reason = 2;
+}
+
+// 서버→허브, 서버→앱. 음성 인식 결과(중간·최종).
+message Transcript {
+  string stream_id = 1;
+  string text = 2;
+  bool final = 3;
+}
+
+// 서버→허브, 서버→앱. 응답 텍스트 스트리밍 조각.
+message ResponseText {
+  string stream_id = 1;
+  string delta = 2;
+  bool final = 3;
+}
+
+// 서버→허브. 응답/방송 오디오 스트림 시작 선언.
+message ResponseAudioStart {
+  string stream_id = 1;
+  StreamKind kind = 2;
+  AudioFormat format = 3;
+}
+
+// 서버→허브. 응답/방송 오디오 스트림 종료.
+message ResponseAudioEnd {
+  string stream_id = 1;
+}
+
+// 서버→허브, 서버→앱. 어시스턴트 대화 상태 전이 통지.
+message AssistantState {
+  enum State {
+    STATE_UNSPECIFIED = 0;
+    STATE_IDLE = 1;
+    STATE_LISTENING = 2;
+    STATE_THINKING = 3;
+    STATE_SPEAKING = 4;
+  }
+
+  State state = 1;
+  // 상태가 속한 스트림. 없으면 빈 문자열.
+  string stream_id = 2;
+}
+
+// 앱→서버. 음성 없이 텍스트로 질의한다.
+message TextQuery {
+  string request_id = 1;
+  string text = 2;
+  string area_id = 3;
+}

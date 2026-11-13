@@ -1,0 +1,97 @@
+syntax = "proto3";
+
+package cozy.v1;
+
+import "cozy/v1/common.proto";
+
+option java_package = "app.cozybuddy.protocol.v1";
+option java_multiple_files = true;
+
+// 알람/타이머. 허브가 정본(source of truth)을 소유하고 서버는 사본만 보관한다.
+//
+// 충돌 규칙: 허브가 진실의 원천이며, revision이 높은 쪽이 이긴다.
+// revision은 항상 허브가 부여한다(서버·앱은 올리지 않는다). 서버·앱이 보낸 변경은
+// 허브가 적용하면서 새 revision을 매겨 AlarmAck로 돌려준다.
+
+// 알람 종류.
+enum AlarmKind {
+  ALARM_KIND_UNSPECIFIED = 0;
+  ALARM_KIND_ALARM = 1;
+  ALARM_KIND_TIMER = 2;
+}
+
+// 요일.
+enum DayOfWeek {
+  DAY_OF_WEEK_UNSPECIFIED = 0;
+  DAY_OF_WEEK_MONDAY = 1;
+  DAY_OF_WEEK_TUESDAY = 2;
+  DAY_OF_WEEK_WEDNESDAY = 3;
+  DAY_OF_WEEK_THURSDAY = 4;
+  DAY_OF_WEEK_FRIDAY = 5;
+  DAY_OF_WEEK_SATURDAY = 6;
+  DAY_OF_WEEK_SUNDAY = 7;
+}
+
+// 양방향(앱 포함). 알람 한 건의 전체 상태.
+message Alarm {
+  string alarm_id = 1;
+  AlarmKind kind = 2;
+  string label = 3;
+  oneof schedule {
+    OneShot one_shot = 10;
+    Repeating repeating = 11;
+  }
+  bool enabled = 4;
+  // 일출 조명 연출 사용 여부.
+  bool sunrise = 5;
+  // 허브가 부여하는 단조 증가 버전.
+  int64 revision = 6;
+  string hub_id = 7;
+}
+
+// 양방향. 한 번만 울리는 일정(타이머 포함). 절대 시각이다.
+message OneShot {
+  int64 fires_at_epoch_ms = 1;
+}
+
+// 양방향. 반복 일정.
+message Repeating {
+  // 허브 로컬 벽시계 시각이다(UTC 아님). 서버·앱은 시간대 변환을 하지 않는다.
+  uint32 hour = 1;
+  uint32 minute = 2;
+  repeated DayOfWeek days = 3;
+}
+
+// 서버→허브, 앱→서버. 알람 생성·수정 요청. alarm.revision은 허브가 다시 매긴다.
+message AlarmUpsert {
+  string request_id = 1;
+  Alarm alarm = 2;
+}
+
+// 서버→허브, 앱→서버. 알람 삭제 요청.
+message AlarmDelete {
+  string request_id = 1;
+  string alarm_id = 2;
+  string hub_id = 3;
+}
+
+// 허브→서버(→앱). Upsert/Delete 처리 결과. revision은 적용 후 허브의 값이다.
+message AlarmAck {
+  string request_id = 1;
+  string alarm_id = 2;
+  int64 revision = 3;
+  bool ok = 4;
+  // ok가 false일 때만 의미가 있다.
+  ErrorCode code = 5;
+}
+
+// 허브→서버(→앱). 허브의 알람 전체 목록. 서버 사본은 이 내용으로 교체된다.
+message AlarmSnapshot {
+  string hub_id = 1;
+  repeated Alarm alarms = 2;
+}
+
+// 서버→허브. 허브에 AlarmSnapshot 전송을 요청한다(재연결 후 사본 복구용).
+message AlarmSyncRequest {
+  string hub_id = 1;
+}

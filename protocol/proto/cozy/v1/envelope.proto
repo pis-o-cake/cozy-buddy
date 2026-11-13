@@ -1,0 +1,55 @@
+syntax = "proto3";
+
+package cozy.v1;
+
+import "cozy/v1/alarm.proto";
+import "cozy/v1/home.proto";
+import "cozy/v1/session.proto";
+import "cozy/v1/voice.proto";
+
+option java_package = "app.cozybuddy.protocol.v1";
+option java_multiple_files = true;
+
+// 양방향(허브·앱 공통 프레임). WebSocket 바이너리 프레임 하나가 Envelope 하나다.
+//
+// body 필드 번호 대역(새 메시지는 해당 대역에서만 추가한다):
+//   10-19 session, 20-39 voice, 40-59 alarm, 60-79 home
+message Envelope {
+  // 송신자별로 연결 내에서 1부터 증가하는 송신 순번. 유실·역전 감지용.
+  uint64 seq = 1;
+
+  oneof body {
+    // session
+    ClientHello client_hello = 10;
+    ServerHello server_hello = 11;
+    ErrorMessage error = 12;
+    Ping ping = 13;
+    Pong pong = 14;
+
+    // voice
+    UtteranceStart utterance_start = 20;
+    UtteranceEnd utterance_end = 21;
+    UtteranceCancel utterance_cancel = 22;
+    AudioChunk audio_chunk = 23;
+    Transcript transcript = 24;
+    ResponseText response_text = 25;
+    ResponseAudioStart response_audio_start = 26;
+    ResponseAudioEnd response_audio_end = 27;
+    AssistantState assistant_state = 28;
+    TextQuery text_query = 29;
+
+    // alarm
+    AlarmUpsert alarm_upsert = 40;
+    AlarmDelete alarm_delete = 41;
+    AlarmAck alarm_ack = 42;
+    AlarmSnapshot alarm_snapshot = 43;
+    AlarmSyncRequest alarm_sync_request = 44;
+
+    // home
+    HomeSnapshot home_snapshot = 60;
+    EntityStateChanged entity_state_changed = 61;
+    EntityCommand entity_command = 62;
+    CommandResult command_result = 63;
+    HubStatus hub_status = 64;
+  }
+}
