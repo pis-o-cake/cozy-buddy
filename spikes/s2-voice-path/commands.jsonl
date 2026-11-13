@@ -1,0 +1,50 @@
+{"id": "c01", "category": "explicit", "text": "거실 조명 켜줘", "expect": [{"name": "control_device", "args": {"area": "living", "device": "light", "action": "on"}}]}
+{"id": "c02", "category": "explicit", "text": "침실 조명 꺼줘", "expect": [{"name": "control_device", "args": {"area": "bedroom", "device": "light", "action": "off"}}]}
+{"id": "c03", "category": "explicit", "text": "주방 불 켜줘", "expect": [{"name": "control_device", "args": {"area": "kitchen", "device": "light", "action": "on"}}]}
+{"id": "c04", "category": "explicit", "text": "거실 스탠드 켜줘", "expect": [{"name": "control_device", "args": {"area": "living", "device": "stand", "action": "on"}}]}
+{"id": "c05", "category": "explicit", "text": "침실 가습기 켜줘", "expect": [{"name": "control_device", "args": {"area": "bedroom", "device": "humidifier", "action": "on"}}]}
+{"id": "c06", "category": "explicit", "text": "침실 가습기 꺼줘", "expect": [{"name": "control_device", "args": {"area": "bedroom", "device": "humidifier", "action": "off"}}]}
+{"id": "c07", "category": "explicit", "text": "주방 조명 꺼", "expect": [{"name": "control_device", "args": {"area": "kitchen", "device": "light", "action": "off"}}]}
+{"id": "c08", "category": "explicit", "text": "주방 전기포트 켜줘", "expect": [{"name": "control_device", "args": {"area": "kitchen", "device": "kettle_plug", "action": "on"}}]}
+{"id": "c09", "category": "explicit", "text": "거실 스탠드 꺼줘", "expect": [{"name": "control_device", "args": {"area": "living", "device": "stand", "action": "off"}}]}
+{"id": "c10", "category": "explicit", "text": "침실 불 켜줘", "expect": [{"name": "control_device", "args": {"area": "bedroom", "device": "light", "action": "on"}}]}
+{"id": "c11", "category": "implicit", "text": "불 좀 꺼줄래", "expect": [{"name": "control_device", "args": {"area": "living", "device": "light", "action": "off"}}]}
+{"id": "c12", "category": "implicit", "text": "불 켜줘", "expect": [{"name": "control_device", "args": {"area": "living", "device": "light", "action": "on"}}]}
+{"id": "c13", "category": "implicit", "text": "스탠드 켜줘", "expect": [{"name": "control_device", "args": {"area": "living", "device": "stand", "action": "on"}}]}
+{"id": "c14", "category": "implicit", "text": "스탠드 좀 꺼줄래", "expect": [{"name": "control_device", "args": {"area": "living", "device": "stand", "action": "off"}}]}
+{"id": "c15", "category": "implicit", "text": "조명 꺼줘", "expect": [{"name": "control_device", "args": {"area": "living", "device": "light", "action": "off"}}]}
+{"id": "c16", "category": "implicit", "text": "불 좀 켜줄래", "expect": [{"name": "control_device", "args": {"area": "living", "device": "light", "action": "on"}}]}
+{"id": "c17", "category": "implicit", "text": "지금 불 꺼", "expect": [{"name": "control_device", "args": {"area": "living", "device": "light", "action": "off"}}]}
+{"id": "c18", "category": "colloquial", "text": "주방 포트 켜", "expect": [{"name": "control_device", "args": {"area": "kitchen", "device": "kettle_plug", "action": "on"}}]}
+{"id": "c19", "category": "colloquial", "text": "주방 포트 꺼줘", "expect": [{"name": "control_device", "args": {"area": "kitchen", "device": "kettle_plug", "action": "off"}}]}
+{"id": "c20", "category": "colloquial", "text": "침실 불 좀 꺼줄래", "expect": [{"name": "control_device", "args": {"area": "bedroom", "device": "light", "action": "off"}}]}
+{"id": "c21", "category": "colloquial", "text": "침실 가습기 좀 틀어줘", "expect": [{"name": "control_device", "args": {"area": "bedroom", "device": "humidifier", "action": "on"}}]}
+{"id": "c22", "category": "colloquial", "text": "주방 불 좀 꺼줄래", "expect": [{"name": "control_device", "args": {"area": "kitchen", "device": "light", "action": "off"}}]}
+{"id": "c23", "category": "brightness", "text": "거실 조명 밝기 50퍼센트로 해줘", "expect": [{"name": "control_device", "args": {"area": "living", "device": "light", "action": "set_brightness", "value": 50}}]}
+{"id": "c24", "category": "brightness", "text": "침실 조명 밝기 30으로 해줘", "expect": [{"name": "control_device", "args": {"area": "bedroom", "device": "light", "action": "set_brightness", "value": 30}}]}
+{"id": "c25", "category": "brightness", "text": "조명 밝기 80으로 올려줘", "expect": [{"name": "control_device", "args": {"area": "living", "device": "light", "action": "set_brightness", "value": 80}}]}
+{"id": "c26", "category": "brightness", "text": "주방 조명 밝기 100으로 해줘", "expect": [{"name": "control_device", "args": {"area": "kitchen", "device": "light", "action": "set_brightness", "value": 100}}]}
+{"id": "c27", "category": "brightness", "text": "스탠드 밝기 20퍼센트로 낮춰줘", "expect": [{"name": "control_device", "args": {"area": "living", "device": "stand", "action": "set_brightness", "value": 20}}]}
+{"id": "c28", "category": "brightness", "text": "침실 불 밝기 70으로 맞춰줘", "expect": [{"name": "control_device", "args": {"area": "bedroom", "device": "light", "action": "set_brightness", "value": 70}}]}
+{"id": "c29", "category": "brightness", "text": "거실 스탠드 밝기 90으로 해줘", "expect": [{"name": "control_device", "args": {"area": "living", "device": "stand", "action": "set_brightness", "value": 90}}]}
+{"id": "c30", "category": "state", "text": "거실 조명 켜져 있어?", "expect": [{"name": "get_device_state", "args": {"area": "living", "device": "light"}}]}
+{"id": "c31", "category": "state", "text": "침실 가습기 켜져 있어?", "expect": [{"name": "get_device_state", "args": {"area": "bedroom", "device": "humidifier"}}]}
+{"id": "c32", "category": "state", "text": "주방 전기포트 꺼져 있어?", "expect": [{"name": "get_device_state", "args": {"area": "kitchen", "device": "kettle_plug"}}]}
+{"id": "c33", "category": "state", "text": "스탠드 켜져 있니?", "expect": [{"name": "get_device_state", "args": {"area": "living", "device": "stand"}}]}
+{"id": "c34", "category": "state", "text": "침실 조명 지금 몇 퍼센트야?", "expect": [{"name": "get_device_state", "args": {"area": "bedroom", "device": "light"}}]}
+{"id": "c35", "category": "alarm", "text": "아침 7시에 알람 맞춰줘", "expect": [{"name": "set_alarm", "args": {"time_hh_mm": "07:00"}}]}
+{"id": "c36", "category": "alarm", "text": "오후 3시 30분에 알람 설정해줘", "expect": [{"name": "set_alarm", "args": {"time_hh_mm": "15:30"}}]}
+{"id": "c37", "category": "alarm", "text": "내일 새벽 5시 45분에 깨워줘", "expect": [{"name": "set_alarm", "args": {"time_hh_mm": "05:45"}}]}
+{"id": "c38", "category": "alarm", "text": "저녁 8시에 알람 맞춰줘", "expect": [{"name": "set_alarm", "args": {"time_hh_mm": "20:00"}}]}
+{"id": "c39", "category": "timer", "text": "타이머 10분 맞춰줘", "expect": [{"name": "set_timer", "args": {"minutes": 10}}]}
+{"id": "c40", "category": "timer", "text": "5분 타이머 시작해줘", "expect": [{"name": "set_timer", "args": {"minutes": 5}}]}
+{"id": "c41", "category": "timer", "text": "라면 끓이게 3분 타이머 맞춰줘", "expect": [{"name": "set_timer", "args": {"minutes": 3}}]}
+{"id": "c42", "category": "multi", "text": "거실 조명이랑 스탠드 꺼줘", "expect": [{"name": "control_device", "args": {"area": "living", "device": "light", "action": "off"}}, {"name": "control_device", "args": {"area": "living", "device": "stand", "action": "off"}}]}
+{"id": "c43", "category": "multi", "text": "침실 조명이랑 가습기 켜줘", "expect": [{"name": "control_device", "args": {"area": "bedroom", "device": "light", "action": "on"}}, {"name": "control_device", "args": {"area": "bedroom", "device": "humidifier", "action": "on"}}]}
+{"id": "c44", "category": "multi", "text": "주방 조명 켜고 전기포트도 켜줘", "expect": [{"name": "control_device", "args": {"area": "kitchen", "device": "light", "action": "on"}}, {"name": "control_device", "args": {"area": "kitchen", "device": "kettle_plug", "action": "on"}}]}
+{"id": "c45", "category": "multi", "text": "거실 조명 끄고 침실 조명 켜줘", "expect": [{"name": "control_device", "args": {"area": "living", "device": "light", "action": "off"}}, {"name": "control_device", "args": {"area": "bedroom", "device": "light", "action": "on"}}]}
+{"id": "c46", "category": "chat", "text": "안녕, 너 이름이 뭐야", "expect": []}
+{"id": "c47", "category": "chat", "text": "오늘 기분 어때", "expect": []}
+{"id": "c48", "category": "chat", "text": "고마워 수고했어", "expect": []}
+{"id": "c49", "category": "chat", "text": "삼 곱하기 칠은 얼마야", "expect": []}
+{"id": "c50", "category": "chat", "text": "심심한데 재미있는 이야기 하나 해줘", "expect": []}
