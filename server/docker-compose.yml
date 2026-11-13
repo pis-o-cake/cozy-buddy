@@ -11,7 +11,7 @@ services:
       - path: .env
         required: false
     volumes:
-      - ./data:/app/data
+      - cozy-data:/app/data
     expose:
       - "8000"
     restart: unless-stopped
@@ -45,3 +45,6 @@ services:
     volumes:
       - ./data/matter:/data
     restart: unless-stopped
+
+volumes:
+  cozy-data:
