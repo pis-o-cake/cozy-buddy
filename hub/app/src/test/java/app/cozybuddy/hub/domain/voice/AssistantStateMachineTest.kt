@@ -126,4 +126,39 @@ class AssistantStateMachineTest {
 
         assertFalse(machine.onDisconnected())
     }
+
+    @Test
+    fun `wake word starts listening from IDLE`() {
+        assertEquals(TapResult.Started, machine.onWakeWord("u1"))
+        assertEquals(AssistantPhase.LISTENING, phase)
+        assertEquals("u1", machine.state.value.utteranceId)
+    }
+
+    @Test
+    fun `wake word starts listening while the alarm rings but tap stays blocked`() {
+        machine.onAlarmRinging(true)
+
+        assertEquals(TapResult.Ignored(TapIgnoredReason.ALARM_RINGING), machine.onTap("u1"))
+        assertEquals(TapResult.Started, machine.onWakeWord("u2"))
+        assertEquals(AssistantPhase.LISTENING, phase)
+        assertTrue(machine.state.value.alarmRinging)
+    }
+
+    @Test
+    fun `wake word is ignored while LISTENING or THINKING`() {
+        machine.onWakeWord("u1")
+        assertEquals(TapResult.Ignored(TapIgnoredReason.BUSY), machine.onWakeWord("u2"))
+        machine.onUtteranceEnded("u1")
+        assertEquals(TapResult.Ignored(TapIgnoredReason.BUSY), machine.onWakeWord("u2"))
+        assertEquals("u1", machine.state.value.utteranceId)
+    }
+
+    @Test
+    fun `wake word while speaking barges in`() {
+        reachSpeaking("u1", "r1")
+
+        assertEquals(TapResult.BargeIn("u1"), machine.onWakeWord("u2"))
+        assertEquals("u2", machine.state.value.utteranceId)
+        assertEquals(AssistantPhase.LISTENING, phase)
+    }
 }

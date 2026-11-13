@@ -7,6 +7,7 @@ import app.cozybuddy.protocol.v1.AudioEncoding
 import app.cozybuddy.protocol.v1.CancelReason
 import app.cozybuddy.protocol.v1.Envelope
 import app.cozybuddy.protocol.v1.StreamKind
+import app.cozybuddy.protocol.v1.WakeSource
 import app.cozybuddy.protocol.v1.audioChunk
 import app.cozybuddy.protocol.v1.audioFormat
 import app.cozybuddy.protocol.v1.envelope
@@ -356,5 +357,95 @@ class VoiceClientTest {
         receive(audioStart("b1", StreamKind.STREAM_KIND_BROADCAST_DOWN))
 
         assertTrue(player.calls.isEmpty())
+    }
+
+    @Test
+    fun `wake word starts an utterance with WAKE_WORD source and a one second pre-roll`() = runTest {
+        val h = harness()
+        link.connect()
+        repeat(40) { capture.emit(1) }
+        runCurrent()
+
+        h.client.onWakeWord()
+        runCurrent()
+
+        val start = link.sent.ofCase(Envelope.BodyCase.UTTERANCE_START).single().utteranceStart
+        assertEquals(WakeSource.WAKE_SOURCE_WAKE_WORD, start.source)
+        assertEquals(1_000, start.preRollMs)
+        assertEquals(AssistantPhase.LISTENING, phase)
+    }
+
+    @Test
+    fun `tap keeps the 300 ms pre-roll`() = runTest {
+        val h = harness()
+        link.connect()
+        repeat(40) { capture.emit(1) }
+        runCurrent()
+
+        h.client.onTap()
+        runCurrent()
+
+        val start = link.sent.ofCase(Envelope.BodyCase.UTTERANCE_START).single().utteranceStart
+        assertEquals(WakeSource.WAKE_SOURCE_TAP, start.source)
+        assertEquals(300, start.preRollMs)
+    }
+
+    @Test
+    fun `wake word while offline or without microphone is ignored silently`() = runTest {
+        val h = harness()
+        h.client.onWakeWord()
+        runCurrent()
+        link.connect()
+        capture.running.value = false
+        h.client.onWakeWord()
+        runCurrent()
+
+        assertTrue(link.sent.isEmpty())
+        assertTrue(h.notices.isEmpty())
+        assertEquals(AssistantPhase.IDLE, phase)
+    }
+
+    @Test
+    fun `wake word opens listening while the alarm rings`() = runTest {
+        val h = harness()
+        link.connect()
+        alarm.ringing.value = true
+        runCurrent()
+
+        h.client.onWakeWord()
+        runCurrent()
+
+        assertEquals(AssistantPhase.LISTENING, phase)
+        assertTrue(machine.state.value.alarmRinging)
+        assertEquals(1, link.sent.ofCase(Envelope.BodyCase.UTTERANCE_START).size)
+    }
+
+    @Test
+    fun `wake word while speaking barges in with the wake word source`() = runTest {
+        val h = harness()
+        reachSpeaking(h)
+
+        h.client.onWakeWord()
+        runCurrent()
+
+        assertEquals("stop", player.calls.last())
+        assertEquals(CancelReason.CANCEL_REASON_BARGE_IN, link.sent.ofCase(Envelope.BodyCase.UTTERANCE_CANCEL).single().cancelReason)
+        val start = link.sent.ofCase(Envelope.BodyCase.UTTERANCE_START).last().utteranceStart
+        assertEquals(WakeSource.WAKE_SOURCE_WAKE_WORD, start.source)
+        assertEquals("u2", start.streamId)
+    }
+
+    @Test
+    fun `wake word during an active utterance is ignored`() = runTest {
+        val h = harness()
+        link.connect()
+        h.client.onTap()
+        runCurrent()
+
+        h.client.onWakeWord()
+        runCurrent()
+
+        assertEquals(1, link.sent.ofCase(Envelope.BodyCase.UTTERANCE_START).size)
+        assertEquals("u1", machine.state.value.utteranceId)
     }
 }

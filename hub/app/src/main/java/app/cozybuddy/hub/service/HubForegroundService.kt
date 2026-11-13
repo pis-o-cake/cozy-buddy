@@ -19,6 +19,7 @@ import app.cozybuddy.hub.MainActivity
 import app.cozybuddy.hub.R
 import app.cozybuddy.hub.core.audio.AudioCapture
 import app.cozybuddy.hub.domain.voice.VoiceClient
+import app.cozybuddy.hub.domain.voice.WakeWordController
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 import timber.log.Timber
@@ -37,6 +38,7 @@ class HubForegroundService : Service() {
 
     @Inject lateinit var capture: AudioCapture
     @Inject lateinit var voiceClient: VoiceClient
+    @Inject lateinit var wakeWord: WakeWordController
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -54,11 +56,13 @@ class HubForegroundService : Service() {
         val capturing = micGranted && capture.start()
         if (micGranted && !capturing) Timber.w("Microphone permitted but capture could not start")
         voiceClient.start()
+        wakeWord.start()
         if (!capturing) updateNotification(micAvailable = false)
         return START_NOT_STICKY
     }
 
     override fun onDestroy() {
+        wakeWord.stop()
         voiceClient.stop()
         capture.stop()
         super.onDestroy()

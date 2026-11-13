@@ -15,6 +15,7 @@ import app.cozybuddy.protocol.v1.CancelReason
 import app.cozybuddy.protocol.v1.Envelope
 import app.cozybuddy.protocol.v1.ResponseAudioStart
 import app.cozybuddy.protocol.v1.StreamKind
+import app.cozybuddy.protocol.v1.WakeSource
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineScope
@@ -52,6 +53,8 @@ fun interface StreamIdGenerator {
 
 data class VoiceClientConfig(
     val uplink: UplinkConfig = UplinkConfig(),
+    /** 호출어로 시작할 때의 pre-roll. 호출어 꼬리와 이어지는 첫 마디까지 덮어야 해서 탭(300 ms)보다 길다. */
+    val wakeWordPreRollMs: Int = 1_000,
     val vad: VadConfig = VadConfig(),
     /** UtteranceEnd 이후 응답이 시작되지 않고 이만큼 지나면 오류로 끝낸다. */
     val thinkingTimeoutMs: Long = 30_000L,
@@ -96,6 +99,7 @@ class VoiceClient @Inject constructor(
 
     private sealed interface Command {
         data object Tap : Command
+        data object WakeWord : Command
         data class Inbound(val envelope: Envelope) : Command
         data object LinkLost : Command
         data class Ringing(val ringing: Boolean) : Command
@@ -143,9 +147,15 @@ class VoiceClient @Inject constructor(
         commands.trySend(Command.Tap)
     }
 
+    /** 호출어 엔진이 감지했을 때. 상태에 따라 시작, 끼어들기, 무시 중 하나가 된다. */
+    fun onWakeWord() {
+        commands.trySend(Command.WakeWord)
+    }
+
     private fun handle(command: Command) {
         when (command) {
             Command.Tap -> handleTap()
+            Command.WakeWord -> handleWakeWord()
             is Command.Inbound -> handleInbound(command.envelope)
             Command.LinkLost -> handleLinkLost()
             is Command.Ringing -> handleRinging(command.ringing)
@@ -165,16 +175,42 @@ class VoiceClient @Inject constructor(
         when (val result = machine.onTap(newId)) {
             is TapResult.Ignored -> Timber.d("Tap ignored: %s", result.reason)
             TapResult.Started -> beginUtterance(newId, requireNotNull(connected).hubInfo.areaId)
-            is TapResult.BargeIn -> {
-                releaseActivity()
-                markStale(result.supersededUtteranceId)
-                link.send(VoiceMessages.utteranceCancel(result.supersededUtteranceId, CancelReason.CANCEL_REASON_BARGE_IN))
-                beginUtterance(newId, requireNotNull(connected).hubInfo.areaId)
-            }
+            is TapResult.BargeIn -> bargeIn(result.supersededUtteranceId, newId, requireNotNull(connected).hubInfo.areaId)
         }
     }
 
-    private fun beginUtterance(utteranceId: String, areaId: String) {
+    private fun handleWakeWord() {
+        if (!capture.running.value) return
+        val connected = link.state.value as? ConnectionState.Connected
+        if (connected == null) return Timber.d("Wake word ignored: offline")
+        val newId = ids.next()
+        val source = WakeSource.WAKE_SOURCE_WAKE_WORD
+        when (val result = machine.onWakeWord(newId)) {
+            is TapResult.Ignored -> Timber.d("Wake word ignored: %s", result.reason)
+            TapResult.Started -> beginUtterance(newId, connected.hubInfo.areaId, source, config.wakeWordPreRollMs)
+            is TapResult.BargeIn -> bargeIn(result.supersededUtteranceId, newId, connected.hubInfo.areaId, source, config.wakeWordPreRollMs)
+        }
+    }
+
+    private fun bargeIn(
+        supersededId: String,
+        newId: String,
+        areaId: String,
+        source: WakeSource = config.uplink.source,
+        preRollMs: Int = config.uplink.preRollMs,
+    ) {
+        releaseActivity()
+        markStale(supersededId)
+        link.send(VoiceMessages.utteranceCancel(supersededId, CancelReason.CANCEL_REASON_BARGE_IN))
+        beginUtterance(newId, areaId, source, preRollMs)
+    }
+
+    private fun beginUtterance(
+        utteranceId: String,
+        areaId: String,
+        source: WakeSource = config.uplink.source,
+        preRollMs: Int = config.uplink.preRollMs,
+    ) {
         stopBroadcast()
         _conversation.value = ConversationText()
         uplinkJob = scope.launch {
@@ -184,6 +220,8 @@ class VoiceClient @Inject constructor(
                     areaId = areaId,
                     canSend = { isListening(utteranceId) },
                     onLevel = { _micLevel.value = it },
+                    source = source,
+                    preRollMs = preRollMs,
                 )
                 commands.trySend(Command.UplinkFinished(utteranceId, result))
             } finally {

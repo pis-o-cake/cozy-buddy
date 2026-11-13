@@ -62,6 +62,24 @@ class AssistantStateMachine @Inject constructor() {
         return result
     }
 
+    /**
+     * 호출어 감지. 탭과 달리 알람이 울리는 중에도 IDLE 이면 듣기를 시작한다("자비스, 알람 꺼").
+     * 알람을 실제로 끌지는 서버 응답 경로가 정한다.
+     */
+    fun onWakeWord(newUtteranceId: String): TapResult {
+        var result: TapResult = TapResult.Ignored(TapIgnoredReason.BUSY)
+        _state.update { current ->
+            result = when (current.phase) {
+                AssistantPhase.IDLE -> TapResult.Started
+                AssistantPhase.SPEAKING ->
+                    TapResult.BargeIn(requireNotNull(current.utteranceId) { "SPEAKING without utterance" })
+                else -> TapResult.Ignored(TapIgnoredReason.BUSY)
+            }
+            if (result is TapResult.Ignored) current else listening(current, newUtteranceId)
+        }
+        return result
+    }
+
     /** VAD 가 발화 끝을 판단해 UtteranceEnd 를 보냈다. */
     fun onUtteranceEnded(utteranceId: String): Boolean =
         transition(AssistantPhase.LISTENING, utteranceId) { it.copy(phase = AssistantPhase.THINKING) }

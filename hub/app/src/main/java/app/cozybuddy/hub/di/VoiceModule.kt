@@ -8,6 +8,15 @@ import app.cozybuddy.hub.core.audio.ResponsePlayer
 import app.cozybuddy.hub.core.audio.SileroVad
 import app.cozybuddy.hub.core.audio.StreamingResponsePlayer
 import app.cozybuddy.hub.core.audio.Vad
+import app.cozybuddy.hub.core.audio.wakeword.AssetWakeWordModelStore
+import app.cozybuddy.hub.core.audio.wakeword.OnnxWakeWordModelFactory
+import app.cozybuddy.hub.core.audio.wakeword.OpenWakeWordEngine
+import app.cozybuddy.hub.core.audio.wakeword.WakeWordConfig
+import app.cozybuddy.hub.core.audio.wakeword.WakeWordEngine
+import app.cozybuddy.hub.core.audio.wakeword.WakeWordModelFactory
+import app.cozybuddy.hub.core.audio.wakeword.WakeWordModelStore
+import app.cozybuddy.hub.core.audio.wakeword.WakeWordSettings
+import app.cozybuddy.hub.data.settings.DataStoreWakeWordSettings
 import app.cozybuddy.hub.domain.voice.AlarmRingingSource
 import app.cozybuddy.hub.domain.voice.StreamIdGenerator
 import app.cozybuddy.hub.domain.voice.VoiceClientConfig
@@ -37,6 +46,18 @@ abstract class VoiceBindings {
 
     @Binds
     abstract fun bindVad(impl: SileroVad): Vad
+
+    @Binds
+    abstract fun bindWakeWordEngine(impl: OpenWakeWordEngine): WakeWordEngine
+
+    @Binds
+    abstract fun bindWakeWordModelStore(impl: AssetWakeWordModelStore): WakeWordModelStore
+
+    @Binds
+    abstract fun bindWakeWordModelFactory(impl: OnnxWakeWordModelFactory): WakeWordModelFactory
+
+    @Binds
+    abstract fun bindWakeWordSettings(impl: DataStoreWakeWordSettings): WakeWordSettings
 }
 
 @Module
@@ -64,6 +85,9 @@ object VoiceModule {
 
     @Provides
     fun provideStreamIdGenerator(): StreamIdGenerator = StreamIdGenerator { UUID.randomUUID().toString() }
+
+    @Provides
+    fun provideWakeWordConfig(): WakeWordConfig = WakeWordConfig()
 
     @Provides
     fun provideVoiceClientConfig(): VoiceClientConfig = VoiceClientConfig()

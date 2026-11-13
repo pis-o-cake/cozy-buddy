@@ -65,13 +65,15 @@ class UtteranceUplink(
         areaId: String,
         canSend: () -> Boolean,
         onLevel: (Float) -> Unit = {},
+        source: WakeSource = config.source,
+        preRollMs: Int = config.preRollMs,
     ): UplinkResult {
-        val subscription = capture.subscribe(config.preRollMs)
+        val subscription = capture.subscribe(preRollMs)
         try {
             vad.reset()
-            val preRollMs = subscription.preRoll.size * MS_PER_SECOND / CaptureFormat.SAMPLE_RATE_HZ
+            val sentPreRollMs = subscription.preRoll.size * MS_PER_SECOND / CaptureFormat.SAMPLE_RATE_HZ
             if (!canSend()) return UplinkResult.Aborted
-            val started = link.send(VoiceMessages.utteranceStart(streamId, areaId, config.source, preRollMs))
+            val started = link.send(VoiceMessages.utteranceStart(streamId, areaId, source, sentPreRollMs))
             if (!started) return UplinkResult.LinkFailed
 
             val writer = ChunkWriter(streamId, canSend)
