@@ -20,10 +20,15 @@ if [ -z "${JAVA_HOME:-}" ] || [ "$(java_major "$JAVA_HOME")" -lt 17 ]; then
   export JAVA_HOME
 fi
 
-# local.properties 는 gitignore 대상이므로 SDK 위치를 환경변수로도 받는다.
+# local.properties 는 gitignore 대상이므로 SDK 위치를 환경변수로도 받고, 없으면 Android Studio 기본 위치를 쓴다.
 if [ ! -f "$root/hub/local.properties" ] && [ -z "${ANDROID_HOME:-}" ]; then
-  echo "error: set ANDROID_HOME or create hub/local.properties with sdk.dir" >&2
-  exit 1
+  if [ -d "$HOME/Library/Android/sdk" ]; then
+    ANDROID_HOME="$HOME/Library/Android/sdk"
+    export ANDROID_HOME
+  else
+    echo "error: set ANDROID_HOME or create hub/local.properties with sdk.dir" >&2
+    exit 1
+  fi
 fi
 
 "$root/hub/gradlew" --no-daemon -p "$root/hub" :app:testDebugUnitTest :app:assembleDebug
