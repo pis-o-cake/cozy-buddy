@@ -35,6 +35,10 @@ is_changed() {
   return 1
 }
 
+# server·hub·mobile 은 protocol 에서 코드를 생성하므로 protocol 변경 시 함께 검사한다(CI paths-filter 와 동일).
+protocol_changed=0
+if is_changed protocol; then protocol_changed=1; fi
+
 for dir in protocol server hub mobile; do
   if [ ! -d "$dir" ]; then
     echo "skip   $dir: directory does not exist"
@@ -44,11 +48,15 @@ for dir in protocol server hub mobile; do
     echo "skip   $dir: no scripts/check.sh"
     continue
   fi
+  reason=
   if [ "${VERIFY_ALL:-0}" != 1 ] && ! is_changed "$dir"; then
-    echo "skip   $dir: unchanged"
-    continue
+    if [ "$dir" = protocol ] || [ "$protocol_changed" != 1 ]; then
+      echo "skip   $dir: unchanged"
+      continue
+    fi
+    reason=" (protocol changed)"
   fi
-  echo "run    $dir"
+  echo "run    $dir$reason"
   sh "$dir/scripts/check.sh" || { echo "FAIL   $dir" >&2; failed=1; }
 done
 
