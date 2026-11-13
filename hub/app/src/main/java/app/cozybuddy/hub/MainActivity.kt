@@ -5,26 +5,29 @@ import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.activity.viewModels
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import app.cozybuddy.hub.core.designsystem.CozyTheme
+import app.cozybuddy.hub.feature.ambient.AmbientViewModel
+import app.cozybuddy.hub.feature.ambient.ui.AmbientRoute
 import dagger.hilt.android.AndroidEntryPoint
 
 /** 허브의 유일한 Activity. HOME 앱이므로 부팅 직후 보이는 상태로 시작한다. */
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
+    private val ambientViewModel: AmbientViewModel by viewModels()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         setContent {
-            Box(Modifier.fillMaxSize().background(Color.Black))
+            CozyTheme {
+                AmbientRoute(ambientViewModel)
+            }
         }
     }
 
