@@ -9,7 +9,7 @@ baseline-date: 2026-11-13
 첫 목표는 [전체 시스템 설계안](../design/0001-system-architecture.md)의 완료 기준인 "태블릿 1대 음성 제어 루프 +
 서버 없이 울리는 알람"이다. 스파이크 결과가 필요 없는 기반 작업(레포 정리, 프로토콜, 서버·허브 골격, 로컬
 알람)을 먼저 진행하고, 하드웨어·API 키·기기가 필요한 스파이크는 소유자의 준비가 끝나는 대로 붙인다. 지금
-막혀 있는 것은 모두 소유자 쪽 준비물이다.
+막혀 있는 것은 모두 소유자 쪽 준비물이다. 작업표의 상태는 병합된 PR 번호와 함께 갱신한다.
 
 ## 기준 시점과 일정
 
@@ -29,14 +29,14 @@ main에 fast-forward 병합한다. 설계·ADR·계획 같은 판단 문서는 C
 
 | ID | 작업 | 담당 | 선행 | 상태 | 산출물 |
 |---|---|---|---|---|---|
-| T1 | 레포 정리: 레거시 사본 제거와 영구 링크 치환, 브랜치 접두사·트래커 선언, 컴포넌트별 검사 스크립트 | 서브에이전트 | 없음 | 진행 | `.engsys/project.yaml`, `scripts/verify.sh` |
-| T2 | 프로토콜 v1: [ADR 0002](../adr/0002-protocol-buffers-over-websocket.md)에 따른 `.proto`, buf 설정, 디코더 도구 | 서브에이전트 | 없음 | 진행 | `protocol/` |
-| T3 | 서버 골격: gateway(WebSocket + protobuf), hub, alarm 도메인, home 도메인 HA 클라이언트 자리, Docker Compose | 서브에이전트 | T1, T2 | 대기 | `server/` |
-| T4 | 허브 골격: Compose·Hilt 프로젝트, HOME 앱 지정, 앰비언트 플립 시계 화면 | 서브에이전트 | T1 | 대기 | `hub/` |
+| T1 | 레포 정리: 레거시 사본 제거와 영구 링크 치환, 브랜치 접두사·트래커 선언, 컴포넌트별 검사 스크립트 | 서브에이전트 | 없음 | 완료 (#2) | `.engsys/project.yaml`, `scripts/verify.sh` |
+| T2 | 프로토콜 v1: [ADR 0002](../adr/0002-protocol-buffers-over-websocket.md)에 따른 `.proto`, buf 설정, 디코더 도구 | 서브에이전트 | 없음 | 완료 (#3) | `protocol/` |
+| T3 | 서버 골격: gateway(WebSocket + protobuf), hub, alarm 도메인, home 도메인 HA 클라이언트 자리, Docker Compose | 서브에이전트 | T1, T2 | 진행 | `server/` |
+| T4 | 허브 골격: Compose·Hilt 프로젝트, HOME 앱 지정, 앰비언트 플립 시계 화면 | 서브에이전트 | T1 | 진행 | `hub/` |
 | T5 | 허브 로컬 알람: Room 저장, `setAlarmClock`, `USAGE_ALARM` 재생, 재부팅 재예약 | 서브에이전트 | T4 | 대기 | `hub/` |
 | T6 | 허브-서버 연결: WsClient, `ClientHello`, 알람 동기화 | 서브에이전트 | T2, T3, T5 | 대기 | `hub/`, `server/` |
-| T7 | S3 Home Assistant 반증 스파이크 | 서브에이전트 + 소유자 | T3, 장애 B2·B3 | 대기 | `docs/spike/` 보고서 |
-| T8 | S2 음성 경로 비교 하네스와 측정 | 서브에이전트 + 소유자 | T3, 장애 B2 | 대기 | `docs/spike/` 보고서, 음성 경로 ADR |
+| T7 | S3 Home Assistant 반증 스파이크 | 서브에이전트 + 소유자 | T3, 장애 B3 | 대기 | `docs/spike/` 보고서 |
+| T8 | S2 음성 경로 비교 하네스와 측정 (OpenAI 선택지) | 서브에이전트 + 소유자 | T3 | 대기 | `docs/spike/` 보고서, 음성 경로 ADR |
 | T9 | S1 웨이크워드 스파이크 앱과 원거리 측정 | 서브에이전트(앱) + 소유자(측정) | T4, 장애 B1 | 대기 | `docs/spike/` 보고서, 웨이크워드 ADR |
 | T10 | S4 상시 서버 하드웨어 결정 | 소유자 | 없음 | 대기 | ADR |
 | T11 | S5·S6·S7 상시 구동, 에코, 알람 신뢰성 스파이크 | 서브에이전트 + 소유자 | T5, T9 | 대기 | `docs/spike/` 보고서 |
@@ -47,7 +47,7 @@ main에 fast-forward 병합한다. 설계·ADR·계획 같은 판단 문서는 C
 | ID | 장애 | 막는 작업 | 필요한 조치 | 담당 |
 |---|---|---|---|---|
 | B1 | 허브용 태블릿 기종이 정해지지 않았다 | T9, T11 | 보유 태블릿 기종을 알려 주거나 후보 1~2대를 준비 | 소유자 |
-| B2 | 클라우드 AI API 키가 없다 | T7, T8 | 비교할 공급자의 키를 서버 `.env`에 넣는다. 키는 커밋하지 않는다 | 소유자 |
+| B2 | 클라우드 AI API 키 | T7, T8 | 해소(2026-11-13): OpenAI 키를 레포 루트 `.env`에 저장. 공급자는 [ADR 0003](../adr/0003-openai-as-llm-provider.md) | 소유자 |
 | B3 | Home Assistant를 띄울 장소와 테스트 기기가 정해지지 않았다 | T7 | 개발 PC의 Docker로 시작할 수 있다. 실제 Tapo 또는 Matter 기기 1종이 필요 | 소유자 |
 | B4 | 가족 중 iPhone 사용자가 있는지 모른다 | T12 | 답변 | 소유자 |
 

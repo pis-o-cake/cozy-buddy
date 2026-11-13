@@ -1,0 +1,12 @@
+engsys-document-review: 1
+document: docs/adr/0003-openai-as-llm-provider.md
+blob: 5c3cb625c88b870cfaa27b04bb3c188cf79337f1
+decision: pass
+reviewer: claude-opus-5-5
+audience: 기술 책임자와 유지보수자
+purpose: 어느 클라우드 공급자를 쓰며 그 대가는 무엇인가
+
+- 결정(LLM=OpenAI, STT/TTS도 OpenAI 우선 측정, 단일 구현)과 모델명 미정(S2 결정)을 구분해 기록
+- 배경에 ADR 0001·검토 보고서와의 관계, 소유자 결정 사실만 적고 추정 근거를 넣지 않음
+- 공개 저장소이므로 키는 루트 .env에만 둔다는 점과 키가 대화창에 노출된 사실·교체 절차를 영향 절에 명시
+
