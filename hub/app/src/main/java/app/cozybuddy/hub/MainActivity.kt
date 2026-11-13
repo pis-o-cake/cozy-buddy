@@ -31,8 +31,11 @@ import app.cozybuddy.hub.feature.ambient.AmbientViewModel
 import app.cozybuddy.hub.feature.ambient.ui.AmbientRoute
 import app.cozybuddy.hub.feature.dashboard.DashboardViewModel
 import app.cozybuddy.hub.feature.dashboard.ui.DashboardRoute
+import app.cozybuddy.hub.feature.conversation.ConversationViewModel
+import app.cozybuddy.hub.feature.conversation.ui.ConversationOverlayRoute
 import app.cozybuddy.hub.feature.settings.SettingsViewModel
 import app.cozybuddy.hub.feature.settings.ui.SettingsRoute
+import app.cozybuddy.hub.service.VoiceServiceLauncher
 import dagger.hilt.android.AndroidEntryPoint
 
 /** 허브의 유일한 Activity. HOME 앱이므로 부팅 직후 보이는 상태로 시작한다. */
@@ -45,8 +48,12 @@ class MainActivity : ComponentActivity() {
     private val settingsViewModel: SettingsViewModel by viewModels()
     private val dashboardViewModel: DashboardViewModel by viewModels()
 
+    private val conversationViewModel: ConversationViewModel by viewModels()
+    private val voiceService = VoiceServiceLauncher(this)
+
+    // 권한 대화상자는 한 번에 하나만 띄울 수 있으므로 알림 권한이 끝난 뒤에 마이크 권한과 서비스를 이어서 처리한다.
     private val notificationPermission =
-        registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { voiceService.launch() }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -81,6 +88,7 @@ class MainActivity : ComponentActivity() {
                 )
                 HubScreen.SETTINGS -> SettingsRoute(settingsViewModel, onClose = { screen = HubScreen.ALARMS })
             }
+            ConversationOverlayRoute(conversationViewModel, showMicButton = screen == HubScreen.AMBIENT)
             // 울림 오버레이는 어떤 화면 위에서도 보여야 하므로 마지막에 그린다.
             AlarmRingOverlayRoute(alarmRingViewModel, Modifier)
         }
@@ -88,10 +96,10 @@ class MainActivity : ComponentActivity() {
 
     // Android 13 이상은 알림 권한이 꺼지면 울림 알림·전체 화면 인텐트가 표시되지 않는다.
     private fun requestNotificationPermissionIfNeeded() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
-        val granted = ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) ==
+        val needed = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) !=
             PackageManager.PERMISSION_GRANTED
-        if (!granted) notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+        if (needed) notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS) else voiceService.launch()
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
