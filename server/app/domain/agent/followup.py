@@ -66,3 +66,19 @@ def narrow_candidates(text: str, candidates: list[EntityRef], home: HomeModel) -
     if named:
         pool = named
     return Narrowed(tuple(pool), changed=0 < len(pool) < len(candidates))
+
+
+_ORDINALS = {
+    1: ("첫번째", "첫째", "1번", "일번"),
+    2: ("두번째", "둘째", "2번", "이번"),
+    3: ("세번째", "셋째", "3번", "삼번"),
+    4: ("네번째", "넷째", "4번", "사번"),
+    5: ("다섯번째", "다섯째", "5번", "오번"),
+}
+
+
+def parse_ordinal(text: str) -> int | None:
+    """ "첫 번째", "2번" 같은 순번 답이면 1부터 시작하는 번호를, 아니거나 모호하면 None."""
+    compact = compact_form(text)
+    hits = {n for n, words in _ORDINALS.items() if any(w in compact for w in words)}
+    return next(iter(hits)) if len(hits) == 1 else None
