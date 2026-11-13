@@ -35,6 +35,7 @@ import app.cozybuddy.hub.R
 import app.cozybuddy.hub.core.designsystem.CozyTheme
 import app.cozybuddy.hub.feature.ambient.AmbientConfig
 import app.cozybuddy.hub.feature.ambient.AmbientUiState
+import app.cozybuddy.hub.feature.ambient.AmbientWeather
 import app.cozybuddy.hub.feature.ambient.AmbientViewModel
 import app.cozybuddy.hub.feature.ambient.ConnectionIndicator
 import app.cozybuddy.hub.feature.ambient.PixelShift
@@ -45,6 +46,9 @@ private const val ASPECT_RATIO = 1.6f
 private const val DATE_FONT_SIZE = 2.3f
 private const val DATE_BOTTOM_PADDING = 3.4f
 private const val DATE_ALPHA = 0.6f
+private const val WEATHER_FONT_SIZE = 1.9f
+private const val WEATHER_BOTTOM_PADDING = 7.4f
+private const val WEATHER_ALPHA = 0.45f
 private const val BACKGROUND_CENTER_Y = 0.42f
 private const val BACKGROUND_MID_STOP = 0.55f
 private const val INDICATOR_FONT_SIZE = 1.6f
@@ -131,6 +135,15 @@ fun AmbientScreen(
                     .align(Alignment.BottomCenter)
                     .padding(bottom = unit * DATE_BOTTOM_PADDING),
             )
+            state.weather?.let { weather ->
+                WeatherLine(
+                    weather = weather,
+                    unit = unit,
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = unit * WEATHER_BOTTOM_PADDING),
+                )
+            }
             ConnectionIndicatorLabel(
                 indicator = indicator,
                 unit = unit,
@@ -140,6 +153,25 @@ fun AmbientScreen(
             )
         }
     }
+}
+
+/** 날짜 줄 바로 위의 한 줄. 날짜보다 작고 흐리게 그려 시계를 방해하지 않는다. */
+@Composable
+private fun WeatherLine(weather: AmbientWeather, unit: Dp, modifier: Modifier = Modifier) {
+    Text(
+        text = stringResource(
+            R.string.ambient_weather_line,
+            stringResource(weather.condition.label),
+            weather.temperature,
+            weather.max,
+            weather.min,
+        ),
+        color = CozyTheme.clockColors.caption.copy(alpha = WEATHER_ALPHA),
+        style = MaterialTheme.typography.bodyMedium.copy(
+            fontSize = with(LocalDensity.current) { (unit * WEATHER_FONT_SIZE).toSp() },
+        ),
+        modifier = modifier,
+    )
 }
 
 /** 작고 어두운 글자만 쓴다. 야간에도 눈에 띄지 않되 상태를 알 수 있어야 한다. */

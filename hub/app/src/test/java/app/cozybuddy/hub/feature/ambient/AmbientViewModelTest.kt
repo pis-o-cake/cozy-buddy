@@ -4,12 +4,19 @@ import app.cozybuddy.hub.core.network.ConnectionState
 import app.cozybuddy.hub.core.network.FakeHubLink
 import app.cozybuddy.hub.core.network.HubInfo
 import app.cozybuddy.hub.core.time.TimeSource
+import app.cozybuddy.hub.data.weather.WeatherRepository
+import app.cozybuddy.protocol.v1.envelope
+import app.cozybuddy.protocol.v1.weatherDaily
+import app.cozybuddy.protocol.v1.weatherSnapshot
 import java.time.Instant
 import java.time.LocalTime
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.util.Locale
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -22,6 +29,7 @@ import kotlinx.coroutines.test.setMain
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotEquals
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 
@@ -31,14 +39,19 @@ class AmbientViewModelTest {
     private val zone = ZoneId.of("Asia/Seoul")
     private val scheduler = TestCoroutineScheduler()
     private val link = FakeHubLink()
+    private val weatherScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+    private lateinit var weather: WeatherRepository
 
     @BeforeEach
     fun setUp() {
         Dispatchers.setMain(StandardTestDispatcher(scheduler))
+        weather = WeatherRepository(link, weatherScope)
+        weather.start()
     }
 
     @AfterEach
     fun tearDown() {
+        weatherScope.cancel()
         Dispatchers.resetMain()
     }
 
@@ -54,6 +67,7 @@ class AmbientViewModelTest {
         timeSource = SchedulerTimeSource(scheduler, start),
         displayConfig = FakeDisplayConfig(is24Hour, locale, pattern),
         link = link,
+        weather = weather,
     )
 
     @Test
@@ -134,6 +148,32 @@ class AmbientViewModelTest {
         assertEquals(listOf(2, 2, 0, 0), vm.uiState.value.digits)
         assertEquals(DimLevel.NIGHT, vm.uiState.value.dim)
         job.cancel()
+    }
+
+    @Test
+    fun `weather snapshot appears in ui state and stale weather disappears on the next tick`() = runTest(scheduler) {
+        val start = at(12, 0)
+        val vm = viewModel(start)
+        backgroundScope.launch { vm.uiState.collect {} }
+        runCurrent()
+        assertNull(vm.uiState.value.weather)
+
+        link.receive(
+            envelope {
+                weatherSnapshot = weatherSnapshot {
+                    observedEpochMs = start.toInstant().toEpochMilli()
+                    temperatureC = 12.4
+                    weatherCode = 0
+                    today = weatherDaily { minC = 3.0; maxC = 15.2 }
+                }
+            },
+        )
+        runCurrent()
+        assertEquals(AmbientWeather(WeatherCondition.CLEAR, 12, 15, 3), vm.uiState.value.weather)
+
+        advanceTimeBy(WEATHER_STALE_MS + 120_000)
+        runCurrent()
+        assertNull(vm.uiState.value.weather)
     }
 
     @Test

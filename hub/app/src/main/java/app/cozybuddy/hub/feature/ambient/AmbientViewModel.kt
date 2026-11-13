@@ -5,13 +5,17 @@ import androidx.lifecycle.viewModelScope
 import app.cozybuddy.hub.core.network.ConnectionState
 import app.cozybuddy.hub.core.network.HubLink
 import app.cozybuddy.hub.core.time.TimeSource
+import app.cozybuddy.hub.data.weather.WeatherRepository
+import app.cozybuddy.hub.domain.model.Weather
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.time.ZonedDateTime
 import javax.inject.Inject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
@@ -24,19 +28,24 @@ class AmbientViewModel @Inject constructor(
     private val timeSource: TimeSource,
     private val displayConfig: ClockDisplayConfig,
     link: HubLink,
+    private val weather: WeatherRepository,
 ) : ViewModel() {
 
-    val uiState: StateFlow<AmbientUiState> = flow {
+    private val minuteTicks: Flow<ZonedDateTime> = flow {
         while (true) {
             val now = timeSource.now()
-            emit(snapshot(now))
+            emit(now)
             delay(millisUntilNextMinute(now.toInstant().toEpochMilli()))
         }
-    }.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS),
-        initialValue = snapshot(timeSource.now()),
-    )
+    }
+
+    // 날씨가 바뀌거나 분이 바뀔 때마다 다시 만든다. 오래된 관측은 분 틱에서 걸러진다.
+    val uiState: StateFlow<AmbientUiState> = combine(minuteTicks, weather.state, ::snapshot)
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS),
+            initialValue = snapshot(timeSource.now(), weather.state.value),
+        )
 
     /**
      * 서버 연결 표시. 부팅 직후나 짧은 재연결 중에 시계 화면이 깜빡이지 않도록 끊김은 [OFFLINE_GRACE_MS] 뒤에 알린다.
@@ -64,11 +73,12 @@ class AmbientViewModel @Inject constructor(
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), ConnectionIndicator.NONE)
 
-    private fun snapshot(now: ZonedDateTime): AmbientUiState = buildAmbientState(
+    private fun snapshot(now: ZonedDateTime, weather: Weather?): AmbientUiState = buildAmbientState(
         now = now,
         is24Hour = displayConfig.is24Hour(),
         locale = displayConfig.locale(),
         datePattern = displayConfig.datePattern(),
+        weather = weather,
     )
 
     private companion object {

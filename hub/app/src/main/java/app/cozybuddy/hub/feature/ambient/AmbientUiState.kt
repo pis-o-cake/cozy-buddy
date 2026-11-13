@@ -1,5 +1,6 @@
 package app.cozybuddy.hub.feature.ambient
 
+import app.cozybuddy.hub.domain.model.Weather
 import java.time.LocalTime
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
@@ -50,6 +51,8 @@ data class AmbientUiState(
     val dateText: String,
     val dim: DimLevel,
     val pixelShift: PixelShift,
+    /** 현재 날씨. 서버가 모르거나 관측이 오래됐으면 null 이고 날씨 줄은 그리지 않는다. */
+    val weather: AmbientWeather? = null,
 ) {
     companion object {
         val Initial = AmbientUiState(
@@ -66,6 +69,7 @@ internal fun buildAmbientState(
     is24Hour: Boolean,
     locale: Locale,
     datePattern: String,
+    weather: Weather? = null,
 ): AmbientUiState {
     val hour = if (is24Hour) now.hour else (now.hour % 12).let { if (it == 0) 12 else it }
     val minute = now.minute
@@ -74,6 +78,7 @@ internal fun buildAmbientState(
         dateText = DateTimeFormatter.ofPattern(datePattern, locale).format(now),
         dim = dimLevelAt(now.toLocalTime()),
         pixelShift = pixelShiftAt(now),
+        weather = weather?.toAmbient(now.toInstant().toEpochMilli()),
     )
 }
 
