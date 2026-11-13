@@ -1,0 +1,16 @@
+[project]
+name = "s1-wakeword"
+version = "0.1.0"
+description = "Spike S1: offline openWakeWord evaluation for the hub wake word"
+requires-python = ">=3.12"
+dependencies = [
+    "loguru>=0.8.0",
+    "numpy>=2.5.4",
+    "onnxruntime>=1.22.0",
+    "openai>=3.50.0",
+    "python-dotenv>=1.2.4",
+    "scipy>=1.15.0",
+]
+
+[tool.uv]
+package = false
