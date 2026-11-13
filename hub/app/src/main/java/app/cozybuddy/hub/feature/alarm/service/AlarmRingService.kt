@@ -38,6 +38,8 @@ import timber.log.Timber
  * 알람을 울리는 mediaPlayback 포그라운드 서비스.
  *
  * `USAGE_ALARM` 으로 반복 재생하며 볼륨을 서서히 올리고, [AlarmRingConfig.AUTO_STOP] 뒤 스스로 멈춘다.
+ *
+ * 울리는 중에 다른 알람이 겹치면 대기열에 두고, 현재 알람이 정지·스누즈된 뒤 순서대로 울린다.
  */
 @AndroidEntryPoint
 class AlarmRingService : Service() {
@@ -48,6 +50,8 @@ class AlarmRingService : Service() {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var session: Session? = null
+    private var starting = false
+    private val pendingIds = ArrayDeque<String>()
     private var player: MediaPlayer? = null
     private var focusRequest: AudioFocusRequest? = null
 
@@ -80,17 +84,48 @@ class AlarmRingService : Service() {
             stopSelf()
             return
         }
+        // 메인 스레드에서 동기로 판단해야 onFired 대기 중 들어온 두 번째 시작도 대기열로 간다.
+        if (session != null || starting) {
+            enqueue(alarmId)
+            return
+        }
+        startRing(alarmId)
+    }
+
+    private fun enqueue(alarmId: String) {
+        if (alarmId == session?.alarmId || alarmId in pendingIds) {
+            Timber.d("Duplicate ring request ignored id=%s", alarmId)
+            return
+        }
+        pendingIds.addLast(alarmId)
+        Timber.i("Ring queued behind active alarm id=%s queued=%d", alarmId, pendingIds.size)
+    }
+
+    private fun startRing(alarmId: String) {
+        starting = true
         scope.launch {
-            // 이미 울리는 중이면 이전 알람을 정지 처리(스누즈 아님)하고 새 알람으로 넘어간다.
-            session?.let { finishCurrent(snoozed = false, stopService = false) }
-            val alarm = coordinator.onFired(alarmId)
+            val alarm = try {
+                coordinator.onFired(alarmId)
+            } finally {
+                starting = false
+            }
             if (alarm == null) {
                 Timber.w("Alarm vanished before ring id=%s", alarmId)
-                stopSelf()
+                startNextOrStop()
                 return@launch
             }
             beginRing(alarm)
         }
+    }
+
+    private fun startNextOrStop() {
+        val next = pendingIds.removeFirstOrNull()
+        if (next == null) {
+            stopSelf()
+            return
+        }
+        Timber.i("Starting queued ring id=%s", next)
+        startRing(next)
     }
 
     private fun beginRing(alarm: Alarm) {
@@ -118,15 +153,18 @@ class AlarmRingService : Service() {
 
     private fun finishRing(snoozed: Boolean) {
         if (session == null) {
-            stopSelf()
+            // 다음 알람을 준비하는 중이면 서비스를 끄지 않는다.
+            if (!starting) stopSelf()
             return
         }
         scope.launch { finishCurrent(snoozed) }
     }
 
-    private suspend fun finishCurrent(snoozed: Boolean, stopService: Boolean = true) {
+    private suspend fun finishCurrent(snoozed: Boolean) {
         val finished = session ?: return
         session = null
+        // 정리하는 동안 들어온 시작 요청이 대기열 순서를 앞지르지 않게 한다.
+        starting = true
         finished.jobs.forEach { it.cancel() }
         releaseAudio()
         ringingStateHolder.clear()
@@ -139,10 +177,13 @@ class AlarmRingService : Service() {
             }
         }
         Timber.i("Ringing finished id=%s snoozed=%b", finished.alarmId, snoozed)
-        if (stopService) {
-            ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
-            stopSelf()
+        starting = false
+        if (pendingIds.isNotEmpty()) {
+            startNextOrStop()
+            return
         }
+        ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
+        stopSelf()
     }
 
     private fun enterForeground(title: String) {
