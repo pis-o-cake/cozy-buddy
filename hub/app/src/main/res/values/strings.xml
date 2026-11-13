@@ -76,4 +76,17 @@
     <string name="dashboard_error_not_connected">서버에 연결되지 않았어요</string>
     <string name="dashboard_error_timeout">응답이 없어요. 잠시 후 다시 시도하세요</string>
     <string name="dashboard_error_generic">기기를 제어하지 못했어요</string>
+
+    <string name="voice_service_channel_name">음성 비서</string>
+    <string name="voice_service_ready">음성 비서가 대기 중이에요</string>
+    <string name="voice_service_mic_missing">마이크 권한이 없어 말로 부를 수 없어요</string>
+
+    <string name="conversation_mic_button">말하기</string>
+    <string name="conversation_listening">듣고 있어요</string>
+    <string name="conversation_thinking">생각하는 중</string>
+    <string name="conversation_speaking_hint">탭하면 말을 끊고 다시 말해요</string>
+    <string name="conversation_level_description">마이크 입력 레벨</string>
+    <string name="conversation_notice_offline">서버에 연결할 수 없어요</string>
+    <string name="conversation_notice_mic_unavailable">마이크를 쓸 수 없어요. 권한을 확인해 주세요</string>
+    <string name="conversation_notice_error">문제가 생겼어요. 다시 말씀해 주세요</string>
 </resources>
