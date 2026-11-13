@@ -2,10 +2,14 @@ package app.cozybuddy.hub
 
 import android.app.Application
 import dagger.hilt.android.HiltAndroidApp
+import javax.inject.Inject
 import timber.log.Timber
 
 @HiltAndroidApp
 class CozyHubApp : Application() {
+
+    @Inject
+    lateinit var runtime: HubRuntime
 
     override fun onCreate() {
         super.onCreate()
@@ -13,5 +17,6 @@ class CozyHubApp : Application() {
         if (BuildConfig.DEBUG) {
             Timber.plant(Timber.DebugTree())
         }
+        runtime.start()
     }
 }
