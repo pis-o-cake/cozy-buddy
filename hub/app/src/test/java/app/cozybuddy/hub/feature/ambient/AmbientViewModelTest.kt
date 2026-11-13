@@ -1,5 +1,8 @@
 package app.cozybuddy.hub.feature.ambient
 
+import app.cozybuddy.hub.core.network.ConnectionState
+import app.cozybuddy.hub.core.network.FakeHubLink
+import app.cozybuddy.hub.core.network.HubInfo
 import app.cozybuddy.hub.core.time.TimeSource
 import java.time.Instant
 import java.time.LocalTime
@@ -27,6 +30,7 @@ class AmbientViewModelTest {
 
     private val zone = ZoneId.of("Asia/Seoul")
     private val scheduler = TestCoroutineScheduler()
+    private val link = FakeHubLink()
 
     @BeforeEach
     fun setUp() {
@@ -49,6 +53,7 @@ class AmbientViewModelTest {
     ) = AmbientViewModel(
         timeSource = SchedulerTimeSource(scheduler, start),
         displayConfig = FakeDisplayConfig(is24Hour, locale, pattern),
+        link = link,
     )
 
     @Test
@@ -129,6 +134,52 @@ class AmbientViewModelTest {
         assertEquals(listOf(2, 2, 0, 0), vm.uiState.value.digits)
         assertEquals(DimLevel.NIGHT, vm.uiState.value.dim)
         job.cancel()
+    }
+
+    @Test
+    fun `offline indicator appears only after the grace period`() = runTest(scheduler) {
+        val vm = viewModel(at(12, 0))
+        backgroundScope.launch { vm.connectionIndicator.collect {} }
+        runCurrent()
+
+        link.state.value = ConnectionState.Connecting
+        advanceTimeBy(9_999)
+        runCurrent()
+        assertEquals(ConnectionIndicator.NONE, vm.connectionIndicator.value)
+
+        advanceTimeBy(1)
+        runCurrent()
+        assertEquals(ConnectionIndicator.OFFLINE, vm.connectionIndicator.value)
+    }
+
+    @Test
+    fun `reconnect attempts do not restart the grace period`() = runTest(scheduler) {
+        val vm = viewModel(at(12, 0))
+        backgroundScope.launch { vm.connectionIndicator.collect {} }
+        runCurrent()
+
+        link.state.value = ConnectionState.Disconnected
+        advanceTimeBy(6_000)
+        link.state.value = ConnectionState.Connecting
+        advanceTimeBy(4_000)
+        runCurrent()
+
+        assertEquals(ConnectionIndicator.OFFLINE, vm.connectionIndicator.value)
+    }
+
+    @Test
+    fun `connection clears the indicator and auth failure shows immediately`() = runTest(scheduler) {
+        val vm = viewModel(at(12, 0))
+        backgroundScope.launch { vm.connectionIndicator.collect {} }
+        runCurrent()
+
+        link.state.value = ConnectionState.AuthFailed
+        runCurrent()
+        assertEquals(ConnectionIndicator.AUTH_FAILED, vm.connectionIndicator.value)
+
+        link.state.value = ConnectionState.Connected(HubInfo("거실", "living"))
+        runCurrent()
+        assertEquals(ConnectionIndicator.NONE, vm.connectionIndicator.value)
     }
 
     /** 가상 시간(스케줄러)에 맞춰 흐르는 시각. delay 와 시각이 어긋나지 않게 한다. */

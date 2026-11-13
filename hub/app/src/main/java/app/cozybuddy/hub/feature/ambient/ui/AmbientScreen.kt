@@ -35,6 +35,7 @@ import app.cozybuddy.hub.core.designsystem.CozyTheme
 import app.cozybuddy.hub.feature.ambient.AmbientConfig
 import app.cozybuddy.hub.feature.ambient.AmbientUiState
 import app.cozybuddy.hub.feature.ambient.AmbientViewModel
+import app.cozybuddy.hub.feature.ambient.ConnectionIndicator
 import app.cozybuddy.hub.feature.ambient.PixelShift
 
 private const val DIM_TRANSITION_MS = 1_100
@@ -45,16 +46,25 @@ private const val DATE_BOTTOM_PADDING = 3.4f
 private const val DATE_ALPHA = 0.6f
 private const val BACKGROUND_CENTER_Y = 0.42f
 private const val BACKGROUND_MID_STOP = 0.55f
+private const val INDICATOR_FONT_SIZE = 1.6f
+private const val INDICATOR_EDGE_PADDING = 2.2f
+private const val INDICATOR_ALPHA = 0.4f
 
 @Composable
 fun AmbientRoute(viewModel: AmbientViewModel, onLongPress: () -> Unit = {}) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val indicator by viewModel.connectionIndicator.collectAsStateWithLifecycle()
     WindowBrightnessEffect(state.dim.windowBrightness)
-    AmbientScreen(state, onLongPress = onLongPress)
+    AmbientScreen(state, indicator = indicator, onLongPress = onLongPress)
 }
 
 @Composable
-fun AmbientScreen(state: AmbientUiState, modifier: Modifier = Modifier, onLongPress: () -> Unit = {}) {
+fun AmbientScreen(
+    state: AmbientUiState,
+    modifier: Modifier = Modifier,
+    indicator: ConnectionIndicator = ConnectionIndicator.NONE,
+    onLongPress: () -> Unit = {},
+) {
     val colors = CozyTheme.clockColors
     val contentAlpha by animateFloatAsState(
         targetValue = state.dim.contentAlpha,
@@ -110,8 +120,33 @@ fun AmbientScreen(state: AmbientUiState, modifier: Modifier = Modifier, onLongPr
                     .align(Alignment.BottomCenter)
                     .padding(bottom = unit * DATE_BOTTOM_PADDING),
             )
+            ConnectionIndicatorLabel(
+                indicator = indicator,
+                unit = unit,
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(end = unit * INDICATOR_EDGE_PADDING, bottom = unit * INDICATOR_EDGE_PADDING),
+            )
         }
     }
+}
+
+/** 작고 어두운 글자만 쓴다. 야간에도 눈에 띄지 않되 상태를 알 수 있어야 한다. */
+@Composable
+private fun ConnectionIndicatorLabel(indicator: ConnectionIndicator, unit: Dp, modifier: Modifier = Modifier) {
+    val text = when (indicator) {
+        ConnectionIndicator.NONE -> return
+        ConnectionIndicator.OFFLINE -> stringResource(R.string.connection_indicator_offline)
+        ConnectionIndicator.AUTH_FAILED -> stringResource(R.string.connection_indicator_auth_failed)
+    }
+    Text(
+        text = text,
+        color = CozyTheme.clockColors.caption.copy(alpha = INDICATOR_ALPHA),
+        style = MaterialTheme.typography.bodySmall.copy(
+            fontSize = with(LocalDensity.current) { (unit * INDICATOR_FONT_SIZE).toSp() },
+        ),
+        modifier = modifier,
+    )
 }
 
 @Composable

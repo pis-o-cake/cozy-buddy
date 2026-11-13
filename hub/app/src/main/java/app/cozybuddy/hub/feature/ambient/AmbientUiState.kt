@@ -39,6 +39,9 @@ enum class DimLevel(val windowBrightness: Float, val contentAlpha: Float) {
     NIGHT(AmbientConfig.BRIGHTNESS_NIGHT, AmbientConfig.CONTENT_ALPHA_NIGHT),
 }
 
+/** 앰비언트 화면 구석의 서버 연결 표시. 정상일 때는 아무것도 그리지 않는다. */
+enum class ConnectionIndicator { NONE, OFFLINE, AUTH_FAILED }
+
 data class PixelShift(val xDp: Int, val yDp: Int)
 
 data class AmbientUiState(
