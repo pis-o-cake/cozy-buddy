@@ -1,12 +1,11 @@
 engsys-document-review: 1
 document: docs/design/0003-hub-architecture.md
-blob: e74f55c2d1738eef4679002ad15fabf5a49b02d1
+blob: 216bb544fd56fbde709c21daf400df52b47e00e3
 decision: pass
 reviewer: claude-opus-5-5
 audience: 허브 앱 구현 담당자
 purpose: 이 구조로 태블릿 허브 앱을 만들어도 되는가
 
-- 오디오 파이프라인 절에 '추론은 클라우드, 웨이크워드·VAD는 허브' 구분과 그 이유(호출어 이전 오디오 비전송) 추가
-- 상태 머신 OFFLINE 노트에 서버는 살아 있고 인터넷만 끊긴 경우의 동작을 추가해 ADR 0001 영향 절과 일치
-- 나머지 절은 변경 없음, 렌더링 대상 다이어그램 문법 변경 없음
+- 화면 절의 이전 목업·Compose 화면 참조 2곳만 permalink로 바뀌었고 다른 내용 변경 없음을 diff로 확인
+- 링크 revision이 README와 일치
 
