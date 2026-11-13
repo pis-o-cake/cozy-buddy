@@ -5,4 +5,25 @@
     <!-- java.time.DateTimeFormatter 패턴. 로캘별로 순서와 조사가 다르다. -->
     <string name="ambient_date_pattern">M월 d일 EEEE</string>
     <string name="ambient_time_description">현재 시각 %1$s</string>
+
+    <string name="alarm_default_label">알람</string>
+    <string name="alarm_default_label_timer">타이머</string>
+    <string name="alarm_ring_stop">정지</string>
+    <string name="alarm_ring_snooze">스누즈 (%1$d분)</string>
+    <string name="alarm_notification_channel_name">알람 울림</string>
+    <string name="alarm_notification_text">알람이 울리고 있어요</string>
+    <string name="alarm_list_title">알람</string>
+    <string name="alarm_list_empty">등록된 알람이 없어요</string>
+    <string name="alarm_list_close">닫기</string>
+    <string name="alarm_list_add">알람 추가</string>
+    <string name="alarm_list_add_timer">1분 타이머</string>
+    <string name="alarm_list_delete">삭제</string>
+    <string name="alarm_list_every_day">매일</string>
+    <string name="alarm_list_toggle_description">%1$s 사용</string>
+    <string name="alarm_dialog_title">알람 추가</string>
+    <string name="alarm_dialog_confirm">추가</string>
+    <string name="alarm_dialog_cancel">취소</string>
+    <string name="alarm_dialog_repeat_hint">요일을 고르지 않으면 한 번만 울려요</string>
+    <string name="alarm_exact_permission_hint">정확한 알람 권한이 꺼져 있어 알람이 울리지 않을 수 있어요</string>
+    <string name="alarm_exact_permission_action">설정 열기</string>
 </resources>
