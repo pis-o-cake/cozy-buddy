@@ -1,0 +1,931 @@
+{
+  "models": {
+    "stt": "gpt-4o-transcribe",
+    "llm": "gpt-5.4-nano",
+    "tts": "gpt-4o-mini-tts",
+    "realtime": "gpt-realtime-2.1-mini",
+    "stt_mini": "gpt-4o-mini-transcribe",
+    "llm_reasoning_effort": "none"
+  },
+  "stt_prompt": "스마트홈 음성 명령. 거실, 침실, 주방, 조명, 불, 스탠드, 가습기, 전기포트, 포트, 켜줘, 꺼줘, 틀어줘, 밝기, 퍼센트, 타이머, 알람, 오전, 오후, 저녁, 새벽",
+  "fast_path_stt_variant": "a_prompt",
+  "normaliser": "s2/normalize.py (punctuation, spaces, sino-korean/digit numbers)",
+  "voices": {
+    "input_synthetic": "echo",
+    "response": "coral"
+  },
+  "pricing": {
+    "url": "https://developers.openai.com/api/docs/pricing",
+    "date": "2026-11-13",
+    "stt_per_min": {
+      "gpt-4o-transcribe": 0.006,
+      "gpt-transcribe": 0.0045,
+      "gpt-4o-mini-transcribe": 0.003
+    },
+    "stt_prompt_tokens_cost": "ignored (negligible)",
+    "llm_per_1m": {
+      "gpt-5.4-nano": [
+        0.2,
+        0.02,
+        1.25
+      ],
+      "gpt-5.4-mini": [
+        0.75,
+        0.075,
+        4.5
+      ]
+    },
+    "realtime_per_1m": {
+      "audio": [
+        10.0,
+        0.3,
+        20.0
+      ],
+      "text": [
+        0.6,
+        0.06,
+        2.4
+      ]
+    },
+    "tts_per_min_assumed": 0.015
+  },
+  "limitations": [
+    "Input audio is synthetic TTS speech, not real human voice.",
+    "Latency measured from the machine/network running the harness, not the hub."
+  ],
+  "total_estimated_cost_usd": 0.8917,
+  "paths": {
+    "a": {
+      "samples": 150,
+      "failures": 0,
+      "failure_examples": [],
+      "first_audio_p50_s": 2.8232940829911968,
+      "first_audio_p95_s": 3.497259291994851,
+      "done_p50_s": 3.8796838330017636,
+      "accuracy_all": 0.9267,
+      "accuracy_tool_commands": 0.9185,
+      "accuracy_chitchat_no_tool": 1.0,
+      "accuracy_by_category": {
+        "alarm": 1.0,
+        "brightness": 1.0,
+        "chat": 1.0,
+        "colloquial": 1.0,
+        "explicit": 1.0,
+        "implicit": 0.7143,
+        "multi": 1.0,
+        "state": 0.6667,
+        "timer": 1.0
+      },
+      "cost_per_command_usd": 0.00157,
+      "wrong_examples": [
+        {
+          "command": "스탠드 좀 꺼줄래",
+          "expected": [
+            {
+              "name": "control_device",
+              "args": {
+                "area": "living",
+                "device": "stand",
+                "action": "off"
+              }
+            }
+          ],
+          "actual": [],
+          "transcript": "캔들 좀 꺼줄래?"
+        },
+        {
+          "command": "불 좀 켜줄래",
+          "expected": [
+            {
+              "name": "control_device",
+              "args": {
+                "area": "living",
+                "device": "light",
+                "action": "on"
+              }
+            }
+          ],
+          "actual": [],
+          "transcript": "불 좀 타줄래?"
+        },
+        {
+          "command": "주방 전기포트 꺼져 있어?",
+          "expected": [
+            {
+              "name": "get_device_state",
+              "args": {
+                "area": "kitchen",
+                "device": "kettle_plug"
+              }
+            }
+          ],
+          "actual": [
+            {
+              "name": "get_device_state",
+              "args": {
+                "area": "kitchen",
+                "device": "kettle_plug"
+              }
+            },
+            {
+              "name": "control_device",
+              "args": {
+                "area": "kitchen",
+                "device": "kettle_plug",
+                "action": "off"
+              }
+            }
+          ],
+          "transcript": "후방 전기포트 꺼져있어."
+        },
+        {
+          "command": "스탠드 켜져 있니?",
+          "expected": [
+            {
+              "name": "get_device_state",
+              "args": {
+                "area": "living",
+                "device": "stand"
+              }
+            }
+          ],
+          "actual": [],
+          "transcript": "스탠드 찾아있네?"
+        },
+        {
+          "command": "스탠드 좀 꺼줄래",
+          "expected": [
+            {
+              "name": "control_device",
+              "args": {
+                "area": "living",
+                "device": "stand",
+                "action": "off"
+              }
+            }
+          ],
+          "actual": [],
+          "transcript": "캔들 좀 꺼줄래?"
+        },
+        {
+          "command": "불 좀 켜줄래",
+          "expected": [
+            {
+              "name": "control_device",
+              "args": {
+                "area": "living",
+                "device": "light",
+                "action": "on"
+              }
+            }
+          ],
+          "actual": [],
+          "transcript": "불 좀 타줄래?"
+        },
+        {
+          "command": "주방 전기포트 꺼져 있어?",
+          "expected": [
+            {
+              "name": "get_device_state",
+              "args": {
+                "area": "kitchen",
+                "device": "kettle_plug"
+              }
+            }
+          ],
+          "actual": [
+            {
+              "name": "control_device",
+              "args": {
+                "area": "kitchen",
+                "device": "kettle_plug",
+                "action": "off"
+              }
+            }
+          ],
+          "transcript": "후방 전기포트 꺼져있어."
+        },
+        {
+          "command": "스탠드 좀 꺼줄래",
+          "expected": [
+            {
+              "name": "control_device",
+              "args": {
+                "area": "living",
+                "device": "stand",
+                "action": "off"
+              }
+            }
+          ],
+          "actual": [],
+          "transcript": "캔들 좀 꺼줄래?"
+        },
+        {
+          "command": "불 좀 켜줄래",
+          "expected": [
+            {
+              "name": "control_device",
+              "args": {
+                "area": "living",
+                "device": "light",
+                "action": "on"
+              }
+            }
+          ],
+          "actual": [],
+          "transcript": "불 좀 타줄래?"
+        },
+        {
+          "command": "주방 전기포트 꺼져 있어?",
+          "expected": [
+            {
+              "name": "get_device_state",
+              "args": {
+                "area": "kitchen",
+                "device": "kettle_plug"
+              }
+            }
+          ],
+          "actual": [
+            {
+              "name": "control_device",
+              "args": {
+                "area": "kitchen",
+                "device": "kettle_plug",
+                "action": "off"
+              }
+            }
+          ],
+          "transcript": "후방 전기포트 꺼져있어."
+        },
+        {
+          "command": "스탠드 켜져 있니?",
+          "expected": [
+            {
+              "name": "get_device_state",
+              "args": {
+                "area": "living",
+                "device": "stand"
+              }
+            }
+          ],
+          "actual": [],
+          "transcript": "스탠드 찾아있네?"
+        }
+      ],
+      "stt_model": "gpt-4o-transcribe",
+      "stt_prompt_used": false,
+      "stt_p50_s": 0.6200311669963412,
+      "stt_p95_s": 0.9633552909945138,
+      "llm_first_token_p50_s": 0.6014472920069238,
+      "transcript_exact_rate_raw": 0.7533,
+      "transcript_exact_rate": 0.8267,
+      "misrecognition_rate": 0.1733,
+      "transcription_mismatches": [
+        {
+          "command": "스탠드 좀 꺼줄래",
+          "transcript": "캔들 좀 꺼줄래?",
+          "tool_correct": false
+        },
+        {
+          "command": "조명 꺼줘",
+          "transcript": "조명 꺼져.",
+          "tool_correct": true
+        },
+        {
+          "command": "불 좀 켜줄래",
+          "transcript": "불 좀 타줄래?",
+          "tool_correct": false
+        },
+        {
+          "command": "침실 가습기 좀 틀어줘",
+          "transcript": "휴식 가습기 좀 틀어줘.",
+          "tool_correct": true
+        },
+        {
+          "command": "침실 가습기 켜져 있어?",
+          "transcript": "치울실 가습기 켜져 있어?",
+          "tool_correct": true
+        },
+        {
+          "command": "주방 전기포트 꺼져 있어?",
+          "transcript": "후방 전기포트 꺼져있어.",
+          "tool_correct": false
+        },
+        {
+          "command": "스탠드 켜져 있니?",
+          "transcript": "스탠드 찾아있네?",
+          "tool_correct": false
+        },
+        {
+          "command": "주방 불 켜줘",
+          "transcript": "주방 불 켜져.",
+          "tool_correct": true
+        },
+        {
+          "command": "아침 7시에 알람 맞춰줘",
+          "transcript": "아침 일곱 시에 알람 맞춰 줘.",
+          "tool_correct": true
+        },
+        {
+          "command": "내일 새벽 5시 45분에 깨워줘",
+          "transcript": "내일 새벽 다섯시 사십오분에 깨워줘.",
+          "tool_correct": true
+        },
+        {
+          "command": "침실 조명 꺼줘",
+          "transcript": "침실 조명 꺼져.",
+          "tool_correct": true
+        }
+      ]
+    },
+    "a_mini": {
+      "samples": 150,
+      "failures": 0,
+      "failure_examples": [],
+      "first_audio_p50_s": 2.911494790998404,
+      "first_audio_p95_s": 3.8666062090051128,
+      "done_p50_s": 3.947370124995359,
+      "accuracy_all": 0.9467,
+      "accuracy_tool_commands": 0.9407,
+      "accuracy_chitchat_no_tool": 1.0,
+      "accuracy_by_category": {
+        "alarm": 1.0,
+        "brightness": 1.0,
+        "chat": 1.0,
+        "colloquial": 1.0,
+        "explicit": 1.0,
+        "implicit": 0.8095,
+        "multi": 1.0,
+        "state": 0.7333,
+        "timer": 1.0
+      },
+      "cost_per_command_usd": 0.00139,
+      "wrong_examples": [
+        {
+          "command": "불 좀 켜줄래",
+          "expected": [
+            {
+              "name": "control_device",
+              "args": {
+                "area": "living",
+                "device": "light",
+                "action": "on"
+              }
+            }
+          ],
+          "actual": [],
+          "transcript": "불 좀 타줄래?"
+        },
+        {
+          "command": "주방 전기포트 꺼져 있어?",
+          "expected": [
+            {
+              "name": "get_device_state",
+              "args": {
+                "area": "kitchen",
+                "device": "kettle_plug"
+              }
+            }
+          ],
+          "actual": [
+            {
+              "name": "control_device",
+              "args": {
+                "area": "kitchen",
+                "device": "kettle_plug",
+                "action": "off"
+              }
+            }
+          ],
+          "transcript": "주방 전기 포트 꺼져 있어."
+        },
+        {
+          "command": "스탠드 좀 꺼줄래",
+          "expected": [
+            {
+              "name": "control_device",
+              "args": {
+                "area": "living",
+                "device": "stand",
+                "action": "off"
+              }
+            }
+          ],
+          "actual": [],
+          "transcript": "캔들 좀 꺼줄래?"
+        },
+        {
+          "command": "불 좀 켜줄래",
+          "expected": [
+            {
+              "name": "control_device",
+              "args": {
+                "area": "living",
+                "device": "light",
+                "action": "on"
+              }
+            }
+          ],
+          "actual": [],
+          "transcript": "불 좀 타줄래?"
+        },
+        {
+          "command": "주방 전기포트 꺼져 있어?",
+          "expected": [
+            {
+              "name": "get_device_state",
+              "args": {
+                "area": "kitchen",
+                "device": "kettle_plug"
+              }
+            }
+          ],
+          "actual": [
+            {
+              "name": "control_device",
+              "args": {
+                "area": "kitchen",
+                "device": "kettle_plug",
+                "action": "off"
+              }
+            }
+          ],
+          "transcript": "후방 전기 포트 꺼져 있어."
+        },
+        {
+          "command": "불 좀 켜줄래",
+          "expected": [
+            {
+              "name": "control_device",
+              "args": {
+                "area": "living",
+                "device": "light",
+                "action": "on"
+              }
+            }
+          ],
+          "actual": [],
+          "transcript": "불 좀 타줄래?"
+        },
+        {
+          "command": "주방 전기포트 꺼져 있어?",
+          "expected": [
+            {
+              "name": "get_device_state",
+              "args": {
+                "area": "kitchen",
+                "device": "kettle_plug"
+              }
+            }
+          ],
+          "actual": [
+            {
+              "name": "control_device",
+              "args": {
+                "area": "kitchen",
+                "device": "kettle_plug",
+                "action": "off"
+              }
+            }
+          ],
+          "transcript": "후방 전기 포트 꺼져 있어."
+        },
+        {
+          "command": "스탠드 켜져 있니?",
+          "expected": [
+            {
+              "name": "get_device_state",
+              "args": {
+                "area": "living",
+                "device": "stand"
+              }
+            }
+          ],
+          "actual": [],
+          "transcript": "스탠드 찾아있니?"
+        }
+      ],
+      "stt_model": "gpt-4o-mini-transcribe",
+      "stt_prompt_used": false,
+      "stt_p50_s": 0.6598449169978267,
+      "stt_p95_s": 1.1180073750001611,
+      "llm_first_token_p50_s": 0.6269773340027314,
+      "transcript_exact_rate_raw": 0.78,
+      "transcript_exact_rate": 0.84,
+      "misrecognition_rate": 0.16,
+      "transcription_mismatches": [
+        {
+          "command": "침실 가습기 켜줘",
+          "transcript": "침실을 가습기 켜줘.",
+          "tool_correct": true
+        },
+        {
+          "command": "불 좀 켜줄래",
+          "transcript": "불 좀 타줄래?",
+          "tool_correct": false
+        },
+        {
+          "command": "침실 가습기 좀 틀어줘",
+          "transcript": "주실 가습기 좀 틀어줘.",
+          "tool_correct": true
+        },
+        {
+          "command": "침실 가습기 켜져 있어?",
+          "transcript": "주무실 가습기 켜져 있어?",
+          "tool_correct": true
+        },
+        {
+          "command": "스탠드 켜져 있니?",
+          "transcript": "스탠드 찾아있니?",
+          "tool_correct": true
+        },
+        {
+          "command": "내일 새벽 5시 45분에 깨워줘",
+          "transcript": "내일 새벽 다섯시 사십오분에 깨워줘.",
+          "tool_correct": true
+        },
+        {
+          "command": "침실 가습기 꺼줘",
+          "transcript": "주실 가습기 꺼줘.",
+          "tool_correct": true
+        },
+        {
+          "command": "스탠드 좀 꺼줄래",
+          "transcript": "캔들 좀 꺼줄래?",
+          "tool_correct": false
+        },
+        {
+          "command": "주방 포트 켜",
+          "transcript": "수방포트 켜.",
+          "tool_correct": true
+        },
+        {
+          "command": "거실 조명 켜져 있어?",
+          "transcript": "가시 조명 켜져 있어?",
+          "tool_correct": true
+        },
+        {
+          "command": "주방 전기포트 꺼져 있어?",
+          "transcript": "후방 전기 포트 꺼져 있어.",
+          "tool_correct": false
+        }
+      ]
+    },
+    "a_mini_prompt": {
+      "samples": 150,
+      "failures": 0,
+      "failure_examples": [],
+      "first_audio_p50_s": 2.913393000009819,
+      "first_audio_p95_s": 3.724813583001378,
+      "done_p50_s": 4.010207291008555,
+      "accuracy_all": 0.9467,
+      "accuracy_tool_commands": 0.9407,
+      "accuracy_chitchat_no_tool": 1.0,
+      "accuracy_by_category": {
+        "alarm": 1.0,
+        "brightness": 1.0,
+        "chat": 1.0,
+        "colloquial": 0.8667,
+        "explicit": 1.0,
+        "implicit": 0.9048,
+        "multi": 1.0,
+        "state": 0.8,
+        "timer": 0.8889
+      },
+      "cost_per_command_usd": 0.00141,
+      "wrong_examples": [
+        {
+          "command": "침실 가습기 좀 틀어줘",
+          "expected": [
+            {
+              "name": "control_device",
+              "args": {
+                "area": "bedroom",
+                "device": "humidifier",
+                "action": "on"
+              }
+            }
+          ],
+          "actual": [
+            {
+              "name": "control_device",
+              "args": {
+                "area": "living",
+                "device": "humidifier",
+                "action": "on"
+              }
+            }
+          ],
+          "transcript": "거실 가습기 좀 틀어줘."
+        },
+        {
+          "command": "라면 끓이게 3분 타이머 맞춰줘",
+          "expected": [
+            {
+              "name": "set_timer",
+              "args": {
+                "minutes": 3
+              }
+            }
+          ],
+          "actual": [
+            {
+              "name": "control_device",
+              "args": {
+                "area": "kitchen",
+                "device": "kettle_plug",
+                "action": "on"
+              }
+            },
+            {
+              "name": "set_timer",
+              "args": {
+                "minutes": 3,
+                "label": "라면"
+              }
+            }
+          ],
+          "transcript": "라면 끓이게, 3분 타이머 맞춰줘."
+        },
+        {
+          "command": "불 좀 켜줄래",
+          "expected": [
+            {
+              "name": "control_device",
+              "args": {
+                "area": "living",
+                "device": "light",
+                "action": "on"
+              }
+            }
+          ],
+          "actual": [],
+          "transcript": "불 좀 타줄래?"
+        },
+        {
+          "command": "침실 가습기 좀 틀어줘",
+          "expected": [
+            {
+              "name": "control_device",
+              "args": {
+                "area": "bedroom",
+                "device": "humidifier",
+                "action": "on"
+              }
+            }
+          ],
+          "actual": [
+            {
+              "name": "control_device",
+              "args": {
+                "area": "kitchen",
+                "device": "humidifier",
+                "action": "on"
+              }
+            }
+          ],
+          "transcript": "주방 가습기 좀 틀어줘."
+        },
+        {
+          "command": "침실 가습기 켜져 있어?",
+          "expected": [
+            {
+              "name": "get_device_state",
+              "args": {
+                "area": "bedroom",
+                "device": "humidifier"
+              }
+            }
+          ],
+          "actual": [
+            {
+              "name": "get_device_state",
+              "args": {
+                "area": "kitchen",
+                "device": "humidifier"
+              }
+            }
+          ],
+          "transcript": "주방 가습기 켜져 있어?"
+        },
+        {
+          "command": "주방 전기포트 꺼져 있어?",
+          "expected": [
+            {
+              "name": "get_device_state",
+              "args": {
+                "area": "kitchen",
+                "device": "kettle_plug"
+              }
+            }
+          ],
+          "actual": [],
+          "transcript": "주방 전기포트 꺼져 있어."
+        },
+        {
+          "command": "불 좀 켜줄래",
+          "expected": [
+            {
+              "name": "control_device",
+              "args": {
+                "area": "living",
+                "device": "light",
+                "action": "on"
+              }
+            }
+          ],
+          "actual": [],
+          "transcript": "불 좀 타줄래?"
+        },
+        {
+          "command": "주방 전기포트 꺼져 있어?",
+          "expected": [
+            {
+              "name": "get_device_state",
+              "args": {
+                "area": "kitchen",
+                "device": "kettle_plug"
+              }
+            }
+          ],
+          "actual": [],
+          "transcript": "주방 전기포트 꺼져 있어."
+        }
+      ],
+      "stt_model": "gpt-4o-mini-transcribe",
+      "stt_prompt_used": true,
+      "stt_p50_s": 0.6636634999886155,
+      "stt_p95_s": 1.0401187090028543,
+      "llm_first_token_p50_s": 0.6226580829970771,
+      "transcript_exact_rate_raw": 0.8333,
+      "transcript_exact_rate": 0.8933,
+      "misrecognition_rate": 0.1067,
+      "transcription_mismatches": [
+        {
+          "command": "침실 불 켜줘",
+          "transcript": "침실 불을 켜줘.",
+          "tool_correct": true
+        },
+        {
+          "command": "불 좀 켜줄래",
+          "transcript": "불 좀 타줄래?",
+          "tool_correct": true
+        },
+        {
+          "command": "침실 가습기 좀 틀어줘",
+          "transcript": "거실 가습기 좀 틀어줘.",
+          "tool_correct": false
+        },
+        {
+          "command": "침실 가습기 켜져 있어?",
+          "transcript": "주실 가습기 켜져 있어?",
+          "tool_correct": true
+        },
+        {
+          "command": "스탠드 켜져 있니?",
+          "transcript": "스탠드 찾아있니?",
+          "tool_correct": true
+        },
+        {
+          "command": "내일 새벽 5시 45분에 깨워줘",
+          "transcript": "내일 새벽 다섯시 사십오 분에 깨워줘.",
+          "tool_correct": true
+        },
+        {
+          "command": "거실 조명 켜져 있어?",
+          "transcript": "가시 조명 켜져 있어?",
+          "tool_correct": true
+        },
+        {
+          "command": "심심한데 재미있는 이야기 하나 해줘",
+          "transcript": "심심한데 재밌는 이야기 하나 해줘.",
+          "tool_correct": true
+        }
+      ]
+    },
+    "a_prompt": {
+      "samples": 150,
+      "failures": 0,
+      "failure_examples": [],
+      "first_audio_p50_s": 2.8375037079968024,
+      "first_audio_p95_s": 3.3541350830055308,
+      "done_p50_s": 3.856537750005373,
+      "accuracy_all": 0.9733,
+      "accuracy_tool_commands": 0.9704,
+      "accuracy_chitchat_no_tool": 1.0,
+      "accuracy_by_category": {
+        "alarm": 1.0,
+        "brightness": 1.0,
+        "chat": 1.0,
+        "colloquial": 1.0,
+        "explicit": 1.0,
+        "implicit": 0.8571,
+        "multi": 1.0,
+        "state": 0.9333,
+        "timer": 1.0
+      },
+      "cost_per_command_usd": 0.00157,
+      "wrong_examples": [
+        {
+          "command": "불 좀 켜줄래",
+          "expected": [
+            {
+              "name": "control_device",
+              "args": {
+                "area": "living",
+                "device": "light",
+                "action": "on"
+              }
+            }
+          ],
+          "actual": [],
+          "transcript": "불 좀 타줄래?"
+        },
+        {
+          "command": "불 좀 켜줄래",
+          "expected": [
+            {
+              "name": "control_device",
+              "args": {
+                "area": "living",
+                "device": "light",
+                "action": "on"
+              }
+            }
+          ],
+          "actual": [],
+          "transcript": "불 좀 타줄래?"
+        },
+        {
+          "command": "불 좀 켜줄래",
+          "expected": [
+            {
+              "name": "control_device",
+              "args": {
+                "area": "living",
+                "device": "light",
+                "action": "on"
+              }
+            }
+          ],
+          "actual": [],
+          "transcript": "불 좀 타줄래?"
+        },
+        {
+          "command": "주방 전기포트 꺼져 있어?",
+          "expected": [
+            {
+              "name": "get_device_state",
+              "args": {
+                "area": "kitchen",
+                "device": "kettle_plug"
+              }
+            }
+          ],
+          "actual": [
+            {
+              "name": "control_device",
+              "args": {
+                "area": "kitchen",
+                "device": "kettle_plug",
+                "action": "off"
+              }
+            }
+          ],
+          "transcript": "주방 전기포트 꺼져 있어."
+        }
+      ],
+      "stt_model": "gpt-4o-transcribe",
+      "stt_prompt_used": true,
+      "stt_p50_s": 0.6230667920026463,
+      "stt_p95_s": 0.8046365420013899,
+      "llm_first_token_p50_s": 0.620663624998997,
+      "transcript_exact_rate_raw": 0.92,
+      "transcript_exact_rate": 0.94,
+      "misrecognition_rate": 0.06,
+      "transcription_mismatches": [
+        {
+          "command": "불 좀 켜줄래",
+          "transcript": "불 좀 타줄래?",
+          "tool_correct": false
+        },
+        {
+          "command": "침실 가습기 좀 틀어줘",
+          "transcript": "휴실 가습기 좀 틀어줘.",
+          "tool_correct": true
+        },
+        {
+          "command": "아침 7시에 알람 맞춰줘",
+          "transcript": "아침 일곱시에 알람 맞춰줘.",
+          "tool_correct": true
+        },
+        {
+          "command": "저녁 8시에 알람 맞춰줘",
+          "transcript": "저녁 여덟 시에 알람 맞춰줘.",
+          "tool_correct": true
+        }
+      ]
+    }
+  }
+}
