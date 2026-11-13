@@ -1,4 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Cozy Hub</string>
+
+    <string name="ambient_date_pattern">EEEE, MMMM d</string>
+    <string name="ambient_time_description">Current time %1$s</string>
 </resources>

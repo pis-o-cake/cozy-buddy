@@ -1,4 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">코지 허브</string>
+
+    <!-- java.time.DateTimeFormatter 패턴. 로캘별로 순서와 조사가 다르다. -->
+    <string name="ambient_date_pattern">M월 d일 EEEE</string>
+    <string name="ambient_time_description">현재 시각 %1$s</string>
 </resources>
