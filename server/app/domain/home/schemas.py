@@ -36,6 +36,7 @@ class HomeArea(BaseModel):
 
     area_id: str
     name: str
+    aliases: tuple[str, ...] = ()
 
 
 class HomeEntity(BaseModel):
@@ -50,6 +51,7 @@ class HomeEntity(BaseModel):
     state: str
     attributes: dict[str, str] = Field(default_factory=dict)
     changed_epoch_ms: int = 0
+    aliases: tuple[str, ...] = ()
 
 
 class HomeCatalog(BaseModel):
