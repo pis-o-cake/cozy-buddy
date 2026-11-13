@@ -6,7 +6,7 @@ from cozy.v1.common_pb2 import (
 )
 from cozy.v1.envelope_pb2 import Envelope
 from cozy.v1.session_pb2 import CLIENT_KIND_HUB, CLIENT_KIND_MOBILE, Ping
-from cozy.v1.voice_pb2 import UtteranceCancel
+from cozy.v1.voice_pb2 import ResponseAudioEnd
 from fastapi.testclient import TestClient
 from starlette.websockets import WebSocketDisconnect
 
@@ -116,7 +116,7 @@ def test_text_frame_is_rejected(client: TestClient) -> None:
 
 def test_unsupported_body_returns_bad_request_and_stays_open(client: TestClient) -> None:
     with connect_hub(client) as ws:
-        send(ws, Envelope(utterance_cancel=UtteranceCancel()))
+        send(ws, Envelope(response_audio_end=ResponseAudioEnd()))
         assert recv(ws).error.code == ERROR_CODE_BAD_REQUEST
         ws.send_bytes(b"\xff\xff\xff")
         assert recv(ws).error.code == ERROR_CODE_BAD_REQUEST

@@ -9,6 +9,7 @@ from app.core.connections import ConnectionManager, get_connections
 from app.core.database import Database, get_database
 from app.domain.gateway.service import GatewayService
 from app.domain.home.service import HomeService
+from app.domain.voice.service import VoiceService
 
 root_router = APIRouter()
 
@@ -25,14 +26,21 @@ def get_home_service(websocket: WebSocket) -> HomeService:
     return home
 
 
+def get_voice_service(websocket: WebSocket) -> VoiceService:
+    """VoiceService 의존성."""
+    voice: VoiceService = websocket.app.state.voice
+    return voice
+
+
 def get_gateway_service(
     settings: Annotated[Settings, Depends(get_settings)],
     database: Annotated[Database, Depends(get_database)],
     connections: Annotated[ConnectionManager, Depends(get_connections)],
     home: Annotated[HomeService, Depends(get_home_service)],
+    voice: Annotated[VoiceService, Depends(get_voice_service)],
 ) -> GatewayService:
     """GatewayService 의존성."""
-    return GatewayService(settings, database, connections, home)
+    return GatewayService(settings, database, connections, home, voice)
 
 
 @root_router.get("/health")

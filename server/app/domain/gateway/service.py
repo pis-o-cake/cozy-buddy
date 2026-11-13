@@ -29,6 +29,7 @@ from app.core.version import get_server_version
 from app.domain.alarm.service import AlarmService
 from app.domain.home.service import HomeService
 from app.domain.hub.service import HubService
+from app.domain.voice.service import VoiceService
 
 CLOSE_POLICY_VIOLATION = 1008
 CANCEL_GRACE_SECONDS = 5.0
@@ -37,6 +38,10 @@ KEY_UNAUTHENTICATED = "error.unauthenticated"
 KEY_VERSION = "error.protocol_version_unsupported"
 KEY_BAD_REQUEST = "error.bad_request"
 KEY_INTERNAL = "error.internal"
+
+_HUB_VOICE_BODIES = frozenset(
+    {"utterance_start", "audio_chunk", "utterance_end", "utterance_cancel"}
+)
 
 
 class _TextFrameError(Exception):
@@ -52,11 +57,13 @@ class GatewayService:
         database: Database,
         connections: ConnectionManager,
         home: HomeService,
+        voice: VoiceService,
     ) -> None:
         self._settings = settings
         self._database = database
         self._connections = connections
         self._home = home
+        self._voice = voice
 
     async def serve(self, websocket: WebSocket) -> None:
         """연결을 받아 hello 검증 후 메시지 루프를 돌린다.
@@ -209,6 +216,12 @@ class GatewayService:
             return
 
         is_hub = conn.role == ClientRole.HUB
+        if body in _HUB_VOICE_BODIES and is_hub:
+            await self._voice.session_for(conn).handle(envelope)
+            return
+        if body == "text_query":
+            await self._voice.session_for(conn).handle_text_query(envelope.text_query)
+            return
         if is_hub and body in ("alarm_snapshot", "alarm_ack"):
             async with self._database.session() as session:
                 service = self._alarms(session)
@@ -235,6 +248,7 @@ class GatewayService:
         if conn.role is None:
             return
         self._connections.unregister(conn)
+        await self._voice.close(conn)
         logger.info("Client disconnected: {} {}", conn.role, conn.client_id)
         if conn.role != ClientRole.HUB:
             return
@@ -268,4 +282,6 @@ def _request_id(envelope: Envelope) -> str:
         return str(envelope.alarm_delete.request_id)
     if body == "entity_command":
         return str(envelope.entity_command.request_id)
+    if body == "text_query":
+        return str(envelope.text_query.request_id)
     return ""
