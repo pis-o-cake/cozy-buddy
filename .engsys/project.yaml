@@ -59,7 +59,6 @@ documentation:
         type: 'ui-guideline'
     exempt:
       - '.claude'
-      - 'docs/legacy'
       - 'docs/diagrams'
   review:
     scopes:

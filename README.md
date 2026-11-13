@@ -36,11 +36,15 @@ status: active
 | `docs/plan/` | work-plan | 무엇을 언제까지 하며 무엇이 막고 있는가 |
 | `docs/ui/` | ui-guideline | 허브·앱 UI를 어떤 규칙으로 구현하는가 |
 | `docs/diagrams/` | 검사 제외 | 설계안의 구조를 그린 그림 (`architecture.html`을 브라우저로 연다) |
-| `docs/legacy/` | 검사 제외 | 이전 시도(2025~2026-07)의 원문 사본 |
 
 ## 이전 시도
 
-2025-10부터 2026-07까지 진행한 이전 구현의 설계서와 리서치 원문은 `docs/legacy/`에 그대로 보존한다.
+2025-10부터 2026-07까지 진행한 이전 구현의 원문은 옛 레포의 고정 revision에서 본다.
+
+- 설계서·기능 명세·리서치: [cozy-buddy-server `docs/`](https://github.com/pis-o-cake/cozy-buddy-server/blob/6f8fbe6fbdc7d00c33e03d11dc9cec4eafe6d6ac/docs) (revision `6f8fbe6`). v2 설계서는 `docs/archive/`에 있다.
+- 허브 Compose UI: [cozy-buddy-hub `app/`](https://github.com/pis-o-cake/cozy-buddy-hub/tree/e8505c84115a1b8ebc2d41317b7655800fcb21d7/app) (revision `e8505c8`)
+- 1차 서버 구현: [cozy-buddy-server](https://github.com/pis-o-cake/cozy-buddy-server/tree/5f2aabcb0cd800cf12f52ca815b5648315e1d2ed) (revision `5f2aabc`)
+
 재설계는 이 원문을 그대로 계승하지 않고, `docs/review/`의 검토 결과를 거쳐 다시 결정한다.
 허브 UI 방향(앰비언트 시계 화면)은 유지 대상이다.
 
