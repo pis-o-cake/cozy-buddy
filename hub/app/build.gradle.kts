@@ -34,6 +34,11 @@ android {
         buildConfig = true
     }
 
+    sourceSets {
+        // Robolectric 의 MigrationTestHelper 는 앱 에셋에서 스키마 JSON 을 읽는다. 릴리스 APK 에는 넣지 않는다.
+        getByName("debug").assets.srcDir("$projectDir/schemas")
+    }
+
     testOptions {
         // 라이브 서버 통합 테스트(@Tag("integration"))는 -Pintegration 일 때만 돌고, 기본 검사에서는 제외된다.
         val integration = project.hasProperty("integration")
@@ -111,6 +116,7 @@ dependencies {
     testImplementation(libs.junit4)
     testImplementation(libs.robolectric)
     testImplementation(libs.androidx.test.core)
+    testImplementation(libs.androidx.room.testing)
     testRuntimeOnly(libs.junit.vintage.engine)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.okhttp.mockwebserver)
