@@ -123,4 +123,10 @@ dependencies {
     testRuntimeOnly(libs.junit.vintage.engine)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.okhttp.mockwebserver)
+    // 호출어 파이프라인을 실제 모델로 JVM 에서 검증한다. 안드로이드용 AAR 과 클래스가 겹치므로 아래에서 테스트 클래스패스에서만 뺀다.
+    testImplementation(libs.onnxruntime.jvm)
+}
+
+configurations.matching { it.name.contains("UnitTest") }.configureEach {
+    exclude(group = "com.microsoft.onnxruntime", module = "onnxruntime-android")
 }
