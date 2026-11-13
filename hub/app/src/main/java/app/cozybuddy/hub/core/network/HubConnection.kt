@@ -10,6 +10,7 @@ import app.cozybuddy.protocol.v1.ping
 import app.cozybuddy.protocol.v1.pong
 import com.google.protobuf.InvalidProtocolBufferException
 import java.util.concurrent.atomic.AtomicLong
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
@@ -27,6 +28,7 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
@@ -41,6 +43,8 @@ data class HubConnectionConfig(
     val pingIntervalMs: Long = 25_000L,
     /** 응답 없는 Ping 이 이만큼 쌓이면 연결이 죽은 것으로 본다. */
     val maxMissedPongs: Int = 2,
+    /** 소켓을 연 뒤 ServerHello 를 기다리는 한도. */
+    val handshakeTimeoutMs: Long = 10_000L,
     val protocolVersion: Int = 1,
 )
 
@@ -79,6 +83,7 @@ class HubConnection(
         data object Opened : SocketEvent
         data class Frame(val bytes: ByteString) : SocketEvent
         data object Tick : SocketEvent
+        data object HandshakeTimeout : SocketEvent
         data class Ended(val reason: String) : SocketEvent
     }
 
@@ -134,13 +139,23 @@ class HubConnection(
         var reachedHello = false
         try {
             return coroutineScope {
+                val helloSignal = CompletableDeferred<Unit>()
                 val ticker = launch {
+                    // Ping 은 ServerHello 이후에만 시작한다. 느린 첫 핸드셰이크가 죽은 연결로 오판되지 않게 별도 한도를 둔다.
+                    val greeted = withTimeoutOrNull(config.handshakeTimeoutMs) { helloSignal.await() }
+                    if (greeted == null) {
+                        events.trySend(SocketEvent.HandshakeTimeout)
+                        return@launch
+                    }
                     while (true) {
                         delay(config.pingIntervalMs)
                         events.trySend(SocketEvent.Tick)
                     }
                 }
-                val end = processEvents(cfg, session, events) { reachedHello = true }
+                val end = processEvents(cfg, session, events) {
+                    reachedHello = true
+                    helloSignal.complete(Unit)
+                }
                 ticker.cancel()
                 end to reachedHello
             }
@@ -163,13 +178,16 @@ class HubConnection(
         onHello: () -> Unit,
     ): SessionEnd {
         var outstandingPings = 0
-        var helloAccepted = false
         for (event in events) {
             when (event) {
                 SocketEvent.Opened -> sendHello(session, cfg)
+                SocketEvent.HandshakeTimeout -> {
+                    Timber.w("No ServerHello within %d ms", config.handshakeTimeoutMs)
+                    return SessionEnd.LOST
+                }
                 SocketEvent.Tick -> {
-                    if (!helloAccepted || outstandingPings >= config.maxMissedPongs) {
-                        Timber.w("Connection considered dead (hello=%b, missedPongs=%d)", helloAccepted, outstandingPings)
+                    if (outstandingPings >= config.maxMissedPongs) {
+                        Timber.w("Connection considered dead (missedPongs=%d)", outstandingPings)
                         return SessionEnd.LOST
                     }
                     outstandingPings++
@@ -188,7 +206,6 @@ class HubConnection(
                             envelope { pong = pong { pingSentEpochMs = message.ping.sentEpochMs } },
                         )
                         Envelope.BodyCase.SERVER_HELLO -> {
-                            helloAccepted = true
                             onHello()
                             val hub = message.serverHello.hubConfig
                             synchronized(sendLock) {
