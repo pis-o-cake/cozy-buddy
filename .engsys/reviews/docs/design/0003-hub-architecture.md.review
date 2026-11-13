@@ -1,0 +1,14 @@
+engsys-document-review: 1
+document: docs/design/0003-hub-architecture.md
+blob: b32239fcf74ec23c5a10d6114e95e71a93dfe704
+decision: pass
+reviewer: claude-opus-5-5
+audience: 허브 앱 구현 담당자
+purpose: 이 구조로 태블릿 허브 앱을 만들어도 되는가
+
+- Android 17 백그라운드 오디오 제한(developer.android.com 원문 확인)을 상시 구동 절의 기동 순서와 알람 재생 방식(USAGE_ALARM + exact alarm)에 반영
+- 앱 구조·기동 순서·오디오 파이프라인·상태 머신·알람 흐름 5개 다이어그램 렌더링 확인
+- 알람 중 '알람 꺼줘'를 받기 위해 웨이크를 끄지 않는다는 규칙을 상태 머신(ALARMING→LISTENING)과 일치시킴 (검토 M11)
+- 유지 대상 UI(플립 시계, 다크 기본, 하단 날짜 줄)를 이전 목업 경로와 함께 기록
+- 한계: 웨이크워드·AEC·Device Owner·기종은 S1·S5·S6 결과 전까지 미정
+

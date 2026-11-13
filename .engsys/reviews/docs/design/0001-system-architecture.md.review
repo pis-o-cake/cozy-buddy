@@ -1,0 +1,14 @@
+engsys-document-review: 1
+document: docs/design/0001-system-architecture.md
+blob: 1ceddd50c3059cb6ccfca86969070c756331d01d
+decision: pass
+reviewer: claude-opus-5-5
+audience: 설계 검토자와 구현 담당자
+purpose: 이 구성과 경계로 전체 시스템을 만들어도 되는가
+
+- 제안 요약에 첫 완료 기준(태블릿 1대 음성 제어 루프 + 오프라인 알람)과 이전 P1~P6을 대체하는 원칙 6개를 검토 ID와 연결
+- 시스템 구성도와 음성·터치·알람 흐름도 4개를 mermaid-cli 11.4.2로 렌더링해 오류 없음 확인, 점선=스파이크 의존 연결로 범례 명시
+- 장애 시 동작 표와 계약 표가 0002~0004의 실패 정책·통신 절과 모순 없는지 대조
+- 미결 결정 표에서 각 결정을 근거 스파이크와 기본 가설로 연결, 확정처럼 읽히는 문장 없음
+- 한계: 상시 서버 배치(Docker Compose 대 HA OS 앱)는 비교 대상으로만 남김
+

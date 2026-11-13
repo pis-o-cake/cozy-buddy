@@ -1,0 +1,14 @@
+engsys-document-review: 1
+document: docs/design/0002-server-architecture.md
+blob: 4e1dc980d0a470432fda410ea620baa5e6c87e1b
+decision: pass
+reviewer: claude-opus-5-5
+audience: 서버 구현 담당자
+purpose: 이 책임과 구조로 서버를 만들어도 되는가
+
+- 서버 책임 5가지와 만들지 않는 도메인(device, scenario, rag, 롤링 요약)을 검토 C4·M6 근거와 함께 명시
+- 구성도·대화 처리 흐름·ERD 3개 렌더링 확인, 도메인 표와 코드 구조 트리의 도메인 이름 일치 확인
+- HA 결합 지점을 MCP와 WebSocket API 두 곳으로 제한한다는 문장이 0001 계약 표와 일치
+- 배포 절에 워커 1개 제약의 이유(메모리상 연결·구독) 명시, 전역 규약(Gunicorn+Uvicorn, Nginx, .env)과 정합
+- 한계: STT/TTS/LLM 공급자와 인증 방식은 미결 사항으로 남김
+
