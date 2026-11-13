@@ -117,7 +117,7 @@ def test_many_device_response_uses_domain_noun() -> None:
 
 
 def test_no_match_has_no_response() -> None:
-    result = match(UtteranceContext("오늘 날씨 어때", LIVING, NOW), HOME)
+    result = match(UtteranceContext("농담 하나 해줘", LIVING, NOW), HOME)
     assert build_response(result, HOME, NOW, translate) is None
 
 

@@ -28,6 +28,7 @@ from app.domain.agent.model import (
 )
 from app.domain.agent.normalize import NormalizedText, normalize
 from app.domain.agent.schedule import match_alarm, match_cancel, match_timer
+from app.domain.agent.weather_intent import match_weather
 
 __all__ = ["match"]
 
@@ -68,6 +69,8 @@ def match(context: UtteranceContext, home: HomeModel) -> MatchResult:
     if scheduled is not None:
         return scheduled
     result = _match_home(norm, context, home)
+    if isinstance(result, NoMatch):
+        result = match_weather(norm, context.text) or result
     logger.debug("Matched utterance to {}", type(result).__name__)
     return result
 

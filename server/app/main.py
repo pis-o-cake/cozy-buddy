@@ -19,6 +19,8 @@ from app.core.version import get_server_version
 from app.domain.agent.service import AgentService
 from app.domain.home.service import HomeService
 from app.domain.voice.service import VoiceService
+from app.domain.weather.client import OpenMeteoClient
+from app.domain.weather.service import WeatherService
 from app.middleware.request_log import RequestLogMiddleware
 
 
@@ -40,6 +42,7 @@ def create_app(
     settings: Settings | None = None,
     openai: OpenAIGateway | None = None,
     clock: Callable[[], datetime] | None = None,
+    weather_client: OpenMeteoClient | None = None,
 ) -> FastAPI:
     """앱을 만든다.
 
@@ -47,6 +50,7 @@ def create_app(
         settings: 주입할 설정. 없으면 환경변수와 .env 에서 읽는다.
         openai: 주입할 OpenAI 관문(테스트용 가짜). 없으면 설정에 키가 있을 때 만든다.
         clock: 주입할 현재 시각 함수(테스트용). 없으면 설정의 시간대로 시스템 시각을 쓴다.
+        weather_client: 주입할 날씨 클라이언트(테스트용). 없으면 설정의 집 좌표로 만든다.
 
     Returns:
         구성이 끝난 FastAPI 앱.
@@ -59,9 +63,11 @@ def create_app(
         app.state.db = Database(settings.database_url)
         logger.info("Server started: version={}", get_server_version())
         await app.state.home.start()
+        await app.state.weather.start()
         try:
             yield
         finally:
+            await app.state.weather.stop()
             await app.state.home.stop()
             if gateway is not None:
                 await gateway.aclose()
@@ -74,6 +80,7 @@ def create_app(
     # WARNING: 연결 레지스트리는 프로세스 메모리에 있으므로 워커는 1개만 쓴다.
     app.state.connections = ConnectionManager()
     app.state.home = HomeService(settings, app.state.connections)
+    app.state.weather = WeatherService(settings, app.state.connections, weather_client)
     gateway = openai or (OpenAIGateway(settings) if settings.voice_enabled else None)
     if gateway is None:
         logger.info("Voice pipeline disabled: OPENAI_API_KEY not set")
@@ -90,6 +97,7 @@ def create_app(
         get_db,
         gateway,
         clock,
+        app.state.weather,
     )
     app.state.voice = VoiceService(
         settings, app.state.translator, app.state.agent, gateway, app.state.connections, get_db

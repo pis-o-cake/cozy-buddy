@@ -30,6 +30,7 @@ from app.domain.alarm.service import AlarmService
 from app.domain.home.service import HomeService
 from app.domain.hub.service import HubService
 from app.domain.voice.service import VoiceService
+from app.domain.weather.service import WeatherService
 
 CLOSE_POLICY_VIOLATION = 1008
 CANCEL_GRACE_SECONDS = 5.0
@@ -58,12 +59,14 @@ class GatewayService:
         connections: ConnectionManager,
         home: HomeService,
         voice: VoiceService,
+        weather: WeatherService,
     ) -> None:
         self._settings = settings
         self._database = database
         self._connections = connections
         self._home = home
         self._voice = voice
+        self._weather = weather
 
     async def serve(self, websocket: WebSocket) -> None:
         """연결을 받아 hello 검증 후 메시지 루프를 돌린다.
@@ -170,6 +173,9 @@ class GatewayService:
         await self._connections.register(conn)
         logger.info("Client connected: {} {}", conn.role, conn.client_id)
         await conn.send(Envelope(home_snapshot=self._home.snapshot()))
+        weather = self._weather.snapshot()
+        if weather is not None:
+            await conn.send(Envelope(weather_snapshot=weather))
         if not is_hub:
             return
         async with self._database.session() as session:

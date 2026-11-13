@@ -10,6 +10,7 @@ from app.core.database import Database, get_database
 from app.domain.gateway.service import GatewayService
 from app.domain.home.service import HomeService
 from app.domain.voice.service import VoiceService
+from app.domain.weather.service import WeatherService
 
 root_router = APIRouter()
 
@@ -26,6 +27,12 @@ def get_home_service(websocket: WebSocket) -> HomeService:
     return home
 
 
+def get_weather_service(websocket: WebSocket) -> WeatherService:
+    """WeatherService 의존성."""
+    weather: WeatherService = websocket.app.state.weather
+    return weather
+
+
 def get_voice_service(websocket: WebSocket) -> VoiceService:
     """VoiceService 의존성."""
     voice: VoiceService = websocket.app.state.voice
@@ -38,9 +45,10 @@ def get_gateway_service(
     connections: Annotated[ConnectionManager, Depends(get_connections)],
     home: Annotated[HomeService, Depends(get_home_service)],
     voice: Annotated[VoiceService, Depends(get_voice_service)],
+    weather: Annotated[WeatherService, Depends(get_weather_service)],
 ) -> GatewayService:
     """GatewayService 의존성."""
-    return GatewayService(settings, database, connections, home, voice)
+    return GatewayService(settings, database, connections, home, voice, weather)
 
 
 @root_router.get("/health")
