@@ -44,6 +44,8 @@ class AlarmCoordinatorTest {
             items.value = items.value.filterNot { it.id == id }
             return existed
         }
+
+        override suspend fun currentRevision(): Long = revision
     }
 
     private val repository = FakeRepository()

@@ -13,4 +13,7 @@ interface AlarmRepository {
 
     /** 삭제도 허브 revision 을 올린다. 없는 id 면 false 이고 revision 은 그대로다. */
     suspend fun delete(id: String): Boolean
+
+    /** 허브가 마지막으로 부여한 revision. 삭제 확인(ack)처럼 행이 남지 않는 변경의 버전으로 쓴다. */
+    suspend fun currentRevision(): Long
 }
