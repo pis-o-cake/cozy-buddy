@@ -8,6 +8,7 @@ import app.cozybuddy.hub.domain.model.Alarm
 import app.cozybuddy.hub.domain.model.AlarmKind
 import app.cozybuddy.hub.domain.model.AlarmSchedule
 import app.cozybuddy.hub.domain.repository.AlarmRepository
+import app.cozybuddy.hub.domain.repository.SnoozeRepository
 import app.cozybuddy.hub.domain.scheduling.AlarmScheduler
 import app.cozybuddy.hub.domain.usecase.AlarmCoordinator
 import app.cozybuddy.protocol.v1.AlarmKind as AlarmKindProto
@@ -73,7 +74,7 @@ class AlarmSyncManagerTest {
     }
     private val link = FakeHubLink()
     private val repository = FakeRepository()
-    private val coordinator = AlarmCoordinator(repository, mockk<AlarmScheduler>(relaxed = true), timeSource)
+    private val coordinator = AlarmCoordinator(repository, mockk<SnoozeRepository>(relaxed = true), mockk<AlarmScheduler>(relaxed = true), timeSource)
 
     private fun TestScope.manager(): AlarmSyncManager {
         val manager = AlarmSyncManager(
