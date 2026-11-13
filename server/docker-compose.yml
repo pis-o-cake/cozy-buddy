@@ -8,11 +8,18 @@ services:
       context: .
       additional_contexts:
         protocol: ../protocol/proto
+    # 규칙: 루트 ../.env 의 COZY_HA_URL 은 맥 로컬 실행용(LAN IP)이다.
+    # Docker Desktop 에서는 컨테이너가 같은 호스트의 LAN IP 로 되돌아 나가지 못한다(hairpin 타임아웃).
+    # 컨테이너 전용 값은 git 제외 파일 server/.env 에 COZY_HA_URL=http://host.docker.internal:8124 로 둔다.
+    # env_file 은 뒤에 나열한 파일이 앞을 덮어쓰므로 .env 가 ../.env 를 이긴다.
     env_file:
       - path: ../.env
         required: false
       - path: .env
         required: false
+    # Linux 에서도 host.docker.internal 이 호스트 게이트웨이로 풀리도록 한다.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - cozy-data:/app/data
     expose:
