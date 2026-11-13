@@ -55,7 +55,12 @@ import java.time.DayOfWeek
 import timber.log.Timber
 
 @Composable
-fun AlarmListRoute(viewModel: AlarmListViewModel, onClose: () -> Unit, modifier: Modifier = Modifier) {
+fun AlarmListRoute(
+    viewModel: AlarmListViewModel,
+    onClose: () -> Unit,
+    onOpenSettings: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     LifecycleResumeEffect(Unit) {
@@ -65,6 +70,7 @@ fun AlarmListRoute(viewModel: AlarmListViewModel, onClose: () -> Unit, modifier:
     AlarmListScreen(
         state = state,
         onClose = onClose,
+        onOpenSettings = onOpenSettings,
         onToggle = viewModel::onToggle,
         onDelete = viewModel::onDelete,
         onAddAlarm = viewModel::onAddAlarm,
@@ -78,6 +84,7 @@ fun AlarmListRoute(viewModel: AlarmListViewModel, onClose: () -> Unit, modifier:
 fun AlarmListScreen(
     state: AlarmListUiState,
     onClose: () -> Unit,
+    onOpenSettings: () -> Unit,
     onToggle: (String, Boolean) -> Unit,
     onDelete: (String) -> Unit,
     onAddAlarm: (Int, Int, Set<DayOfWeek>) -> Unit,
@@ -104,6 +111,7 @@ fun AlarmListScreen(
             Spacer(Modifier.width(12.dp))
             Button(onClick = { showDialog = true }) { Text(stringResource(R.string.alarm_list_add)) }
             Spacer(Modifier.width(12.dp))
+            TextButton(onClick = onOpenSettings) { Text(stringResource(R.string.alarm_list_settings)) }
             TextButton(onClick = onClose) { Text(stringResource(R.string.alarm_list_close)) }
         }
         if (!state.exactAlarmGranted) {

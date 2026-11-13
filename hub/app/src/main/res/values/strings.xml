@@ -26,4 +26,30 @@
     <string name="alarm_dialog_repeat_hint">요일을 고르지 않으면 한 번만 울려요</string>
     <string name="alarm_exact_permission_hint">정확한 알람 권한이 꺼져 있어 알람이 울리지 않을 수 있어요</string>
     <string name="alarm_exact_permission_action">설정 열기</string>
+
+    <string name="alarm_list_settings">서버 설정</string>
+
+    <string name="connection_indicator_offline">서버 연결 끊김</string>
+    <string name="connection_indicator_auth_failed">서버 인증 실패</string>
+
+    <string name="settings_title">서버 설정</string>
+    <string name="settings_close">닫기</string>
+    <string name="settings_save">저장</string>
+    <string name="settings_url_label">서버 주소</string>
+    <string name="settings_url_hint">ws://192.168.0.10:8120/ws</string>
+    <string name="settings_client_id_label">허브 ID</string>
+    <string name="settings_token_label">토큰</string>
+    <string name="settings_status_label">연결 상태</string>
+    <string name="settings_status_disconnected">연결 안 됨</string>
+    <string name="settings_status_connecting">연결 중</string>
+    <string name="settings_status_connected">연결됨</string>
+    <string name="settings_status_connected_named">연결됨 (%1$s)</string>
+    <string name="settings_status_auth_failed">인증 실패 - 허브 ID와 토큰을 확인하세요</string>
+    <string name="settings_saved">저장했어요</string>
+    <string name="settings_error_blank">서버 주소를 입력하세요</string>
+    <string name="settings_error_malformed">서버 주소 형식이 올바르지 않아요</string>
+    <string name="settings_error_scheme">ws:// 또는 wss:// 로 시작해야 해요</string>
+    <string name="settings_error_cleartext">공인 주소에는 wss:// 를 써야 해요</string>
+    <string name="settings_error_client_id">허브 ID를 입력하세요</string>
+    <string name="settings_error_token">토큰을 입력하세요</string>
 </resources>

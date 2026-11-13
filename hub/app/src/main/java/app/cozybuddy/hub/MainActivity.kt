@@ -29,6 +29,8 @@ import app.cozybuddy.hub.feature.alarm.ui.AlarmListRoute
 import app.cozybuddy.hub.feature.alarm.ui.AlarmRingOverlayRoute
 import app.cozybuddy.hub.feature.ambient.AmbientViewModel
 import app.cozybuddy.hub.feature.ambient.ui.AmbientRoute
+import app.cozybuddy.hub.feature.settings.SettingsViewModel
+import app.cozybuddy.hub.feature.settings.ui.SettingsRoute
 import dagger.hilt.android.AndroidEntryPoint
 
 /** 허브의 유일한 Activity. HOME 앱이므로 부팅 직후 보이는 상태로 시작한다. */
@@ -38,6 +40,7 @@ class MainActivity : ComponentActivity() {
     private val ambientViewModel: AmbientViewModel by viewModels()
     private val alarmListViewModel: AlarmListViewModel by viewModels()
     private val alarmRingViewModel: AlarmRingViewModel by viewModels()
+    private val settingsViewModel: SettingsViewModel by viewModels()
 
     private val notificationPermission =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
@@ -56,13 +59,18 @@ class MainActivity : ComponentActivity() {
 
     @Composable
     private fun HubRoot() {
-        var showAlarms by rememberSaveable { mutableStateOf(false) }
-        BackHandler(enabled = showAlarms) { showAlarms = false }
+        var screen by rememberSaveable { mutableStateOf(HubScreen.AMBIENT) }
+        BackHandler(enabled = screen == HubScreen.ALARMS) { screen = HubScreen.AMBIENT }
+        BackHandler(enabled = screen == HubScreen.SETTINGS) { screen = HubScreen.ALARMS }
         Box {
-            if (showAlarms) {
-                AlarmListRoute(alarmListViewModel, onClose = { showAlarms = false })
-            } else {
-                AmbientRoute(ambientViewModel, onLongPress = { showAlarms = true })
+            when (screen) {
+                HubScreen.AMBIENT -> AmbientRoute(ambientViewModel, onLongPress = { screen = HubScreen.ALARMS })
+                HubScreen.ALARMS -> AlarmListRoute(
+                    alarmListViewModel,
+                    onClose = { screen = HubScreen.AMBIENT },
+                    onOpenSettings = { screen = HubScreen.SETTINGS },
+                )
+                HubScreen.SETTINGS -> SettingsRoute(settingsViewModel, onClose = { screen = HubScreen.ALARMS })
             }
             // 울림 오버레이는 어떤 화면 위에서도 보여야 하므로 마지막에 그린다.
             AlarmRingOverlayRoute(alarmRingViewModel, Modifier)
@@ -90,3 +98,5 @@ class MainActivity : ComponentActivity() {
         controller.hide(WindowInsetsCompat.Type.systemBars())
     }
 }
+
+private enum class HubScreen { AMBIENT, ALARMS, SETTINGS }

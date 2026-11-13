@@ -25,4 +25,30 @@
     <string name="alarm_dialog_repeat_hint">Without a weekday it rings only once</string>
     <string name="alarm_exact_permission_hint">Exact alarm permission is off, so alarms may not ring</string>
     <string name="alarm_exact_permission_action">Open settings</string>
+
+    <string name="alarm_list_settings">Server settings</string>
+
+    <string name="connection_indicator_offline">Server offline</string>
+    <string name="connection_indicator_auth_failed">Server auth failed</string>
+
+    <string name="settings_title">Server settings</string>
+    <string name="settings_close">Close</string>
+    <string name="settings_save">Save</string>
+    <string name="settings_url_label">Server URL</string>
+    <string name="settings_url_hint">ws://192.168.0.10:8120/ws</string>
+    <string name="settings_client_id_label">Hub ID</string>
+    <string name="settings_token_label">Token</string>
+    <string name="settings_status_label">Connection</string>
+    <string name="settings_status_disconnected">Not connected</string>
+    <string name="settings_status_connecting">Connecting</string>
+    <string name="settings_status_connected">Connected</string>
+    <string name="settings_status_connected_named">Connected (%1$s)</string>
+    <string name="settings_status_auth_failed">Authentication failed - check the hub ID and token</string>
+    <string name="settings_saved">Saved</string>
+    <string name="settings_error_blank">Enter the server URL</string>
+    <string name="settings_error_malformed">The server URL is not valid</string>
+    <string name="settings_error_scheme">The URL must start with ws:// or wss://</string>
+    <string name="settings_error_cleartext">Public addresses require wss://</string>
+    <string name="settings_error_client_id">Enter the hub ID</string>
+    <string name="settings_error_token">Enter the token</string>
 </resources>
