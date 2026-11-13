@@ -69,6 +69,7 @@ class ClarifyReason(StrEnum):
 
     AMBIGUOUS_TARGET = "ambiguous_target"
     BROAD_ACTION = "broad_action"
+    AMBIGUOUS_ALARM = "ambiguous_alarm"
 
 
 @dataclass(frozen=True, slots=True)
@@ -127,6 +128,8 @@ class CancelAlarmIntent:
 
     label·시각이 모두 없으면 "가장 가까운 것/하나뿐인 것"을 뜻하며, 여럿이면 실행 쪽이 되묻는다.
     hour_ambiguous 가 True 면 hour 는 말한 그대로(1~12)이고 오전/오후 둘 다 후보다.
+    duration_seconds 는 타이머를 처음 맞춘 길이로 지목할 때("5분 타이머"), day_offset 은
+    일회성 알람의 날짜(0=오늘, 1=내일, 2=모레)로 지목할 때 쓴다.
     """
 
     label: str | None = None
@@ -134,6 +137,8 @@ class CancelAlarmIntent:
     minute: int | None = None
     hour_ambiguous: bool = False
     is_timer: bool = False
+    duration_seconds: int | None = None
+    day_offset: int | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -144,6 +149,7 @@ class Clarify:
     candidate_entity_ids: tuple[str, ...] = ()
     action: DeviceAction | None = None
     params: CommandParams | None = None
+    candidate_alarm_ids: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)

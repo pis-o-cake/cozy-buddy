@@ -250,14 +250,21 @@ def _duration(rest: str) -> tuple[int, str] | None:
 def match_cancel(norm: NormalizedText, now: datetime) -> MatchResult | None:
     """알람/타이머 취소 발화를 해석한다. 취소 발화가 아니면 None."""
     clock_match, rest = _clock(norm.text)
+    duration: int | None = None
+    if clock_match is None and (found := _duration(rest)) is not None:
+        duration, rest = found
     tokens = _classify(rest)
     if not (tokens.alarm_word or tokens.timer_word) or not tokens.cancel_verb:
         return None
     ok, label = _label(tokens)
-    if not ok or tokens.rel_day is not None or tokens.recurring or tokens.weekdays or tokens.weekly:
+    if not ok or tokens.recurring or tokens.weekdays or tokens.weekly or tokens.invalid:
         return NoMatch()
     if tokens.all_word:
         return Clarify(reason=ClarifyReason.BROAD_ACTION)
+    if duration is not None:
+        return _cancel_timer_by_duration(tokens, label, duration)
+    if tokens.rel_day is not None and (clock_match is None or tokens.timer_word):
+        return NoMatch()
     if clock_match is None:
         # 시각 없이 "아침 알람 취소"처럼 시간대 단어만 있으면 라벨로 본다.
         label = label or (tokens.meridiem[0] if len(tokens.meridiem) == 1 else None)
@@ -272,7 +279,17 @@ def match_cancel(norm: NormalizedText, now: datetime) -> MatchResult | None:
         hour=candidates[0] if len(candidates) == 1 else int(clock_match.group(1)),
         minute=minute,
         hour_ambiguous=len(candidates) > 1,
+        day_offset=tokens.rel_day,
     )
+
+
+def _cancel_timer_by_duration(tokens: _Tokens, label: str | None, seconds: int) -> MatchResult:
+    """ "5분 타이머 취소"처럼 길이로 지목한 타이머 취소."""
+    if not tokens.timer_word or tokens.alarm_word or not 0 < seconds <= _MAX_TIMER_SECONDS:
+        return NoMatch()
+    if tokens.meridiem or tokens.rel_day is not None:
+        return NoMatch()
+    return CancelAlarmIntent(label=label, is_timer=True, duration_seconds=seconds)
 
 
 def match_timer(norm: NormalizedText) -> MatchResult | None:
