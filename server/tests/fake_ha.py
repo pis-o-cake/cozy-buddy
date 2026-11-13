@@ -64,6 +64,8 @@ class FakeHomeAssistant:
             "sensor.temp",
             "automation.morning",
         }
+        # 실제 HA 의 entity_registry/list 응답에는 aliases 가 없고 get_entries 에만 있다.
+        self.entity_aliases: dict[str, list[str | None]] = {}
         self.expose_supported = True
         self.service_delay = 0.0
         self.service_error: str | None = None
@@ -106,6 +108,14 @@ class FakeHomeAssistant:
     def set_exposed(self, entity_id: str, exposed: bool, *, emit: bool = True) -> None:
         """Assist 노출을 바꾼다. HA 는 등록된 엔티티의 노출 변경을 options 갱신 이벤트로 알린다."""
         self._wait(self._set_exposed(entity_id, exposed, emit))
+
+    def set_entity_aliases(self, entity_id: str, aliases: list[str | None]) -> None:
+        """엔티티 별칭을 바꾸고 entity_registry_updated 를 보낸다."""
+        self.entity_aliases[entity_id] = aliases
+        self.emit(
+            "entity_registry_updated",
+            {"action": "update", "entity_id": entity_id, "changes": {"aliases": []}},
+        )
 
     def emit(self, event_type: str, data: dict[str, Any]) -> None:
         """구독자에게 임의의 이벤트를 보낸다."""
@@ -203,12 +213,22 @@ class FakeHomeAssistant:
         elif kind == "config/entity_registry/list":
             self.registry_list_calls += 1
             await self._reply(ws, msg_id, self.entity_registry)
+        elif kind == "config/entity_registry/get_entries":
+            await self._reply(ws, msg_id, self._entries(msg["entity_ids"]))
         elif kind == "homeassistant/expose_entity/list":
             await self._expose_list(ws, msg_id)
         elif kind == "call_service":
             await self._call_service(ws, msg_id, msg)
         else:
             await self._reply(ws, msg_id, None, error=("unknown_command", kind))
+
+    def _entries(self, entity_ids: list[str]) -> dict[str, Any]:
+        known = {e["entity_id"]: e for e in self.entity_registry}
+        return {
+            entity_id: {**known[entity_id], "aliases": self.entity_aliases.get(entity_id, [])}
+            for entity_id in entity_ids
+            if entity_id in known
+        }
 
     async def _expose_list(self, ws: ServerConnection, msg_id: int) -> None:
         if not self.expose_supported:

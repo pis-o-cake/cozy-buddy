@@ -37,8 +37,42 @@ def parse_epoch_ms(value: Any) -> int:
         return 0
 
 
+def clean_aliases(raw: Any) -> tuple[str, ...]:
+    """HA 별칭 목록에서 문자열만 남겨 공백 제거·중복 제거·정렬한다.
+
+    HA 는 "엔티티 이름 사용" 자리표시자로 null 을 넣기도 한다.
+    """
+    if not isinstance(raw, list | tuple | set):
+        return ()
+    return tuple(sorted({a.strip() for a in raw if isinstance(a, str) and a.strip()}))
+
+
+def alias_candidates(entity_registry: list[dict[str, Any]], exposed: set[str] | None) -> list[str]:
+    """별칭을 따로 조회해야 하는 entity_id. 허용 도메인이고 노출된 엔티티만이다."""
+    return sorted(
+        entity_id
+        for entry in entity_registry
+        if (entity_id := str(entry.get("entity_id", ""))).partition(".")[0] in ALLOWED_DOMAINS
+        and (exposed is None or entity_id in exposed)
+    )
+
+
+def parse_entity_aliases(entries: Any) -> dict[str, tuple[str, ...]]:
+    """`config/entity_registry/get_entries` 결과에서 entity_id 별 별칭을 뽑는다."""
+    if not isinstance(entries, dict):
+        return {}
+    return {
+        entity_id: aliases
+        for entity_id, entry in entries.items()
+        if isinstance(entry, dict) and (aliases := clean_aliases(entry.get("aliases")))
+    }
+
+
 def to_entity(
-    raw_state: dict[str, Any], area_id: str = "", registry_name: str = ""
+    raw_state: dict[str, Any],
+    area_id: str = "",
+    registry_name: str = "",
+    aliases: tuple[str, ...] = (),
 ) -> HomeEntity | None:
     """HA state 객체 하나를 HomeEntity 로. 허용 도메인이 아니면 None."""
     entity_id = str(raw_state.get("entity_id", ""))
@@ -60,6 +94,7 @@ def to_entity(
         state=str(raw_state.get("state", "")),
         attributes=attributes,
         changed_epoch_ms=parse_epoch_ms(raw_state.get("last_changed")),
+        aliases=aliases,
     )
 
 
@@ -69,6 +104,7 @@ def build_catalog(
     devices: list[dict[str, Any]],
     entity_registry: list[dict[str, Any]],
     exposed: set[str] | None,
+    entity_aliases: dict[str, tuple[str, ...]] | None = None,
 ) -> HomeCatalog:
     """레지스트리 3종과 state 목록으로 캐시를 만든다.
 
@@ -79,6 +115,8 @@ def build_catalog(
         entity_registry: `config/entity_registry/list` 결과.
         exposed: Assist 노출 entity_id 집합. None 이면 노출 설정을 알 수 없으므로
             허용 도메인 전체를 쓴다.
+        entity_aliases: `parse_entity_aliases` 결과. 엔티티 레지스트리 목록 응답에는 별칭이
+            없어 따로 조회한다. 목록 항목에 별칭이 있으면 그것을 보조로 쓴다.
 
     Returns:
         area 와 브리지 대상 엔티티. 엔티티 area 는 엔티티 레지스트리 값이 우선이고,
@@ -89,7 +127,11 @@ def build_catalog(
 
     catalog = HomeCatalog(
         areas={
-            a["area_id"]: HomeArea(area_id=a["area_id"], name=a.get("name") or a["area_id"])
+            a["area_id"]: HomeArea(
+                area_id=a["area_id"],
+                name=a.get("name") or a["area_id"],
+                aliases=clean_aliases(a.get("aliases")),
+            )
             for a in areas
             if "area_id" in a
         }
@@ -100,20 +142,25 @@ def build_catalog(
             continue
         reg = registry.get(entity_id, {})
         area_id = reg.get("area_id") or device_areas.get(reg.get("device_id") or "", "")
-        entity = to_entity(raw_state, area_id, reg.get("name") or reg.get("original_name") or "")
+        aliases = (entity_aliases or {}).get(entity_id) or clean_aliases(reg.get("aliases"))
+        entity = to_entity(
+            raw_state, area_id, reg.get("name") or reg.get("original_name") or "", aliases
+        )
         if entity is not None:
             catalog.entities[entity_id] = entity
     return catalog
 
 
 def catalog_fingerprint(catalog: HomeCatalog) -> tuple[Any, ...]:
-    """클라이언트에 보이는 구조(area 목록, 엔티티 집합·이름·소속 area)의 비교용 값.
+    """클라이언트에 보이는 구조(area 목록, 엔티티 집합·이름·소속 area·별칭)의 비교용 값.
 
     상태 값은 포함하지 않는다. 상태는 state_changed 로 따로 전달되기 때문이다.
     """
-    areas = tuple(sorted((a.area_id, a.name) for a in catalog.areas.values()))
+    areas = tuple(sorted((a.area_id, a.name, a.aliases) for a in catalog.areas.values()))
     entities = tuple(
-        sorted((e.entity_id, e.area_id, e.name, e.domain) for e in catalog.entities.values())
+        sorted(
+            (e.entity_id, e.area_id, e.name, e.domain, e.aliases) for e in catalog.entities.values()
+        )
     )
     return (areas, entities)
 
@@ -135,13 +182,16 @@ def entity_to_proto(entity: HomeEntity) -> Entity:
         name=entity.name,
         domain=entity.domain,
         state=state_to_proto(entity),
+        aliases=entity.aliases,
     )
 
 
 def snapshot_to_proto(catalog: HomeCatalog) -> HomeSnapshot:
     """캐시 전체를 HomeSnapshot 으로."""
     return HomeSnapshot(
-        areas=[Area(area_id=a.area_id, name=a.name) for a in catalog.areas.values()],
+        areas=[
+            Area(area_id=a.area_id, name=a.name, aliases=a.aliases) for a in catalog.areas.values()
+        ],
         entities=[entity_to_proto(e) for e in catalog.entities.values()],
     )
 

@@ -251,6 +251,52 @@ def test_area_registry_rename_pushes_new_snapshot(
     assert {a.area_id: a.name for a in snapshot.areas}["living_room"] == "Salon"
 
 
+def test_snapshot_carries_entity_and_area_aliases(
+    ha_settings: Settings, fake_ha: FakeHomeAssistant
+) -> None:
+    fake_ha.entity_aliases = {"light.living": ["거실 조명", None, " 거실 조명 ", "Main"]}
+    fake_ha.areas[1]["aliases"] = ["안방"]
+    with running_app(ha_settings) as client:
+        eventually(lambda: home_of(client).ready)
+        snapshot = home_of(client).snapshot()
+    entities = by_id(snapshot)
+    assert list(entities["light.living"].aliases) == ["Main", "거실 조명"]  # type: ignore[attr-defined]
+    assert list(entities["light.bed"].aliases) == []  # type: ignore[attr-defined]
+    assert {a.area_id: list(a.aliases) for a in snapshot.areas} == {
+        "living_room": [],
+        "bedroom": ["안방"],
+    }
+
+
+def test_entity_alias_change_pushes_new_snapshot(
+    ha_client: TestClient, fake_ha: FakeHomeAssistant
+) -> None:
+    with connect_mobile(ha_client) as ws:
+        fake_ha.set_entity_aliases("light.living", ["거실 조명"])
+        snapshot = recv_until(ws, "home_snapshot").home_snapshot
+    assert list(by_id(snapshot)["light.living"].aliases) == ["거실 조명"]  # type: ignore[attr-defined]
+
+
+def test_area_alias_change_pushes_new_snapshot(
+    ha_client: TestClient, fake_ha: FakeHomeAssistant
+) -> None:
+    with connect_mobile(ha_client) as ws:
+        fake_ha.areas[1]["aliases"] = ["안방"]
+        fake_ha.emit("area_registry_updated", {"action": "update", "area_id": "bedroom"})
+        snapshot = recv_until(ws, "home_snapshot").home_snapshot
+    assert {a.area_id: list(a.aliases) for a in snapshot.areas}["bedroom"] == ["안방"]
+
+
+def test_state_change_keeps_aliases(ha_settings: Settings, fake_ha: FakeHomeAssistant) -> None:
+    fake_ha.entity_aliases = {"light.living": ["거실 조명"]}
+    with running_app(ha_settings) as client:
+        eventually(lambda: home_of(client).ready)
+        fake_ha.push_state("light.living", "off")
+        eventually(lambda: by_id(home_of(client).snapshot())["light.living"].state.state == "off")  # type: ignore[attr-defined]
+        snapshot = home_of(client).snapshot()
+    assert list(by_id(snapshot)["light.living"].aliases) == ["거실 조명"]  # type: ignore[attr-defined]
+
+
 def test_device_area_change_pushes_new_snapshot(
     ha_client: TestClient, fake_ha: FakeHomeAssistant
 ) -> None:

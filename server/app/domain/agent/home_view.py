@@ -47,18 +47,17 @@ class HomeView:
 
 
 def build_home_view(snapshot: HomeSnapshot) -> HomeView:
-    """스냅샷을 HomeView 로 바꾼다.
-
-    Note:
-        스냅샷에는 별칭 정보가 없어 aliases 는 비어 있다.
-    """
-    areas = [AreaRef(area_id=a.area_id, name=a.name) for a in snapshot.areas]
+    """스냅샷을 HomeView 로 바꾼다. HA 별칭은 매처가 이름처럼 쓴다."""
+    areas = [
+        AreaRef(area_id=a.area_id, name=a.name, aliases=tuple(a.aliases)) for a in snapshot.areas
+    ]
     entities = [
         EntityRef(
             entity_id=e.entity_id,
             area_id=e.area_id or None,
             name=e.name,
             domain=e.domain,
+            aliases=tuple(e.aliases),
         )
         for e in snapshot.entities
     ]
@@ -73,7 +72,11 @@ def home_names(model: HomeModel) -> list[str]:
     """STT 힌트로 쓸 방·기기 이름. 중복을 없애고 길이를 제한한다."""
     names: dict[str, None] = {}
     total = 0
-    for name in [*(a.name for a in model.areas), *(e.name for e in model.entities)]:
+    candidates = [
+        *(n for a in model.areas for n in (a.name, *a.aliases)),
+        *(n for e in model.entities for n in (e.name, *e.aliases)),
+    ]
+    for name in candidates:
         if not name or name in names:
             continue
         total += len(name) + 2

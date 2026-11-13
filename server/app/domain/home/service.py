@@ -23,14 +23,19 @@ from app.domain.home.ha_client import (
     HomeAssistantClient,
 )
 from app.domain.home.mapping import (
+    alias_candidates,
     build_catalog,
     catalog_fingerprint,
     changed_to_proto,
+    parse_entity_aliases,
     parse_exposed,
     snapshot_to_proto,
     to_entity,
 )
 from app.domain.home.schemas import HomeCatalog
+
+ENTITY_GET_ENTRIES = "config/entity_registry/get_entries"
+ALIAS_BATCH_SIZE = 200
 
 KEY_UNAVAILABLE = "home.unavailable"
 KEY_UNSUPPORTED = "home.unsupported_action"
@@ -141,7 +146,10 @@ class HomeService:
             devices = await client.request("config/device_registry/list")
             registry = await client.request("config/entity_registry/list")
             self._exposed = await self._load_exposed(client)
-            self._catalog = build_catalog(states, areas, devices, registry, self._exposed)
+            entity_aliases = await self._load_entity_aliases(client, registry, self._exposed)
+            self._catalog = build_catalog(
+                states, areas, devices, registry, self._exposed, entity_aliases
+            )
             buffered, self._buffer = self._buffer, None
         except BaseException:
             self._buffer = None
@@ -218,7 +226,8 @@ class HomeService:
             devices = await client.request("config/device_registry/list")
             registry = await client.request("config/entity_registry/list")
             exposed = await self._load_exposed(client)
-            fresh = build_catalog(states, areas, devices, registry, exposed)
+            entity_aliases = await self._load_entity_aliases(client, registry, exposed)
+            fresh = build_catalog(states, areas, devices, registry, exposed, entity_aliases)
         except BaseException:
             self._buffer = None
             raise
@@ -276,7 +285,7 @@ class HomeService:
             del self._catalog.entities[entity_id]
             logger.debug("Entity removed from Home Assistant: {}", entity_id)
             return None
-        updated = to_entity(new_state, current.area_id, current.name)
+        updated = to_entity(new_state, current.area_id, current.name, current.aliases)
         if updated is None:
             return None
         self._catalog.entities[entity_id] = updated
@@ -293,6 +302,25 @@ class HomeService:
                     "Exposure list unavailable ({}), falling back to domain allow-list", exc.code
                 )
             return None
+
+    async def _load_entity_aliases(
+        self,
+        client: HomeAssistantClient,
+        registry: list[dict[str, Any]],
+        exposed: set[str] | None,
+    ) -> dict[str, tuple[str, ...]]:
+        """엔티티 별칭. 목록 응답에는 없어 노출 대상만 묶어서 조회하며, 실패하면 별칭 없이 간다."""
+        entity_ids = alias_candidates(registry, exposed)
+        aliases: dict[str, tuple[str, ...]] = {}
+        for start in range(0, len(entity_ids), ALIAS_BATCH_SIZE):
+            batch = entity_ids[start : start + ALIAS_BATCH_SIZE]
+            try:
+                entries = await client.request(ENTITY_GET_ENTRIES, {"entity_ids": batch})
+            except HaCommandError as exc:
+                logger.warning("Entity aliases unavailable ({})", exc.code)
+                return aliases
+            aliases.update(parse_entity_aliases(entries))
+        return aliases
 
 
 def _failure(command: EntityCommand, code: ErrorCode, message_key: str) -> CommandResult:
