@@ -1,11 +1,12 @@
 engsys-document-review: 1
 document: docs/plan/development-plan.md
-blob: f548dfd3e85cc98be64146959c7d0ff1e7cbc50f
+blob: bcb3d0c0c232e80c1fae9fa0f3f405f6944e118a
 decision: pass
 reviewer: claude-opus-5-5
 audience: 프로젝트 소유자와 실행 담당자
 purpose: 누가 무엇을 어떤 순서로 하며 무엇이 막고 있는가
 
-- T1·T2 완료(PR 번호), T3·T4 진행으로 상태 갱신, 도입 문단에 상태 갱신 규칙 한 문장 추가
-- B2를 해소로 바꾸고 ADR 0003 링크, T7·T8 선행 조건에서 B2 제거, T8 범위를 OpenAI 선택지로 명시
+- T3·T4 완료(#8, #10), T5·T8 진행, Windows devloop를 T13으로 추가
+- B1을 갤럭시 탭 A7(Android 12 최종) 잠정 결정으로, B4를 iPhone 사용·하이브리드·마지막 단계로 해소 처리
+- T12 설명과 선행 조건에서 B4를 빼고 스택 ADR을 산출물로 명시
 
