@@ -107,6 +107,7 @@ dependencies {
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.protobuf.javalite)
     implementation(libs.protobuf.kotlin.lite)
+    implementation(libs.onnxruntime.android)
 
     testImplementation(platform(libs.junit.bom))
     testImplementation(libs.junit.jupiter)
