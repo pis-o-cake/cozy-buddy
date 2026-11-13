@@ -8,6 +8,7 @@ from app.config import Settings
 from app.core.connections import ConnectionManager, get_connections
 from app.core.database import Database, get_database
 from app.domain.gateway.service import GatewayService
+from app.domain.home.service import HomeService
 
 root_router = APIRouter()
 
@@ -18,13 +19,20 @@ def get_settings(websocket: WebSocket) -> Settings:
     return settings
 
 
+def get_home_service(websocket: WebSocket) -> HomeService:
+    """HomeService 의존성."""
+    home: HomeService = websocket.app.state.home
+    return home
+
+
 def get_gateway_service(
     settings: Annotated[Settings, Depends(get_settings)],
     database: Annotated[Database, Depends(get_database)],
     connections: Annotated[ConnectionManager, Depends(get_connections)],
+    home: Annotated[HomeService, Depends(get_home_service)],
 ) -> GatewayService:
     """GatewayService 의존성."""
-    return GatewayService(settings, database, connections)
+    return GatewayService(settings, database, connections, home)
 
 
 @root_router.get("/health")

@@ -27,6 +27,7 @@ from app.core.protocol import PROTOCOL_VERSION, error_envelope
 from app.core.security import authenticate
 from app.core.version import get_server_version
 from app.domain.alarm.service import AlarmService
+from app.domain.home.service import HomeService
 from app.domain.hub.service import HubService
 
 CLOSE_POLICY_VIOLATION = 1008
@@ -45,11 +46,16 @@ class GatewayService:
     """연결 하나의 수명주기를 처리한다. 요청마다 새로 만들어진다."""
 
     def __init__(
-        self, settings: Settings, database: Database, connections: ConnectionManager
+        self,
+        settings: Settings,
+        database: Database,
+        connections: ConnectionManager,
+        home: HomeService,
     ) -> None:
         self._settings = settings
         self._database = database
         self._connections = connections
+        self._home = home
 
     async def serve(self, websocket: WebSocket) -> None:
         """연결을 받아 hello 검증 후 메시지 루프를 돌린다."""
@@ -139,6 +145,7 @@ class GatewayService:
         await conn.send(Envelope(server_hello=server_hello))
         await self._connections.register(conn)
         logger.info("Client connected: {} {}", conn.role, conn.client_id)
+        await conn.send(Envelope(home_snapshot=self._home.snapshot()))
         if not is_hub:
             return
         async with self._database.session() as session:
@@ -177,6 +184,11 @@ class GatewayService:
             await conn.send(
                 Envelope(pong=session_pb2.Pong(ping_sent_epoch_ms=envelope.ping.sent_epoch_ms))
             )
+            return
+
+        if body == "entity_command":
+            result = await self._home.execute(envelope.entity_command)
+            await conn.send(Envelope(command_result=result))
             return
 
         is_hub = conn.role == ClientRole.HUB
@@ -237,4 +249,6 @@ def _request_id(envelope: Envelope) -> str:
         return str(envelope.alarm_upsert.request_id)
     if body == "alarm_delete":
         return str(envelope.alarm_delete.request_id)
+    if body == "entity_command":
+        return str(envelope.entity_command.request_id)
     return ""
