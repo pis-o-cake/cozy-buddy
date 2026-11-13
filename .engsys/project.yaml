@@ -7,7 +7,7 @@ project:
     design: 'docs/'
 
 commands:
-  verify: 'engsys docs check --project . && engsys review check --project .'
+  verify: 'sh scripts/verify.sh'
 
 vcs:
   commit:
@@ -16,12 +16,18 @@ vcs:
     scopes:
       - 'adr'
       - 'architecture'
+      - 'ci'
       - 'design'
       - 'engsys'
+      - 'hub'
       - 'legacy'
+      - 'mobile'
       - 'plan'
+      - 'protocol'
+      - 'repo'
       - 'review'
       - 'scope'
+      - 'server'
       - 'spike'
       - 'ui'
   branch:
@@ -29,10 +35,30 @@ vcs:
     roles:
       - role: 'production'
         branch: 'main'
+    prefixes:
+      feature: 'feat/'
+      fix: 'fix/'
+    naming:
+      - 'feat/*'
+      - 'fix/*'
+      - 'docs/*'
+      - 'spike/*'
+      - 'chore/*'
     protected:
       - 'main'
   merge-request:
     target: 'main'
+  tracker:
+    provider: 'github'
+    project: 'pis-o-cake/cozy-buddy'
+    default-assignee: 'pis-o-cake'
+    agent:
+      search: 'allowed'
+      create: 'allowed'
+      comment: 'allowed'
+      close: 'ask'
+      accept-risk: 'ask'
+      commit-deadline: 'ask'
 
 documentation:
   generated: []
