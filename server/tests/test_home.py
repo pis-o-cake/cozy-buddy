@@ -46,10 +46,22 @@ def command(entity_id: str, action: str, request_id: str = "r1", **params: str) 
     )
 
 
-def recv_bodies(ws: WebSocketTestSession, count: int) -> dict[str, Envelope]:
-    """도착 순서가 보장되지 않는 메시지 여러 건을 body 종류별로 모은다."""
-    received = [recv(ws) for _ in range(count)]
-    return {str(e.WhichOneof("body")): e for e in received}
+def recv_bodies(
+    ws: WebSocketTestSession, wanted: set[str], max_frames: int = 10
+) -> dict[str, Envelope]:
+    """원하는 body 종류가 모두 모일 때까지 읽는다. 그 외 프레임과 도착 순서는 무시한다."""
+    found: dict[str, Envelope] = {}
+    for _ in range(max_frames):
+        envelope = recv(ws)
+        found.setdefault(str(envelope.WhichOneof("body")), envelope)
+        if wanted <= found.keys():
+            return found
+    raise AssertionError(f"Expected {sorted(wanted)}, got {sorted(found)} in {max_frames} frames")
+
+
+def recv_until(ws: WebSocketTestSession, body: str) -> Envelope:
+    """지정한 body 종류의 프레임이 올 때까지 읽는다."""
+    return recv_bodies(ws, {body})[body]
 
 
 @contextmanager
@@ -123,7 +135,7 @@ def test_disabled_bridge_sends_empty_snapshot_and_rejects_commands(client: TestC
         assert ctx.home_snapshot is not None
         assert len(ctx.home_snapshot.entities) == 0
         send(ws, command("light.living", "turn_off"))
-        result = recv(ws).command_result
+        result = recv_until(ws, "command_result").command_result
     assert result.request_id == "r1"
     assert not result.ok
     assert result.code == ERROR_CODE_UPSTREAM_UNAVAILABLE
@@ -221,7 +233,7 @@ def test_command_turn_off_succeeds_and_state_follows(
 ) -> None:
     with connect_mobile(ha_client) as ws:
         send(ws, command("light.living", "turn_off", "req-7"))
-        got = recv_bodies(ws, 2)
+        got = recv_bodies(ws, {"command_result", "entity_state_changed"})
     assert got["command_result"].command_result.request_id == "req-7"
     assert got["command_result"].command_result.ok
     assert got["entity_state_changed"].entity_state_changed.state.state == "off"
@@ -233,7 +245,7 @@ def test_command_turn_off_succeeds_and_state_follows(
 def test_hub_command_set_brightness(ha_client: TestClient, fake_ha: FakeHomeAssistant) -> None:
     with connect_hub(ha_client) as ws:
         send(ws, command("light.living", "set_brightness", brightness_pct="35"))
-        result = recv_bodies(ws, 1)["command_result"].command_result
+        result = recv_until(ws, "command_result").command_result
     assert result.ok
     call = fake_ha.service_calls[-1]
     assert (call["domain"], call["service"]) == ("light", "turn_on")
@@ -249,7 +261,7 @@ def test_command_scene_and_script(
 ) -> None:
     with connect_mobile(ha_client) as ws:
         send(ws, command(entity_id, action))
-        result = recv(ws).command_result
+        result = recv_until(ws, "command_result").command_result
     assert result.ok
     call = fake_ha.service_calls[-1]
     assert (call["domain"], call["service"]) == (service, "turn_on")
@@ -268,7 +280,7 @@ def test_command_rejections(
 ) -> None:
     with connect_mobile(ha_client) as ws:
         send(ws, command(entity_id, action, "bad-1"))
-        result = recv(ws).command_result
+        result = recv_until(ws, "command_result").command_result
     assert result.request_id == "bad-1"
     assert not result.ok
     assert result.code == code
@@ -281,7 +293,7 @@ def test_command_times_out_when_ha_is_slow(
     fake_ha.service_delay = 2.0
     with connect_mobile(ha_client) as ws:
         send(ws, command("switch.plug", "turn_off"))
-        result = recv(ws).command_result
+        result = recv_until(ws, "command_result").command_result
     assert not result.ok
     assert result.code == ERROR_CODE_UPSTREAM_UNAVAILABLE
 
@@ -292,7 +304,7 @@ def test_command_ha_error_is_upstream_unavailable(
     fake_ha.service_error = "boom"
     with connect_mobile(ha_client) as ws:
         send(ws, command("switch.plug", "turn_off"))
-        result = recv(ws).command_result
+        result = recv_until(ws, "command_result").command_result
     assert not result.ok
     assert result.code == ERROR_CODE_UPSTREAM_UNAVAILABLE
 
@@ -306,17 +318,19 @@ def test_reconnect_rebuilds_cache_and_pushes_fresh_snapshot(
     port = fake_ha.port
     with connect_mobile(ha_client) as ws:
         fake_ha.stop()
-        down = recv(ws)
+        down = recv_until(ws, "home_snapshot")
         assert down.WhichOneof("body") == "home_snapshot"
         assert len(down.home_snapshot.entities) == 0
         assert not home_of(ha_client).ready
 
         send(ws, command("light.living", "turn_off"))
-        assert recv(ws).command_result.code == ERROR_CODE_UPSTREAM_UNAVAILABLE
+        assert (
+            recv_until(ws, "command_result").command_result.code == ERROR_CODE_UPSTREAM_UNAVAILABLE
+        )
 
         fake_ha.states[0]["state"] = "off"
         fake_ha.start(port)
-        fresh = recv(ws)
+        fresh = recv_until(ws, "home_snapshot")
 
     assert fresh.WhichOneof("body") == "home_snapshot"
     entities = {e.entity_id: e for e in fresh.home_snapshot.entities}
