@@ -16,6 +16,8 @@ dependencies = [
     "protobuf==7.36.2",
     "uvicorn-worker (>=0.4)",
     "websockets (>=14)",
+    "openai (>=3.50.0,<4.0.0)",
+    "tzdata (>=2026.6,<2027.0)",
 ]
 
 [tool.poetry]
