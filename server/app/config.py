@@ -3,7 +3,7 @@
 from enum import StrEnum
 from typing import Self
 
-from pydantic import AliasChoices, BaseModel, Field, SecretStr, model_validator
+from pydantic import AliasChoices, BaseModel, Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -92,6 +92,21 @@ class Settings(BaseSettings):
     max_utterance_seconds: float = 15.0
     clarify_ttl_seconds: float = 30.0
     timezone: str = "Asia/Seoul"
+    # 집 좌표. 둘 중 하나라도 비어 있으면 날씨 기능은 꺼진다.
+    home_latitude: float | None = Field(default=None, ge=-90, le=90)
+    home_longitude: float | None = Field(default=None, ge=-180, le=180)
+    weather_base_url: str = "https://api.open-meteo.com/v1/forecast"
+    weather_poll_seconds: float = 1800.0
+    # 이 시간보다 오래된 캐시는 응답과 푸시에 쓰지 않는다.
+    weather_stale_seconds: float = 3 * 3600.0
+    weather_timeout_seconds: float = 8.0
+    weather_max_attempts: int = 3
+    weather_backoff_seconds: float = 1.0
+
+    @field_validator("home_latitude", "home_longitude", mode="before")
+    @classmethod
+    def _blank_coordinate_is_unset(cls, value: object) -> object:
+        return None if isinstance(value, str) and not value.strip() else value
 
     @model_validator(mode="after")
     def _validate_tokens(self) -> Self:
@@ -125,6 +140,11 @@ class Settings(BaseSettings):
     def token_entries(self) -> tuple[TokenEntry, ...]:
         """파싱된 정적 토큰 목록."""
         return parse_static_tokens(self.static_tokens.get_secret_value())
+
+    @property
+    def weather_enabled(self) -> bool:
+        """날씨 조회를 켤 수 있는지(집 위도와 경도가 모두 있는지)."""
+        return self.home_latitude is not None and self.home_longitude is not None
 
     @property
     def ha_enabled(self) -> bool:

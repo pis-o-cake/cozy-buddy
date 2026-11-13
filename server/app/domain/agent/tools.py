@@ -3,12 +3,14 @@
 from typing import Any
 
 from app.domain.agent.home_view import HomeView
+from app.domain.weather.schemas import WeatherWhen
 
 TOOL_CONTROL = "control_device"
 TOOL_STATE = "get_device_state"
 TOOL_SET_ALARM = "set_alarm"
 TOOL_SET_TIMER = "set_timer"
 TOOL_CANCEL = "cancel_alarm"
+TOOL_WEATHER = "get_weather"
 
 CONTROL_ACTIONS = ("turn_on", "turn_off", "toggle", "set_brightness", "activate")
 CONTROLLABLE_DOMAINS = frozenset(
@@ -136,6 +138,15 @@ def build_tools(view: HomeView) -> list[Any]:
                 "is_timer": {"type": "boolean"},
             },
             [],
+        )
+    )
+    tools.append(
+        _function(
+            TOOL_WEATHER,
+            "Get the outdoor weather at the home location: current conditions, or the "
+            "forecast for today or tomorrow.",
+            {"when": {"type": "string", "enum": [w.value for w in WeatherWhen]}},
+            ["when"],
         )
     )
     return tools

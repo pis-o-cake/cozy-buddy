@@ -21,6 +21,7 @@ from app.domain.agent.model import (
     StateQuery,
     TimerIntent,
     UtteranceContext,
+    WeatherIntent,
 )
 from tests.agent_fixtures import BEDROOM, HOME, KIDS, KITCHEN, KST, LIVING, NOW
 
@@ -346,7 +347,6 @@ def test_ambiguous_hour_uses_next_future_occurrence() -> None:
 
 
 NO_MATCH = [
-    "오늘 날씨 어때",
     "농담 하나 해줘",
     "불고기 레시피 알려줘",
     "안녕",
@@ -403,7 +403,7 @@ def test_substring_of_known_word_never_matches_light() -> None:
 
 # 어휘 조각을 하나도 포함하지 않는 단어들. 어떻게 섞어도 NoMatch 여야 한다.
 _NEUTRAL_WORDS = [
-    "오늘", "날씨", "커피", "노래", "친구", "영화", "사과", "기분", "여행", "공부", "고양이",
+    "오늘", "커피", "노래", "친구", "영화", "사과", "기분", "여행", "공부", "고양이",
     "주말에", "운동장", "점심", "책", "숙제", "음악", "병원", "택배", "비행기", "컴퓨터",
 ]  # fmt: skip
 
@@ -430,6 +430,7 @@ def test_vocabulary_shuffles_never_raise() -> None:
             | AlarmIntent
             | TimerIntent
             | CancelAlarmIntent
+            | WeatherIntent
             | Clarify
             | NoMatch,
         )

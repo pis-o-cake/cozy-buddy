@@ -51,6 +51,7 @@ from app.domain.agent.model import (
     StateQuery,
     TimerIntent,
     UtteranceContext,
+    WeatherIntent,
 )
 from app.domain.agent.normalize import compact_form, normalize
 from app.domain.agent.responses import (
@@ -64,6 +65,8 @@ from app.domain.alarm.schemas import AlarmRead
 from app.domain.alarm.service import AlarmService
 from app.domain.home.service import HomeService
 from app.domain.hub.service import HubService
+from app.domain.weather.schemas import WeatherWhen
+from app.domain.weather.service import WeatherService
 
 KEY_INTERNAL = "error.internal"
 KEY_NOT_FOUND = "home.entity_not_found"
@@ -122,6 +125,7 @@ class AgentService:
         database: Callable[[], Database],
         openai: OpenAIGateway | None,
         clock: Callable[[], datetime] | None = None,
+        weather: WeatherService | None = None,
     ) -> None:
         self._settings = settings
         self._t = translate
@@ -131,6 +135,7 @@ class AgentService:
         self._openai = openai
         self._tz = ZoneInfo(settings.timezone)
         self._clock = clock
+        self._weather = weather
         self._monotonic: Callable[[], float] = time.monotonic
         self._pending: dict[str, _Pending] = {}
         # 원래 맞춘 타이머 길이. 허브 스냅샷에는 만든 시각이 없어 서버가 기억한다.
@@ -259,6 +264,8 @@ class AgentService:
             return await self._run_schedule(result, ctx)
         if isinstance(result, CancelAlarmIntent):
             return await self._run_cancel(result, ctx)
+        if isinstance(result, WeatherIntent):
+            return self._answer_weather(result.when)
         return self._t(KEY_INTERNAL)
 
     def _template(self, result: MatchResult, ctx: _Ctx) -> str:
@@ -610,6 +617,7 @@ class AgentService:
             tool_defs.TOOL_SET_ALARM: self._tool_set_alarm,
             tool_defs.TOOL_SET_TIMER: self._tool_set_timer,
             tool_defs.TOOL_CANCEL: self._tool_cancel,
+            tool_defs.TOOL_WEATHER: self._tool_weather,
         }
         handler = handlers.get(call.name)
         if handler is None:
@@ -622,6 +630,16 @@ class AgentService:
                 payload = {"ok": False, "error": "invalid_arguments"}
         logger.debug("Tool executed: {} ok={}", call.name, payload.get("ok"))
         return json.dumps(payload, ensure_ascii=False)
+
+    def _answer_weather(self, when: WeatherWhen) -> str:
+        if self._weather is None:
+            return self._t("weather.disabled")
+        return self._weather.answer(when, self._t)
+
+    async def _tool_weather(self, args: dict[str, Any], ctx: _Ctx) -> dict[str, Any]:
+        if self._weather is None:
+            return {"ok": False, "error": "disabled"}
+        return self._weather.tool_payload(WeatherWhen(str(args["when"])), self._t)
 
     async def _tool_control(self, args: dict[str, Any], ctx: _Ctx) -> dict[str, Any]:
         entity_id = str(args["entity_id"])

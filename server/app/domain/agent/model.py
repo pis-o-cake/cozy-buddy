@@ -4,6 +4,8 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import StrEnum
 
+from app.domain.weather.schemas import WeatherWhen
+
 # 상대 밝기 명령("밝게"/"어둡게")의 변화량(%p). 실행 쪽이 현재 밝기에 더해 1~100 으로 자른다.
 RELATIVE_BRIGHTNESS_STEP = 30
 
@@ -142,6 +144,13 @@ class CancelAlarmIntent:
 
 
 @dataclass(frozen=True, slots=True)
+class WeatherIntent:
+    """바깥 날씨 질문. when 은 지금·오늘·내일 중 하나다."""
+
+    when: WeatherWhen
+
+
+@dataclass(frozen=True, slots=True)
 class Clarify:
     """확인 질문. action/params 는 사용자가 확정하면 그대로 실행할 보류 명령이다."""
 
@@ -164,6 +173,7 @@ MatchResult = (
     | AlarmIntent
     | TimerIntent
     | CancelAlarmIntent
+    | WeatherIntent
     | Clarify
     | NoMatch
 )
