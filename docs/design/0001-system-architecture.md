@@ -206,5 +206,5 @@ Kotlin(허브·앱)과 Python(서버) 양쪽 모델을 같은 정의에서 생�
 | 상시 서버 하드웨어 | S4 | 저전력 미니PC |
 | 웨이크워드 엔진과 호출어 | S1 | microWakeWord 또는 LiveKit wakeword |
 | 키오스크 수준 | S5 | HOME 앱 + 상시 Activity, Device Owner 없음 |
-| 휴대폰 앱의 iOS 지원 | 가족 기기 확인 | 0004 참조 |
+| 휴대폰 앱 스택 | 구현 착수 시 ADR | iOS·Android 하이브리드, 모든 단계의 마지막에 구현(0004) |
 | `protocol/` 스키마 형식 | 없음(설계 결정) | 첫 구현 전 ADR |

@@ -22,8 +22,7 @@ Cozy Mobile은 집 밖에서 집을 제어하는 얇은 클라이언트다. 기�
 
 이 앱이 하지 않는 일도 정한다. 음성 입력, 기기 등록(HA 앱으로 함), 자동화 편집(HA로 함), 허브 설정
 변경(허브에서 함)은 범위 밖이다. HA 공식 앱이 기기 제어를 이미 제공하므로, 이 앱이 따로 있는 이유는
-허브 알람과 Cozy 대화를 같은 화면에서 다루는 데 있다. 첫 루프(허브 1대 음성 제어 + 로컬 알람)가 완료된
-뒤에 착수한다.
+허브 알람과 Cozy 대화를 같은 화면에서 다루는 데 있다. 모든 단계의 마지막에 착수한다.
 
 ## 설계
 
@@ -93,20 +92,22 @@ Tailscale 앱을 설치하지 않은 가족 구성원은 앱을 쓸 수 없다. 
 
 ### 기술 스택
 
+소유자가 iPhone을 쓰므로 iOS와 Android를 코드 하나로 지원하는 하이브리드 앱이어야 한다. 휴대폰 앱은 모든
+단계의 마지막에 구현하며, 스택은 그때 아래 후보를 비교해 ADR로 정한다.
+
 | 안 | 장점 | 비용 |
 |---|---|---|
-| Android 전용 Kotlin + Compose | 허브와 같은 스택이라 디자인 시스템과 `protocol/` 모델을 Gradle 모듈로 공유할 수 있다. 추가로 배울 것이 없다 | iPhone 사용자는 쓸 수 없다 |
-| Compose Multiplatform (Android + iOS) | Kotlin 하나로 iOS까지 지원하면서 허브와 코드를 공유한다 | iOS 빌드 환경과 플랫폼별 차이를 처리해야 한다 |
+| Compose Multiplatform (Android + iOS) | Kotlin 하나로 iOS까지 지원하면서 허브와 `protocol/` 모델·디자인 시스템을 공유한다 | iOS 빌드 환경(Xcode)과 플랫폼별 차이를 처리해야 한다 |
+| 웹 기반 하이브리드 (Capacitor 등) | 화면을 웹 기술로 한 번 만들고 양쪽 스토어 앱으로 감싼다 | 허브와 코드를 공유할 수 없고, protobuf·WebSocket 클라이언트를 TypeScript로 따로 생성해야 한다 |
 | Flutter | iOS 지원이 성숙했다 | 세 번째 언어(Dart)가 생기고, 허브와 코드를 공유할 수 없다(검토 M14) |
 
-가족 중 iPhone 사용자가 없으면 Android 전용 Kotlin + Compose를 쓴다. 있으면 Compose Multiplatform을
-검토한다. 어느 쪽이든 Flutter는 쓰지 않는다. 가족 기기 구성을 확인한 뒤 ADR로 확정한다.
+허브와의 코드 공유를 우선하면 Compose Multiplatform이 기본 후보다. Android 전용 안은 iOS 요구로 제외한다.
 
 모노레포에서 허브와 공유할 후보는 두 가지다. `protocol/`에서 생성한 메시지 모델과, 색·폰트·공통
 컴포넌트를 담은 디자인 시스템이다. 공유 모듈의 위치(`shared/` 또는 `protocol/kotlin/`)는 허브 스캐폴딩
 때 정한다.
 
-### 코드 구조 (Android 전용 안)
+### 코드 구조 (Compose Multiplatform 안)
 
 ```
 mobile/
@@ -122,6 +123,6 @@ mobile/
 
 ### 미결 사항
 
-- iOS 지원 여부와 그에 따른 스택: 가족 기기 확인 후 ADR
+- 하이브리드 스택: 구현 착수 시 ADR
 - 외부 접속을 Tailscale로만 할지: 가족 구성원의 Tailscale 설치 가능 여부 확인
 - 푸시 알림(문 열림, 알람 미해제 등)을 넣을지: 넣으려면 FCM 같은 외부 서비스가 필요하다. 첫 범위에서는 제외

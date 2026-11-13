@@ -1,14 +1,12 @@
 engsys-document-review: 1
 document: docs/design/0004-mobile-architecture.md
-blob: 97c844bae47ad76f814a6c18b734108f10772329
+blob: c24ef9d86f9bd81152480d6cb81d80401ab90943
 decision: pass
 reviewer: claude-opus-5-5
 audience: 휴대폰 앱 구현 담당자
 purpose: 이 범위와 구조로 휴대폰 앱을 만들어도 되는가
 
-- 앱 범위 4가지와 범위 밖(음성, 기기 등록, 자동화 편집, 허브 설정)을 구분하고, HA 공식 앱 대비 존재 이유(허브 알람 + Cozy 대화)를 명시
-- 구조도와 흐름도 렌더링 확인, 알람 '전달 대기' 동작이 0001·0002 서술과 일치
-- 스택 비교 표에서 Flutter 제외 근거(검토 M14)와 iOS 여부에 따른 선택 규칙을 결정 대기로 남김
-- Tailscale 전제의 제약(설치하지 않은 가족은 사용 불가)과 대안을 명시
-- 한계: 착수 시점은 첫 루프 완료 이후로만 정함
+- iPhone 사용 확인에 따라 기술 스택 절을 '하이브리드 필수, 착수 시 ADR'로 재작성, Android 전용 안 제외 사유 명시
+- 후보 표에 웹 기반 하이브리드(Capacitor)를 추가하고 각 안의 공유 가능성·비용을 비교, 기본 후보를 Compose Multiplatform으로 정리
+- 착수 시점을 '모든 단계의 마지막'으로 도입 절·미결 사항과 일치시킴
 

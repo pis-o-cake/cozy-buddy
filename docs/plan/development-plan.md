@@ -31,24 +31,25 @@ main에 fast-forward 병합한다. 설계·ADR·계획 같은 판단 문서는 C
 |---|---|---|---|---|---|
 | T1 | 레포 정리: 레거시 사본 제거와 영구 링크 치환, 브랜치 접두사·트래커 선언, 컴포넌트별 검사 스크립트 | 서브에이전트 | 없음 | 완료 (#2) | `.engsys/project.yaml`, `scripts/verify.sh` |
 | T2 | 프로토콜 v1: [ADR 0002](../adr/0002-protocol-buffers-over-websocket.md)에 따른 `.proto`, buf 설정, 디코더 도구 | 서브에이전트 | 없음 | 완료 (#3) | `protocol/` |
-| T3 | 서버 골격: gateway(WebSocket + protobuf), hub, alarm 도메인, home 도메인 HA 클라이언트 자리, Docker Compose | 서브에이전트 | T1, T2 | 진행 | `server/` |
-| T4 | 허브 골격: Compose·Hilt 프로젝트, HOME 앱 지정, 앰비언트 플립 시계 화면 | 서브에이전트 | T1 | 진행 | `hub/` |
-| T5 | 허브 로컬 알람: Room 저장, `setAlarmClock`, `USAGE_ALARM` 재생, 재부팅 재예약 | 서브에이전트 | T4 | 대기 | `hub/` |
+| T3 | 서버 골격: gateway(WebSocket + protobuf), hub, alarm 도메인, home 도메인 HA 클라이언트 자리, Docker Compose | 서브에이전트 | T1, T2 | 완료 (#8) | `server/` |
+| T4 | 허브 골격: Compose·Hilt 프로젝트, HOME 앱 지정, 앰비언트 플립 시계 화면 | 서브에이전트 | T1 | 완료 (#10) | `hub/` |
+| T5 | 허브 로컬 알람: Room 저장, `setAlarmClock`, `USAGE_ALARM` 재생, 재부팅 재예약 | 서브에이전트 | T4 | 진행 | `hub/` |
 | T6 | 허브-서버 연결: WsClient, `ClientHello`, 알람 동기화 | 서브에이전트 | T2, T3, T5 | 대기 | `hub/`, `server/` |
 | T7 | S3 Home Assistant 반증 스파이크 | 서브에이전트 + 소유자 | T3, 장애 B3 | 대기 | `docs/spike/` 보고서 |
-| T8 | S2 음성 경로 비교 하네스와 측정 (OpenAI 선택지) | 서브에이전트 + 소유자 | T3 | 대기 | `docs/spike/` 보고서, 음성 경로 ADR |
+| T8 | S2 음성 경로 비교 하네스와 측정 (OpenAI 선택지) | 서브에이전트 + 소유자 | T3 | 진행 | `docs/spike/` 보고서, 음성 경로 ADR |
 | T9 | S1 웨이크워드 스파이크 앱과 원거리 측정 | 서브에이전트(앱) + 소유자(측정) | T4, 장애 B1 | 대기 | `docs/spike/` 보고서, 웨이크워드 ADR |
 | T10 | S4 상시 서버 하드웨어 결정 | 소유자 | 없음 | 대기 | ADR |
 | T11 | S5·S6·S7 상시 구동, 에코, 알람 신뢰성 스파이크 | 서브에이전트 + 소유자 | T5, T9 | 대기 | `docs/spike/` 보고서 |
-| T12 | 휴대폰 앱 | 서브에이전트 | 첫 루프 완료, 장애 B4 | 대기 | `mobile/` |
+| T12 | 휴대폰 앱 (iOS·Android 하이브리드, 마지막 단계) | 서브에이전트 | 첫 루프 완료 | 대기 | `mobile/`, 스택 ADR |
+| T13 | Windows 개발 서버 devloop: Mac 소스를 WSL로 동기화하고 Docker는 Windows에서 실행 | 서브에이전트 | T3 | 진행 | `infra/devloop/` |
 
 ## 장애 요인과 조치
 
 | ID | 장애 | 막는 작업 | 필요한 조치 | 담당 |
 |---|---|---|---|---|
-| B1 | 허브용 태블릿 기종이 정해지지 않았다 | T9, T11 | 보유 태블릿 기종을 알려 주거나 후보 1~2대를 준비 | 소유자 |
+| B1 | 허브용 태블릿 실기기 | T9, T11, #9 | 기종은 갤럭시 탭 A7(2020, Android 12 최종)로 잠정 결정. 실기기가 준비되면 측정 시작 | 소유자 |
 | B2 | 클라우드 AI API 키 | T7, T8 | 해소(2026-11-13): OpenAI 키를 레포 루트 `.env`에 저장. 공급자는 [ADR 0003](../adr/0003-openai-as-llm-provider.md) | 소유자 |
 | B3 | Home Assistant를 띄울 장소와 테스트 기기가 정해지지 않았다 | T7 | 개발 PC의 Docker로 시작할 수 있다. 실제 Tapo 또는 Matter 기기 1종이 필요 | 소유자 |
-| B4 | 가족 중 iPhone 사용자가 있는지 모른다 | T12 | 답변 | 소유자 |
+| B4 | 휴대폰 앱 플랫폼 | T12 | 해소(2026-11-13): 소유자가 iPhone 사용. iOS·Android를 함께 지원하는 하이브리드 앱으로, 모든 단계의 마지막에 구현 | 소유자 |
 
 블록이 풀리면 해당 작업을 바로 시작한다. 장기 추적이 필요한 항목은 GitHub 이슈로 등록한다.

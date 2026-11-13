@@ -1,14 +1,10 @@
 engsys-document-review: 1
 document: docs/design/0001-system-architecture.md
-blob: 5dc287ed9b8729924b097a2a4f965bcebbe038da
+blob: c473bbe3ab9da0741ec85d5f00fa1f41e88e156b
 decision: pass
 reviewer: claude-opus-5-5
 audience: 설계 검토자와 구현 담당자
 purpose: 이 구성과 경계로 전체 시스템을 만들어도 되는가
 
-- ADR 0001 반영: GPU 추론 노드 노드·연결·표 행 제거, 원칙 표의 '상시 가동은 저전력'을 'AI 추론은 클라우드'로 교체
-- 장애 시 동작 표의 인터넷 단절 행을 '음성 처리 전체 중단, 호출어 감지 후 안내'로 바꿔 ADR 영향 절과 일치시킴
-- 미결 결정 표에서 음성 경로 선택지를 클라우드 선택지로 좁히고 서버 하드웨어 행에서 GPU 여부 제거
-- 그림 파일(docs/diagrams/architecture.html) 링크 추가, 시스템 구성도 mermaid 재렌더링 대상 변경 없음 외 확인
-- 남은 GPU 언급은 '없는' 맥락뿐임을 grep으로 확인
+- 미결 결정 표의 휴대폰 앱 행을 iOS·Android 하이브리드, 마지막 단계 구현, 착수 시 ADR로 갱신해 0004·계획과 일치
 
