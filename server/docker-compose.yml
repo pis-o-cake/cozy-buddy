@@ -1,6 +1,7 @@
 # HA 와 Matter 서버는 mDNS·Thread/Matter 탐색 때문에 Linux 홈 서버에서 host 네트워크가 필요하다.
 # 기본 up 은 cozy-server·nginx 만 띄운다. HA·Matter 는 --profile home 으로 켠다.
 # host 모드는 Docker Desktop(macOS/Windows)에서 동작하지 않으므로 그곳에서는 HA 설정을 따로 한다.
+name: cozy-buddy
 services:
   cozy-server:
     build:
