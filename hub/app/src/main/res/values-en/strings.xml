@@ -4,4 +4,25 @@
 
     <string name="ambient_date_pattern">EEEE, MMMM d</string>
     <string name="ambient_time_description">Current time %1$s</string>
+
+    <string name="alarm_default_label">Alarm</string>
+    <string name="alarm_default_label_timer">Timer</string>
+    <string name="alarm_ring_stop">Stop</string>
+    <string name="alarm_ring_snooze">Snooze (%1$d min)</string>
+    <string name="alarm_notification_channel_name">Alarm ringing</string>
+    <string name="alarm_notification_text">An alarm is ringing</string>
+    <string name="alarm_list_title">Alarms</string>
+    <string name="alarm_list_empty">No alarms yet</string>
+    <string name="alarm_list_close">Close</string>
+    <string name="alarm_list_add">Add alarm</string>
+    <string name="alarm_list_add_timer">1 min timer</string>
+    <string name="alarm_list_delete">Delete</string>
+    <string name="alarm_list_every_day">Every day</string>
+    <string name="alarm_list_toggle_description">Enable %1$s</string>
+    <string name="alarm_dialog_title">Add alarm</string>
+    <string name="alarm_dialog_confirm">Add</string>
+    <string name="alarm_dialog_cancel">Cancel</string>
+    <string name="alarm_dialog_repeat_hint">Without a weekday it rings only once</string>
+    <string name="alarm_exact_permission_hint">Exact alarm permission is off, so alarms may not ring</string>
+    <string name="alarm_exact_permission_action">Open settings</string>
 </resources>
