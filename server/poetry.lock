@@ -1585,6 +1585,22 @@ h11 = ">=0.8"
 standard = ["httptools (>=0.8.0)", "python-dotenv (>=0.13)", "pyyaml (>=5.1)", "uvloop (>=0.15.1) ; sys_platform != \"win32\" and sys_platform != \"cygwin\" and platform_python_implementation != \"PyPy\"", "watchfiles (>=0.20)", "websockets (>=13.0)"]
 
 [[package]]
+name = "uvicorn-worker"
+version = "0.4.0"
+description = "Uvicorn worker for Gunicorn! ✨"
+optional = false
+python-versions = ">=3.9"
+groups = ["main"]
+files = [
+    {file = "uvicorn_worker-0.4.0-py3-none-any.whl", hash = "sha256:e2ed952cef976f5e9e429d7269640bbcafbd36c80aa80f1003c8c77a6797abde"},
+    {file = "uvicorn_worker-0.4.0.tar.gz", hash = "sha256:8ee5306070d8f38dce124adce488c3c0b50f20cf0c0222b12c66188da7214493"},
+]
+
+[package.dependencies]
+gunicorn = ">=21.0.0"
+uvicorn = ">=0.36.0"
+
+[[package]]
 name = "win32-setctime"
 version = "1.2.1"
 description = "A small Python utility to set file creation time on Windows"
@@ -1603,4 +1619,4 @@ dev = ["black (>=19.3b0) ; python_version >= \"3.6\"", "pytest (>=4.6.2)"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12,<3.13"
-content-hash = "4c338ec765d48946e1a126c6230ca9877ae4ae67bbb934a91dd5f1a642dabf2f"
+content-hash = "fba8688887dc5a83320ead417e75aa39d7227d573e4c258973a1ad424548ad0e"

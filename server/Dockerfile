@@ -33,4 +33,4 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=15s \
 
 # WARNING: 워커는 반드시 1개다. WebSocket 연결 레지스트리가 프로세스 메모리에 있어
 # 워커가 둘 이상이면 허브와 앱이 서로 다른 프로세스에 붙어 메시지가 전달되지 않는다.
-CMD ["sh", "-c", "alembic upgrade head && exec gunicorn 'app.main:create_app()' -k uvicorn.workers.UvicornWorker -w 1 -b 0.0.0.0:8000"]
+CMD ["sh", "-c", "alembic upgrade head && exec gunicorn 'app.main:create_app()' -k uvicorn_worker.UvicornWorker -w 1 -b 0.0.0.0:8000"]
