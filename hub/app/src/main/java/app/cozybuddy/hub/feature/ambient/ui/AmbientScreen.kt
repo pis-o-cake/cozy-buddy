@@ -5,6 +5,7 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -49,13 +50,14 @@ private const val BACKGROUND_MID_STOP = 0.55f
 private const val INDICATOR_FONT_SIZE = 1.6f
 private const val INDICATOR_EDGE_PADDING = 2.2f
 private const val INDICATOR_ALPHA = 0.4f
+private const val SWIPE_OPEN_THRESHOLD_PX = 160f
 
 @Composable
-fun AmbientRoute(viewModel: AmbientViewModel, onLongPress: () -> Unit = {}) {
+fun AmbientRoute(viewModel: AmbientViewModel, onLongPress: () -> Unit = {}, onSwipeLeft: () -> Unit = {}) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val indicator by viewModel.connectionIndicator.collectAsStateWithLifecycle()
     WindowBrightnessEffect(state.dim.windowBrightness)
-    AmbientScreen(state, indicator = indicator, onLongPress = onLongPress)
+    AmbientScreen(state, indicator = indicator, onLongPress = onLongPress, onSwipeLeft = onSwipeLeft)
 }
 
 @Composable
@@ -64,6 +66,7 @@ fun AmbientScreen(
     modifier: Modifier = Modifier,
     indicator: ConnectionIndicator = ConnectionIndicator.NONE,
     onLongPress: () -> Unit = {},
+    onSwipeLeft: () -> Unit = {},
 ) {
     val colors = CozyTheme.clockColors
     val contentAlpha by animateFloatAsState(
@@ -77,6 +80,14 @@ fun AmbientScreen(
         modifier
             .fillMaxSize()
             .pointerInput(onLongPress) { detectTapGestures(onLongPress = { onLongPress() }) }
+            .pointerInput(onSwipeLeft) {
+                var total = 0f
+                detectHorizontalDragGestures(
+                    onDragStart = { total = 0f },
+                    onDragEnd = { if (total < -SWIPE_OPEN_THRESHOLD_PX) onSwipeLeft() },
+                    onDragCancel = { total = 0f },
+                ) { _, delta -> total += delta }
+            }
             .drawBehind {
                 val radius = size.maxDimension * 0.6f
                 drawRect(

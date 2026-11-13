@@ -29,6 +29,8 @@ import app.cozybuddy.hub.feature.alarm.ui.AlarmListRoute
 import app.cozybuddy.hub.feature.alarm.ui.AlarmRingOverlayRoute
 import app.cozybuddy.hub.feature.ambient.AmbientViewModel
 import app.cozybuddy.hub.feature.ambient.ui.AmbientRoute
+import app.cozybuddy.hub.feature.dashboard.DashboardViewModel
+import app.cozybuddy.hub.feature.dashboard.ui.DashboardRoute
 import app.cozybuddy.hub.feature.settings.SettingsViewModel
 import app.cozybuddy.hub.feature.settings.ui.SettingsRoute
 import dagger.hilt.android.AndroidEntryPoint
@@ -41,6 +43,7 @@ class MainActivity : ComponentActivity() {
     private val alarmListViewModel: AlarmListViewModel by viewModels()
     private val alarmRingViewModel: AlarmRingViewModel by viewModels()
     private val settingsViewModel: SettingsViewModel by viewModels()
+    private val dashboardViewModel: DashboardViewModel by viewModels()
 
     private val notificationPermission =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
@@ -60,11 +63,17 @@ class MainActivity : ComponentActivity() {
     @Composable
     private fun HubRoot() {
         var screen by rememberSaveable { mutableStateOf(HubScreen.AMBIENT) }
+        BackHandler(enabled = screen == HubScreen.DASHBOARD) { screen = HubScreen.AMBIENT }
         BackHandler(enabled = screen == HubScreen.ALARMS) { screen = HubScreen.AMBIENT }
         BackHandler(enabled = screen == HubScreen.SETTINGS) { screen = HubScreen.ALARMS }
         Box {
             when (screen) {
-                HubScreen.AMBIENT -> AmbientRoute(ambientViewModel, onLongPress = { screen = HubScreen.ALARMS })
+                HubScreen.AMBIENT -> AmbientRoute(
+                    ambientViewModel,
+                    onLongPress = { screen = HubScreen.ALARMS },
+                    onSwipeLeft = { screen = HubScreen.DASHBOARD },
+                )
+                HubScreen.DASHBOARD -> DashboardRoute(dashboardViewModel, onClose = { screen = HubScreen.AMBIENT })
                 HubScreen.ALARMS -> AlarmListRoute(
                     alarmListViewModel,
                     onClose = { screen = HubScreen.AMBIENT },
@@ -99,4 +108,4 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-private enum class HubScreen { AMBIENT, ALARMS, SETTINGS }
+private enum class HubScreen { AMBIENT, DASHBOARD, ALARMS, SETTINGS }
