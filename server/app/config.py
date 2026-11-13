@@ -67,6 +67,10 @@ class Settings(BaseSettings):
     ha_request_timeout_seconds: float = 5.0
     ha_backoff_min_seconds: float = 1.0
     ha_backoff_max_seconds: float = 30.0
+    # 레지스트리 이벤트가 몰릴 때 캐시 재구성을 한 번으로 묶는 대기 시간.
+    ha_registry_debounce_seconds: float = 1.0
+    # 이벤트가 없는 Assist 노출 변경을 잡는 폴링 주기. 0 이하면 폴링하지 않는다.
+    ha_expose_poll_seconds: float = 60.0
 
     @model_validator(mode="after")
     def _validate_tokens(self) -> Self:

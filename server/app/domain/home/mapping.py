@@ -106,6 +106,18 @@ def build_catalog(
     return catalog
 
 
+def catalog_fingerprint(catalog: HomeCatalog) -> tuple[Any, ...]:
+    """클라이언트에 보이는 구조(area 목록, 엔티티 집합·이름·소속 area)의 비교용 값.
+
+    상태 값은 포함하지 않는다. 상태는 state_changed 로 따로 전달되기 때문이다.
+    """
+    areas = tuple(sorted((a.area_id, a.name) for a in catalog.areas.values()))
+    entities = tuple(
+        sorted((e.entity_id, e.area_id, e.name, e.domain) for e in catalog.entities.values())
+    )
+    return (areas, entities)
+
+
 def state_to_proto(entity: HomeEntity) -> EntityState:
     """캐시 엔티티의 상태 부분을 protobuf 로."""
     return EntityState(
