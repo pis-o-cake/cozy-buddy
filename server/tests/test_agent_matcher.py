@@ -286,6 +286,16 @@ TIMERS = [
     ("0분 타이머", NoMatch()),
     ("25시간 타이머", NoMatch()),
     ("5분 후에 불 꺼줘", NoMatch()),
+    ("0분 타이머 취소해줘", NoMatch()),
+    ("25시간 타이머 취소해줘", NoMatch()),
+    ("5분 알람 취소해줘", NoMatch()),
+    ("내일 5분 타이머 취소해줘", NoMatch()),
+    ("내일 7시 타이머 취소해줘", NoMatch()),
+    ("내일 알람 취소해줘", NoMatch()),
+    ("5분 타이머 5분 타이머 취소해줘", NoMatch()),
+    ("매일 7시 알람 취소해줘", NoMatch()),
+    ("월요일 7시 알람 취소해줘", NoMatch()),
+    ("저녁 아침 7시 알람 취소해줘", NoMatch()),
 ]
 
 CANCELS = [
@@ -298,6 +308,24 @@ CANCELS = [
     ("운동 알람 삭제해줘", CancelAlarmIntent(label="운동")),
     ("타이머 취소해줘", CancelAlarmIntent(is_timer=True)),
     ("라면 타이머 꺼줘", CancelAlarmIntent(label="라면", is_timer=True)),
+    ("5분 타이머 취소해줘", CancelAlarmIntent(is_timer=True, duration_seconds=300)),
+    ("5분짜리 타이머 꺼줘", CancelAlarmIntent(is_timer=True, duration_seconds=300)),
+    ("타이머 취소", CancelAlarmIntent(is_timer=True)),
+    ("10분 타이머 삭제해줘", CancelAlarmIntent(is_timer=True, duration_seconds=600)),
+    ("1시간 반 타이머 취소해줘", CancelAlarmIntent(is_timer=True, duration_seconds=5400)),
+    ("30초 타이머 멈춰", CancelAlarmIntent(is_timer=True, duration_seconds=30)),
+    ("라면 5분 타이머 꺼줘", CancelAlarmIntent(label="라면", is_timer=True, duration_seconds=300)),
+    (
+        "내일 아침 7시 알람 취소해줘",
+        CancelAlarmIntent(hour=7, minute=0, day_offset=1),
+    ),
+    (
+        "내일 7시 알람 취소해줘",
+        CancelAlarmIntent(hour=7, minute=0, hour_ambiguous=True, day_offset=1),
+    ),
+    ("오늘 저녁 7시 반 알람 꺼줘", CancelAlarmIntent(hour=19, minute=30, day_offset=0)),
+    ("7시 알람 지워줘", CancelAlarmIntent(hour=7, minute=0, hour_ambiguous=True)),
+    ("운동 알람 취소", CancelAlarmIntent(label="운동")),
     ("모든 알람 삭제해줘", clarify(BROAD)),
     ("알람 전부 취소해줘", clarify(BROAD)),
 ]
