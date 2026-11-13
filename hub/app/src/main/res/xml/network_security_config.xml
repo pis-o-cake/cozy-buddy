@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!--
+        허브는 가정 LAN 의 서버(ws://192.168.x.x:8120/ws)에 붙는다. 서버 주소는 사용자가 입력하는 사설 IP 라서
+        도메인·CIDR 단위 허용 목록을 만들 수 없으므로 평문을 전역으로 연다.
+        CAUTION: 공인 주소로의 평문 전송은 앱 코드(ServerUrlValidator)가 막는다. 서버에 TLS 가 붙으면
+        wss:// 만 쓰도록 이 설정을 닫는다.
+    -->
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>
