@@ -48,6 +48,7 @@ def settings(tmp_path: Path) -> Settings:
         tts_cache_enabled=False,
         tts_cache_dir=str(tmp_path / "tts-cache"),
         tts_warmup=False,
+        backup_enabled=False,
     )
 
 

@@ -120,6 +120,11 @@ class Settings(BaseSettings):
     timezone: str = "Asia/Seoul"
     # 턴 로그(발화별 경로·지연 기록) 보존 기간. 시작할 때와 하루마다 이보다 오래된 행을 지운다.
     turn_log_days: int = Field(default=30, ge=1)
+    # SQLite 일일 백업. 시각은 timezone 기준 현지 시, 디렉터리가 비면 DB 옆 backups/ 를 쓴다.
+    backup_enabled: bool = True
+    backup_hour: int = Field(default=4, ge=0, le=23)
+    backup_dir: str = ""
+    backup_keep: int = Field(default=7, ge=1)
     # 집 좌표. 둘 중 하나라도 비어 있으면 날씨 기능은 꺼진다.
     home_latitude: float | None = Field(default=None, ge=-90, le=90)
     home_longitude: float | None = Field(default=None, ge=-180, le=180)
