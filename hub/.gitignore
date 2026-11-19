@@ -6,3 +6,11 @@ local.properties
 .kotlin/
 captures/
 .cxx/
+*.jks
+*.keystore
+*.pem
+*.p12
+*.db
+*.db-wal
+*.db-shm
+/data/
