@@ -17,12 +17,18 @@ from app.domain.agent.normalize import NormalizedText
 
 _CLOCK_RE = re.compile(r"(\d{1,2})시(?!간)(?:\s*(?:(\d{1,2})분|(반)))?(?:\s*정각)?(?:에|쯤|부터)?")
 _DURATION_RE = re.compile(r"(?:(\d+)시간(\s*반)?)?\s*(?:(\d+)분)?\s*(?:(\d+)초)?")
-_GLUED_RE = re.compile(r"^(내일|오늘|모레)?(오전|오후|아침|저녁|밤|새벽|낮|점심)?$")
+_GLUED_RE = re.compile(r"^(내일모레|내일|오늘|모레|글피)?(오전|오후|아침|저녁|밤|새벽|낮|점심)?$")
 _LABEL_RE = re.compile(r"^[가-힣a-z]{1,8}$")
+# 부정·금지 표현. 어디에 있든 결정론 해석을 포기하고 LLM 에 넘긴다.
+_NEGATION_RE = re.compile(r"지마|지말|말고|말아|마라|마세요|지않|안돼|안되|안할|안해")
+# 라벨이 될 수 없는 말: 동사·어미 꼴, 지원하지 않는 날짜어.
+_NOT_LABEL_RE = re.compile(
+    r"^(?:다음|이번|다다음|지난|어제|그제|그저께|올해|내년|작년)|(?:해|줘|다|까|요)$"
+)
 
 _MAX_TIMER_SECONDS = 24 * 3600
 _PARTICLE_SUFFIXES = ("에는", "에", "은", "는", "을", "를", "이", "가", "도", "쯤", "부터", "까지")
-_DAY_REL = {"오늘": 0, "내일": 1, "모레": 2}
+_DAY_REL = {"오늘": 0, "내일": 1, "모레": 2, "내일모레": 2, "글피": 3}
 _MERIDIEM = {
     "오전": "am", "아침": "am", "새벽": "am", "오후": "pm", "저녁": "pm", "밤": "night",
     "낮": "noon", "점심": "noon",
@@ -56,6 +62,13 @@ _CANCEL_VERBS = frozenset(
         "종료",
     }
 )
+# 정확히 해석할 수 없는 날짜어. 있으면 결정론 경로가 포기한다.
+_UNSUPPORTED_DATE_WORDS = frozenset(
+    {
+        "다음주", "이번주", "다다음주", "지난주", "다음달", "이번달", "다다음달", "어제", "그제",
+        "그저께", "내년", "올해", "작년",
+    }
+)  # fmt: skip
 _ALL_WORDS = frozenset({"모든", "전부", "다", "모두", "전체"})
 _NOISE_WORDS = frozenset({"정각", "짜리", "동안"})
 _AMBIGUOUS_EARLY_HOURS = (1, 2, 3, 4)
@@ -130,6 +143,9 @@ def _classify_one(token: str, tokens: _Tokens) -> bool:
     if _strip_suffix(token, {"주말"}) is not None:
         tokens.recurring = _WEEKEND
         return True
+    if _strip_suffix(token, _UNSUPPORTED_DATE_WORDS) is not None:
+        tokens.invalid = True
+        return True
     recurring = _strip_suffix(token, set(_RECURRING))
     if recurring is not None:
         tokens.recurring = _RECURRING[recurring]
@@ -148,9 +164,10 @@ def _label(tokens: _Tokens) -> tuple[bool, str | None]:
     """남은 토큰이 라벨로 쓸 수 있는지 판정한다. (유효 여부, 라벨)."""
     if not tokens.leftovers:
         return True, None
-    if len(tokens.leftovers) > 1 or not _LABEL_RE.match(tokens.leftovers[0]):
+    label = tokens.leftovers[0]
+    if len(tokens.leftovers) > 1 or not _LABEL_RE.match(label) or _NOT_LABEL_RE.search(label):
         return False, None
-    return True, tokens.leftovers[0]
+    return True, label
 
 
 def _hour_candidates(hour: int, meridiem: str | None) -> tuple[int, ...]:
@@ -254,7 +271,11 @@ def match_cancel(norm: NormalizedText, now: datetime) -> MatchResult | None:
     if clock_match is None and (found := _duration(rest)) is not None:
         duration, rest = found
     tokens = _classify(rest)
-    if not (tokens.alarm_word or tokens.timer_word) or not tokens.cancel_verb:
+    if not (tokens.alarm_word or tokens.timer_word):
+        return None
+    if _NEGATION_RE.search(norm.compact):
+        return NoMatch()
+    if not tokens.cancel_verb:
         return None
     ok, label = _label(tokens)
     if not ok or tokens.recurring or tokens.weekdays or tokens.weekly or tokens.invalid:
@@ -301,10 +322,18 @@ def match_timer(norm: NormalizedText) -> MatchResult | None:
     is_timer = tokens.timer_word or (found is not None and clock_match is None and relative)
     if not is_timer:
         return None
+    if _NEGATION_RE.search(norm.compact):
+        return NoMatch()
     if found is None or clock_match is not None or found[0] <= 0 or found[0] > _MAX_TIMER_SECONDS:
         return NoMatch()
     ok, label = _label(tokens)
-    if not ok or tokens.cancel_verb or tokens.meridiem or tokens.rel_day is not None:
+    if (
+        not ok
+        or tokens.cancel_verb
+        or tokens.meridiem
+        or tokens.rel_day is not None
+        or tokens.invalid
+    ):
         return NoMatch()
     if tokens.recurring or tokens.weekdays or tokens.weekly or tokens.all_word:
         return NoMatch()
@@ -320,6 +349,8 @@ def match_alarm(norm: NormalizedText, now: datetime) -> MatchResult | None:
     triggered = tokens.alarm_word or (clock_match is not None and tokens.wake_verb)
     if not triggered:
         return None
+    if _NEGATION_RE.search(norm.compact):
+        return NoMatch()
     if clock_match is None or tokens.cancel_verb or tokens.all_word or tokens.invalid:
         return NoMatch()
     ok, label = _label(tokens)
