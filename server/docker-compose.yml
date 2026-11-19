@@ -38,8 +38,11 @@ services:
       - cozy-server
     ports:
       - "${COZY_HTTP_PORT:-8120}:80"
+    # 규칙: 단일 파일 bind mount 는 mutagen 의 원자적 교체(새 inode)를 따라가지 못해 옛 설정이 남는다.
+    # 디렉터리를 마운트하고 -c 로 직접 지정한다. 설정 변경은 dev-deploy.sh 의 nginx -s reload 로 반영된다.
+    command: ["nginx", "-c", "/etc/cozy-nginx/nginx.conf", "-g", "daemon off;"]
     volumes:
-      - ./deploy/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./deploy/nginx:/etc/cozy-nginx:ro
     restart: unless-stopped
 
   homeassistant:
