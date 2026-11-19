@@ -1,0 +1,13 @@
+engsys-document-review: 1
+document: docs/design/0006-multi-hub-features.md
+blob: 56415ff8ea2f2aafd0c33b8f65ee7230b10f51cd
+decision: pass
+reviewer: claude-opus-5-5
+audience: 서버·허브 구현 담당자와 검토자
+purpose: 다중 허브 대비 기능을 어떤 범위·프로토콜·소유 파일로 나눠 구현하는가
+
+- 다섯 묶음의 사용자 관점과 프로토콜 변경을 요약 표로, 한국어 호출어를 기본값이 아닌 실험 옵션으로 두는 근거(소유자 결정 + 일반 음성 오탐 수치)를 명시
+- 페어링 흐름(코드 5분·1회용, 토큰 해시 저장, 시도 제한, 폐기, 관리자 토큰), 방송·리마인더·중재의 의도·실행·허브 동작과 온·오프라인 차이를 정의
+- Envelope 번호(30, 31, 47)와 enum·필드 번호를 현재 envelope.proto·alarm.proto 사용 번호와 대조해 충돌 없음을 확인, 소유 파일과 rebase 순서를 표로 명시
+- 중재 판정 기준(1.2초, 편집 거리 0.8)은 가정값이며 확장 지점(input_level_db)은 필드 예약만임을 구분
+
