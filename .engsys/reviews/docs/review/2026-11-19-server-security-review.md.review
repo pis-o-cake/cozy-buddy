@@ -1,12 +1,10 @@
 engsys-document-review: 1
 document: docs/review/2026-11-19-server-security-review.md
-blob: 677b0648964b3d8bc1b7adcacb25da64cdcecbc2
+blob: f89de3a0f22431e2f4be2cd7498b984f760ad043
 decision: pass
 reviewer: claude-opus-5-5
 audience: 서버 운영자와 이후 구현 담당자
 purpose: 서버에 어떤 보안 결함이 있었고 무엇이 고쳐졌으며 무엇이 남았는가
 
-- 결론(무인증 REST가 가장 큼)을 첫 문단에, 등급별 결함·영향 표와 조치·잔여 위험 표를 분리
-- 각 조치를 병합 PR(#72, #73)과 개발 서버 확인 결과에 대조, 잔여 위험은 소유자 결정 항목(출입문 터치 제어)을 명시
-- 검토 방법(독립 서브에이전트 + 높음·중간 재확인)과 위협 가정을 요약에 둠
+- 잔여 위험 표의 컨테이너 read_only 보류를 적용 완료로 수정, 개발 서버 read-only 실행·복원 드릴 결과와 대조
 
