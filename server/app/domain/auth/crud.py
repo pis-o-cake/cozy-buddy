@@ -7,6 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.auth.models import ClientToken
+from app.domain.hub.models import Hub
 
 
 async def add(session: AsyncSession, token: ClientToken) -> None:
@@ -36,3 +37,17 @@ async def revoke_client(session: AsyncSession, client_id: str, now: datetime) ->
         token.revoked_at = now
     await session.commit()
     return len(active)
+
+
+async def list_tokens(session: AsyncSession) -> Sequence[ClientToken]:
+    """모든 토큰 행을 발급 순으로 돌려준다."""
+    result = await session.scalars(select(ClientToken).order_by(ClientToken.created_at))
+    return result.all()
+
+
+async def hubs_by_id(session: AsyncSession, hub_ids: set[str]) -> dict[str, Hub]:
+    """hub_id 집합에 해당하는 허브를 ID 로 묶어 돌려준다."""
+    if not hub_ids:
+        return {}
+    result = await session.scalars(select(Hub).where(Hub.hub_id.in_(hub_ids)))
+    return {hub.hub_id: hub for hub in result.all()}
