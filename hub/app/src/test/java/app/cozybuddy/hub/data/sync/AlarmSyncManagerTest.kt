@@ -1,5 +1,6 @@
 package app.cozybuddy.hub.data.sync
 
+import app.cozybuddy.hub.core.network.ConnectionState
 import app.cozybuddy.hub.core.network.FakeHubLink
 import app.cozybuddy.hub.core.network.ServerConfig
 import app.cozybuddy.hub.core.network.ServerSettings
@@ -166,6 +167,27 @@ class AlarmSyncManagerTest {
         assertEquals("srv-1", ack.alarmId)
         assertEquals(2L, ack.revision)
         assertTrue(ack.ok)
+    }
+
+    @Test
+    fun `lost ack makes the next connection resend a snapshot`() = runTest {
+        manager()
+        link.connect()
+        runCurrent()
+        link.accepting = false
+
+        link.receive(upsertEnvelope("req-1", "srv-1"))
+        runCurrent()
+        assertTrue(link.sent.isEmpty())
+
+        link.state.value = ConnectionState.Disconnected
+        runCurrent()
+        link.accepting = true
+        link.connect()
+        runCurrent()
+
+        val snapshot = link.sent.single().alarmSnapshot
+        assertEquals(listOf("srv-1"), snapshot.alarmsList.map { it.alarmId })
     }
 
     @Test

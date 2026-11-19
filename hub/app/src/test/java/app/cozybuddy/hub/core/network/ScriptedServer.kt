@@ -34,6 +34,9 @@ class ScriptedServer : AutoCloseable {
 
     @Volatile var autoPong = true
 
+    /** 0 보다 크면 ServerHello 를 보낸 뒤 이 시간이 지나 연결을 닫는다. 음수면 hello 직후 닫는다. */
+    @Volatile var closeAfterHelloMs = 0L
+
     val connectionCount: Int get() = opened.get()
     val url: String get() = server.url("/ws").toString().replaceFirst("http", "ws")
     val lastSocket: WebSocket get() = sockets.last()
@@ -93,6 +96,12 @@ class ScriptedServer : AutoCloseable {
             HelloMode.CLOSE_SILENTLY, HelloMode.IGNORE -> return
         }
         webSocket.send(reply.toByteArray().toByteString())
+        if (helloMode == HelloMode.ACCEPT && closeAfterHelloMs != 0L) {
+            Thread {
+                if (closeAfterHelloMs > 0) Thread.sleep(closeAfterHelloMs)
+                runCatching { webSocket.close(CLOSE_NORMAL, null) }
+            }.start()
+        }
         if (helloMode == HelloMode.REJECT_UNAUTHENTICATED) webSocket.close(CLOSE_POLICY_VIOLATION, null)
     }
 

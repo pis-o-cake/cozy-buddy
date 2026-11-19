@@ -36,12 +36,21 @@ object ServerUrlValidator {
         }
     }
 
+    /**
+     * 평문 ws 를 허용할 호스트인지 판정한다.
+     *
+     * IPv4 는 점으로 나뉜 4개 라벨이 모두 0..255 숫자일 때만 주소로 본다.
+     * `10.0.0.1.evil.com` 같은 공인 도메인은 숫자 접두어와 무관하게 비로컬이다.
+     * 단일 라벨(`hub`, `nas`)은 공유기·mDNS 가 푸는 LAN 이름이라 허용한다. 공인 DNS 에는 단일 라벨이 없다.
+     */
     internal fun isLocalHost(host: String): Boolean {
         val lower = host.lowercase()
-        val singleLabel = !lower.contains('.') && !lower.contains(':')
-        if (lower == "localhost" || lower.endsWith(".local") || singleLabel) return true
-        val octets = lower.split('.').mapNotNull { it.toIntOrNull() }
-        if (octets.size != IPV4_OCTETS || octets.any { it !in 0..255 }) return false
+        if (lower == "localhost" || lower.endsWith(".local")) return true
+        if (!lower.contains('.') && !lower.contains(':')) return true
+        val labels = lower.split('.')
+        if (labels.size != IPV4_OCTETS || labels.any { !it.all { c -> c in '0'..'9' } || it.isEmpty() }) return false
+        val octets = labels.map { it.toIntOrNull() ?: return false }
+        if (octets.any { it !in 0..255 }) return false
         val (a, b) = octets
         return a == 10 || a == 127 || (a == 172 && b in 16..31) || (a == 192 && b == 168) || (a == 169 && b == 254)
     }

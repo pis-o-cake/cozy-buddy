@@ -55,6 +55,10 @@ class AlarmSyncManager @Inject constructor(
     // 서버가 시작한 변경이 로컬 변경 흐름으로 되돌아와 스냅샷을 다시 보내는(에코) 것을 막는 기준이다.
     private var published: Map<String, Long>? = null
 
+    // Ack 전송이 실패해 서버 사본이 허브와 어긋났을 수 있음을 뜻한다. 다음 연결 직후 스냅샷으로 맞춘다.
+    @Volatile
+    private var snapshotOnConnect = false
+
     /** 수신 구독을 즉시 등록한다. 연결을 시작하기 전에 호출해야 첫 AlarmSyncRequest 를 놓치지 않는다. */
     fun start() {
         scope.launch(start = CoroutineStart.UNDISPATCHED) {
@@ -71,6 +75,11 @@ class AlarmSyncManager @Inject constructor(
             }
             // 연결 직후에는 서버가 AlarmSyncRequest 로 전체 목록을 가져가므로 현재 상태를 기준선으로 삼는다.
             mutex.withLock { published = fingerprint(repository.observeAll().first()) }
+            if (snapshotOnConnect) {
+                snapshotOnConnect = false
+                Timber.i("Resending alarm snapshot after a lost ack")
+                publishSnapshot()
+            }
             repository.observeAll().debounce(LOCAL_CHANGE_DEBOUNCE_MS).collect { alarms -> publishIfChanged(alarms) }
         }
     }
@@ -137,7 +146,7 @@ class AlarmSyncManager @Inject constructor(
             Timber.e(e, "Failed to apply alarm upsert request=%s", upsert.requestId)
             failedAck(upsert.requestId, upsert.alarm.alarmId, ErrorCode.ERROR_CODE_INTERNAL)
         }
-        link.send(ack)
+        sendAck(ack)
     }
 
     private suspend fun applyDelete(message: Envelope) {
@@ -157,7 +166,13 @@ class AlarmSyncManager @Inject constructor(
             Timber.e(e, "Failed to apply alarm delete request=%s", delete.requestId)
             failedAck(delete.requestId, delete.alarmId, ErrorCode.ERROR_CODE_INTERNAL)
         }
-        link.send(ack)
+        sendAck(ack)
+    }
+
+    private fun sendAck(ack: Envelope) {
+        if (link.send(ack)) return
+        Timber.w("Alarm ack not sent: link is down; snapshot will be resent on reconnect")
+        snapshotOnConnect = true
     }
 
     private fun validate(alarm: Alarm) {

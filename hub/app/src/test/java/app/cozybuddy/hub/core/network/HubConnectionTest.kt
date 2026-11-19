@@ -137,6 +137,48 @@ class HubConnectionTest {
     }
 
     @Test
+    fun `hello followed by an immediate drop keeps growing the backoff`() = runBlocking {
+        server.start(upgrades = 4)
+        server.closeAfterHelloMs = -1
+        val backoff = BackoffPolicy(baseMs = 150, maxMs = 600, jitterRatio = 0.0)
+        val connection = connection(
+            config = HubConnectionConfig(pingIntervalMs = 10_000, stableConnectionMs = 10_000),
+            backoff = backoff,
+        )
+        settings.value = configFor()
+        connection.start()
+
+        withTimeout(ScriptedServer.TIMEOUT_MS) {
+            while (server.connectionCount < 4) delay(20)
+        }
+
+        val gaps = server.openedAtMs.zipWithNext { a, b -> b - a }
+        assertTrue(gaps[1] >= 300, "second retry doubles despite hello: $gaps")
+        assertTrue(gaps[2] >= 600, "third retry doubles again: $gaps")
+    }
+
+    @Test
+    fun `backoff resets after the connection stayed up for the stable window`() = runBlocking {
+        server.start(upgrades = 4)
+        server.closeAfterHelloMs = 300
+        val backoff = BackoffPolicy(baseMs = 150, maxMs = 600, jitterRatio = 0.0)
+        val connection = connection(
+            config = HubConnectionConfig(pingIntervalMs = 10_000, stableConnectionMs = 100),
+            backoff = backoff,
+        )
+        settings.value = configFor()
+        connection.start()
+
+        withTimeout(ScriptedServer.TIMEOUT_MS) {
+            while (server.connectionCount < 4) delay(20)
+        }
+
+        val gaps = server.openedAtMs.zipWithNext { a, b -> b - a }
+        // 300ms 유지 + 기본 150ms 대기. 초기화가 없다면 세 번째 간격은 300 + 600 이상이다.
+        assertTrue(gaps.all { it < 700 }, "every retry waits only the base delay: $gaps")
+    }
+
+    @Test
     fun `missed pongs mark the connection dead and trigger a reconnect`() = runBlocking {
         server.start(upgrades = 2)
         server.autoPong = false

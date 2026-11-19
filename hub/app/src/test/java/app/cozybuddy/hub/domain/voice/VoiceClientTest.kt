@@ -346,6 +346,29 @@ class VoiceClientTest {
     }
 
     @Test
+    fun `server error without a stream id leaves the current turn alone`() = runTest {
+        val h = harness()
+        link.connect()
+        h.client.onTap()
+        runCurrent()
+        speakAndFinish()
+
+        receive(
+            envelope {
+                error = app.cozybuddy.protocol.v1.errorMessage { requestId = "alarm-req-1" }
+            },
+        )
+        receive(
+            envelope {
+                error = app.cozybuddy.protocol.v1.errorMessage { streamId = "other" }
+            },
+        )
+
+        assertEquals(AssistantPhase.THINKING, phase)
+        assertEquals(emptyList<VoiceNotice>(), h.notices)
+    }
+
+    @Test
     fun `declined utterance returns quietly to IDLE and ignores a late response`() = runTest {
         val h = harness()
         link.connect()
