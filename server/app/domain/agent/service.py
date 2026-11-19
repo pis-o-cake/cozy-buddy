@@ -21,7 +21,7 @@ from app.domain.agent.clarify import ClarifyStore
 from app.domain.agent.context import TurnContext
 from app.domain.agent.home_view import build_home_view, home_names
 from app.domain.agent.memory import ConversationMemory, target_from_intent
-from app.domain.agent.model import Clarify, Intent
+from app.domain.agent.model import Clarify, Dismiss, Intent
 from app.domain.agent.skills.alarm import AlarmSkill
 from app.domain.agent.skills.alarm_control import AlarmControlSkill
 from app.domain.agent.skills.alarm_select import AlarmSelector
@@ -175,9 +175,12 @@ class AgentService:
             yield self._t(KEY_INTERNAL)
 
     def _remember_target(self, intent: Intent, ok: bool, ctx: TurnContext) -> None:
-        """성공한 기기·장면·상태 턴의 대상을 후속 지시용으로 기억한다."""
-        if not ok:
+        """성공한 기기·장면·상태 턴의 대상을 후속 지시용으로 기억하고, 무관한 턴이면 지운다."""
+        if isinstance(intent, Clarify | Dismiss):
             return
         target = target_from_intent(intent, ctx.view)
-        if target is not None:
+        if target is None:
+            # 기기와 무관한 턴(날씨·알람 등)은 성패와 무관하게 옛 대상을 끊는다.
+            self._memory.forget_target(ctx.conversation_key)
+        elif ok:
             self._memory.remember_target(ctx.conversation_key, target)

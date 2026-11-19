@@ -287,3 +287,27 @@ def test_unexpected_tool_error_yields_internal_fallback(
     turn = captured.one()
     assert (turn.path, turn.error_code) == (TurnPath.ERROR, "internal")
     assert turn.response_text == turn_client.app.state.translator("error.internal")  # type: ignore[attr-defined]
+
+
+def test_followup_target_is_dropped_after_unrelated_turn(
+    turn_client: TestClient, captured: Captured
+) -> None:
+    with connect_mobile(turn_client) as mobile:
+        _text(mobile, "거실 조명 꺼줘")
+        _text(mobile, "오늘 날씨 어때")
+        _text(mobile, "다시")
+
+    eventually(lambda: len(captured.turns) == 3)
+    assert captured.turns[0].path is TurnPath.MATCHER
+    assert captured.turns[2].path is not TurnPath.CONTEXT
+
+
+def test_followup_works_when_no_unrelated_turn_between(
+    turn_client: TestClient, captured: Captured
+) -> None:
+    with connect_mobile(turn_client) as mobile:
+        _text(mobile, "거실 조명 꺼줘")
+        _text(mobile, "다시")
+
+    eventually(lambda: len(captured.turns) == 2)
+    assert captured.turns[1].path is TurnPath.CONTEXT
