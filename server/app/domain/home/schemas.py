@@ -59,6 +59,8 @@ class HomeCatalog(BaseModel):
 
     areas: dict[str, HomeArea] = Field(default_factory=dict)
     entities: dict[str, HomeEntity] = Field(default_factory=dict)
+    # False 면 Assist 노출 목록을 읽지 못해 도메인 허용 목록으로 대체한 상태다. 제어가 제한된다.
+    exposure_known: bool = True
 
 
 class ServiceCall(BaseModel):

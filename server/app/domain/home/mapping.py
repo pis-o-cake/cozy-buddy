@@ -114,7 +114,7 @@ def build_catalog(
         devices: `config/device_registry/list` 결과.
         entity_registry: `config/entity_registry/list` 결과.
         exposed: Assist 노출 entity_id 집합. None 이면 노출 설정을 알 수 없으므로
-            허용 도메인 전체를 쓴다.
+            허용 도메인 전체를 읽기용으로 쓰고, 제어는 `policy` 가 조명류로 제한한다.
         entity_aliases: `parse_entity_aliases` 결과. 엔티티 레지스트리 목록 응답에는 별칭이
             없어 따로 조회한다. 목록 항목에 별칭이 있으면 그것을 보조로 쓴다.
 
@@ -126,6 +126,7 @@ def build_catalog(
     registry = {e["entity_id"]: e for e in entity_registry if "entity_id" in e}
 
     catalog = HomeCatalog(
+        exposure_known=exposed is not None,
         areas={
             a["area_id"]: HomeArea(
                 area_id=a["area_id"],
@@ -134,7 +135,7 @@ def build_catalog(
             )
             for a in areas
             if "area_id" in a
-        }
+        },
     )
     for raw_state in states:
         entity_id = str(raw_state.get("entity_id", ""))
@@ -162,7 +163,7 @@ def catalog_fingerprint(catalog: HomeCatalog) -> tuple[Any, ...]:
             (e.entity_id, e.area_id, e.name, e.domain, e.aliases) for e in catalog.entities.values()
         )
     )
-    return (areas, entities)
+    return (areas, entities, catalog.exposure_known)
 
 
 def state_to_proto(entity: HomeEntity) -> EntityState:

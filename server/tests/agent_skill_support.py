@@ -25,8 +25,12 @@ class FakeHome:
     def __init__(self) -> None:
         self.commands: list[EntityCommand] = []
         self.fail_key = ""
+        self.forbidden: set[str] = set()
 
-    async def execute(self, command: EntityCommand) -> CommandResult:
+    def entity_controllable(self, entity_id: str, *, voice: bool) -> bool:
+        return entity_id not in self.forbidden
+
+    async def execute(self, command: EntityCommand, *, voice: bool = False) -> CommandResult:
         self.commands.append(command)
         if self.fail_key:
             return CommandResult(
