@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from sqlalchemy import Index, Integer, String, Text
+from sqlalchemy import Boolean, Index, Integer, String, Text, false
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base, UTCDateTime, utcnow
@@ -27,5 +27,6 @@ class TurnLog(Base):
     t_act_ms: Mapped[int | None] = mapped_column(Integer, default=None)
     t_first_audio_ms: Mapped[int | None] = mapped_column(Integer, default=None)
     llm_tool_calls: Mapped[int] = mapped_column(Integer, default=0)
+    stt_hedged: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
     error_code: Mapped[str] = mapped_column(String(64), default="")
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, index=True)

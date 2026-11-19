@@ -3,8 +3,9 @@
 공급자 교체나 테스트용 가짜는 이 클래스 하나만 바꾸면 된다(ADR 0003).
 """
 
+import asyncio
 import json
-from collections.abc import AsyncIterator, Mapping, Sequence
+from collections.abc import AsyncIterator, Callable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
 
@@ -20,6 +21,10 @@ _TTS_READ_BYTES = 4096
 
 class OpenAIGatewayError(Exception):
     """OpenAI 호출 실패(네트워크, 인증, 한도, 형식 오류). 내부용이라 영어 메시지를 쓴다."""
+
+
+class OpenAIGatewayTimeout(OpenAIGatewayError):
+    """STT 전체 제한 시간을 넘겼다."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -57,6 +62,8 @@ class OpenAIGateway:
         self._tts_voice = settings.openai_tts_voice
         self._reasoning_effort = settings.openai_llm_reasoning_effort.strip()
         self._language = settings.locale
+        self._stt_hedge_after = settings.stt_hedge_after_ms / 1000
+        self._stt_timeout = settings.stt_timeout_ms / 1000
         # 재시도는 지연을 숨기므로 끈다. 실패 정책은 호출하는 쪽이 정한다.
         self._client = AsyncOpenAI(
             api_key=settings.openai_api_key.get_secret_value(), max_retries=0, timeout=30.0
@@ -66,25 +73,89 @@ class OpenAIGateway:
         """HTTP 클라이언트를 닫는다."""
         await self._client.close()
 
-    async def transcribe(self, wav: bytes, prompt: str | None = None) -> str:
+    async def transcribe(
+        self,
+        wav: bytes,
+        prompt: str | None = None,
+        on_hedge: Callable[[], None] | None = None,
+    ) -> str:
         """WAV 음성을 한국어 텍스트로 바꾼다.
+
+        첫 요청이 `stt_hedge_after_ms` 안에 끝나지 않으면 같은 요청을 한 번 더 보내(헤지)
+        먼저 끝난 결과를 쓰고 나머지는 취소한다. 헤지는 요청을 두 번 과금하므로 보낼 때마다
+        INFO 로그를 남기고 `on_hedge` 를 부른다. 연결 오류·5xx 는 각 요청이 즉시 한 번 재시도한다.
 
         Args:
             wav: 메모리 상의 WAV 파일 바이트.
             prompt: 방·기기 이름 같은 고유명사 힌트. 없으면 보내지 않는다.
+            on_hedge: 헤지 요청을 보낼 때 호출된다.
 
         Raises:
+            OpenAIGatewayTimeout: `stt_timeout_ms` 안에 결과를 받지 못했을 때.
             OpenAIGatewayError: 호출이 실패했을 때.
         """
+        try:
+            async with asyncio.timeout(self._stt_timeout):
+                return await self._transcribe_hedged(wav, prompt, on_hedge)
+        except TimeoutError as exc:
+            raise OpenAIGatewayTimeout("STT deadline exceeded") from exc
+
+    async def _transcribe_hedged(
+        self, wav: bytes, prompt: str | None, on_hedge: Callable[[], None] | None
+    ) -> str:
+        pending: set[asyncio.Task[str]] = {
+            asyncio.ensure_future(self._transcribe_attempt(wav, prompt))
+        }
+        can_hedge = self._stt_hedge_after > 0
+        last_error: OpenAIGatewayError | None = None
+        try:
+            while pending:
+                done, pending = await asyncio.wait(
+                    pending,
+                    timeout=self._stt_hedge_after if can_hedge else None,
+                    return_when=asyncio.FIRST_COMPLETED,
+                )
+                if not done:
+                    can_hedge = False
+                    logger.info("STT hedge fired after {}ms", round(self._stt_hedge_after * 1000))
+                    if on_hedge is not None:
+                        on_hedge()
+                    pending.add(asyncio.ensure_future(self._transcribe_attempt(wav, prompt)))
+                    continue
+                for task in done:
+                    error = task.exception()
+                    if error is None:
+                        return task.result()
+                    if not isinstance(error, OpenAIGatewayError):
+                        raise error
+                    last_error = error
+            raise last_error or OpenAIGatewayError("STT request failed")
+        finally:
+            for task in pending:
+                task.cancel()
+            await asyncio.gather(*pending, return_exceptions=True)
+
+    async def _transcribe_attempt(self, wav: bytes, prompt: str | None) -> str:
+        """요청 한 건. 연결 오류·5xx 면 즉시 한 번 더 시도한다."""
+        for attempt in (1, 2):
+            try:
+                return await self._create_transcription(wav, prompt)
+            except (openai.APIConnectionError, openai.InternalServerError) as exc:
+                if attempt == 1:
+                    logger.warning("STT retry after {}", type(exc).__name__)
+                    continue
+                raise OpenAIGatewayError(f"STT request failed: {type(exc).__name__}") from exc
+            except openai.OpenAIError as exc:
+                raise OpenAIGatewayError(f"STT request failed: {type(exc).__name__}") from exc
+        raise AssertionError("unreachable")
+
+    async def _create_transcription(self, wav: bytes, prompt: str | None) -> str:
         kwargs: dict[str, Any] = {"language": self._language}
         if prompt:
             kwargs["prompt"] = prompt
-        try:
-            result = await self._client.audio.transcriptions.create(
-                model=self._stt_model, file=("utterance.wav", wav, "audio/wav"), **kwargs
-            )
-        except openai.OpenAIError as exc:
-            raise OpenAIGatewayError(f"STT request failed: {type(exc).__name__}") from exc
+        result = await self._client.audio.transcriptions.create(
+            model=self._stt_model, file=("utterance.wav", wav, "audio/wav"), **kwargs
+        )
         return str(result.text)
 
     async def stream_chat(

@@ -422,7 +422,7 @@ def test_stt_failure_sends_unavailable_subtitle(
 ) -> None:
     from app.core.openai_gateway import OpenAIGatewayError
 
-    async def failing(wav: bytes, prompt: str | None = None) -> str:
+    async def failing(wav: bytes, prompt: str | None = None, **_: object) -> str:
         raise OpenAIGatewayError("down")
 
     gateway.transcribe = failing  # type: ignore[method-assign]

@@ -32,6 +32,7 @@ def make_row(
     understand: int | None = None,
     act: int | None = None,
     first_audio: int | None = None,
+    hedged: bool = False,
 ) -> TurnLog:
     return TurnLog(
         turn_id=turn_id,
@@ -47,6 +48,7 @@ def make_row(
         t_act_ms=act,
         t_first_audio_ms=first_audio,
         llm_tool_calls=0,
+        stt_hedged=hedged,
         error_code="",
         created_at=utcnow() - age,
     )
@@ -119,6 +121,31 @@ def test_summary_path_ratios_and_stage_percentiles() -> None:
     assert (stt.count, stt.p50_ms, stt.p95_ms) == (4, 650, 800)
     first_audio = summary.stages["t_first_audio_ms"]
     assert (first_audio.count, first_audio.p50_ms, first_audio.p95_ms) == (4, 1500, 2500)
+
+
+def test_summary_reports_stt_hedge_rate_over_stt_turns() -> None:
+    rows = [
+        make_row("a", stt=600),
+        make_row("b", stt=2500, hedged=True),
+        make_row("c", stt=700),
+        make_row("d", stt=800),
+        make_row("text", stt=None),
+    ]
+
+    summary = summarize(rows, 24)
+
+    assert summary.stt_hedged_count == 1
+    assert summary.stt_hedge_ratio == 0.25
+
+
+def test_hedge_flag_is_served_by_api(client: TestClient, settings: Settings) -> None:
+    seed(settings.database_url, [make_row("h", stt=2500, hedged=True), make_row("n", stt=600)])
+
+    items = client.get("/api/system/turns").json()
+    summary = client.get("/api/system/turns/summary").json()
+
+    assert {row["turn_id"]: row["stt_hedged"] for row in items} == {"h": True, "n": False}
+    assert (summary["stt_hedged_count"], summary["stt_hedge_ratio"]) == (1, 0.5)
 
 
 def test_empty_summary_is_zeroed() -> None:

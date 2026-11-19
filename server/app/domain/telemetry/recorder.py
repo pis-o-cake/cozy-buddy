@@ -122,6 +122,7 @@ class TurnRecorder:
             t_act_ms=turn.t_act_ms,
             t_first_audio_ms=turn.t_first_audio_ms,
             llm_tool_calls=turn.llm_tool_calls,
+            stt_hedged=turn.stt_hedged,
             error_code=turn.error_code,
             created_at=turn.created_at,
         )

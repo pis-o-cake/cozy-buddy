@@ -29,7 +29,11 @@ from app.config import Settings
 from app.core.connections import ClientConnection
 from app.core.exceptions import BadRequestError
 from app.core.i18n import Translator
-from app.core.openai_gateway import OpenAIGateway, OpenAIGatewayError
+from app.core.openai_gateway import (
+    OpenAIGateway,
+    OpenAIGatewayError,
+    OpenAIGatewayTimeout,
+)
 from app.core.protocol import error_envelope
 from app.domain.agent.service import AgentService
 from app.domain.telemetry.recorder import TurnRecorder
@@ -248,7 +252,7 @@ class VoiceSession:
     async def _pipeline(self, utt: _Utterance, turn: Turn) -> None:
         deps = self._deps
         started = time.monotonic()
-        transcript = await self._transcribe(utt)
+        transcript = await self._transcribe(utt, turn)
         turn.add_seconds(Stage.STT, time.monotonic() - started)
         speech = deps.openai
         if transcript is None:
@@ -287,14 +291,22 @@ class VoiceSession:
         turn.append_response(text)
         return _single(text)
 
-    async def _transcribe(self, utt: _Utterance) -> str | None:
-        """STT 결과 텍스트. 호출이 실패하면 None."""
+    async def _transcribe(self, utt: _Utterance, turn: Turn) -> str | None:
+        """STT 결과 텍스트. 호출이 실패하거나 제한 시간을 넘기면 None."""
         gateway = self._deps.openai
         if gateway is None or not utt.buffer:
             return ""
         wav = pcm_to_wav(bytes(utt.buffer), utt.sample_rate_hz)
         try:
-            return await gateway.transcribe(wav, self._deps.agent.stt_prompt())
+            return await gateway.transcribe(
+                wav,
+                self._deps.agent.stt_prompt(),
+                on_hedge=lambda: setattr(turn, "stt_hedged", True),
+            )
+        except OpenAIGatewayTimeout as exc:
+            logger.warning("STT timed out: {}", exc)
+            turn.fail("stt_timeout")
+            return None
         except OpenAIGatewayError as exc:
             logger.warning("STT failed: {}", exc)
             return None

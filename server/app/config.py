@@ -88,6 +88,11 @@ class Settings(BaseSettings):
     )
     # STT prompt 에 집의 방·기기 이름을 넣어 고유명사 오인식을 줄인다(S2b 에서 효과 측정 중).
     stt_prompt_enabled: bool = True
+    # 첫 STT 요청이 이 시간 안에 끝나지 않으면 같은 요청을 한 번 더 보낸다(헤지). 0 이하면 끈다.
+    # 정상 STT p95 는 약 1.1~1.8 s 이고 스파이크는 10 s 이상이라 1800 ms 로 둔다.
+    stt_hedge_after_ms: int = 1800
+    # STT 전체 제한 시간. 넘기면 stt_timeout 으로 실패 처리한다.
+    stt_timeout_ms: int = Field(default=6000, ge=1)
     llm_timeout_seconds: float = 10.0
     max_utterance_seconds: float = 15.0
     clarify_ttl_seconds: float = 30.0
