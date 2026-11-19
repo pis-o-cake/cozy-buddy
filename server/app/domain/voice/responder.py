@@ -52,7 +52,7 @@ class _AudioSender:
         await self._send_end()
 
     async def abort(self) -> None:
-        """중간에 끊긴 오디오 스트림을 ResponseAudioEnd 로 닫는다. 이미 닫혔거나 시작 전이면 아무것도 안 한다."""
+        """끊긴 오디오 스트림을 ResponseAudioEnd 로 닫는다. 시작 전이거나 이미 닫혔으면 무시한다."""
         if not self.started or self.ended:
             return
         await self._send_end()
