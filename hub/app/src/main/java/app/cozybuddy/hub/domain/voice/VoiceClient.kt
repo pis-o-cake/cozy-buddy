@@ -264,6 +264,7 @@ class VoiceClient @Inject constructor(
             Envelope.BodyCase.ASSISTANT_STATE ->
                 Timber.d("Server assistant state: %s", envelope.assistantState.state)
             Envelope.BodyCase.ERROR -> handleServerError(envelope.error.streamId)
+            Envelope.BodyCase.UTTERANCE_DECLINED -> handleDeclined(envelope.utteranceDeclined.streamId)
             else -> Unit
         }
     }
@@ -327,6 +328,16 @@ class VoiceClient @Inject constructor(
         val relevant = streamId.isEmpty() || streamId == state.utteranceId || streamId == state.responseId
         if (!relevant) return
         state.utteranceId?.let { failCurrent(it) }
+    }
+
+    /** 다른 허브가 같은 발화를 처리한다. 생각 중 표시를 거두고 조용히 IDLE 로 돌아간다(알림 없음). */
+    private fun handleDeclined(streamId: String) {
+        val state = machine.state.value
+        if (state.utteranceId != streamId) return
+        Timber.i("Utterance declined by server: %s", streamId)
+        markStale(streamId)
+        releaseActivity()
+        machine.onDeclined(streamId)
     }
 
     private fun handleDrained(event: PlaybackDrained) {
