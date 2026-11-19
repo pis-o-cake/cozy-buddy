@@ -9,3 +9,13 @@
 
 # devloop 로컬 접속 정보
 infra/devloop/config.env
+
+# 서명 키·인증서·로컬 DB·데이터 디렉터리
+*.jks
+*.keystore
+*.pem
+*.p12
+*.db
+*.db-wal
+*.db-shm
+/data/
