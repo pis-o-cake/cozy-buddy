@@ -40,6 +40,12 @@ def _build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--budget-usd", type=float, default=3.0)
     sp.add_argument("--reasoning-effort", default="none", help="chat model reasoning_effort, e.g. none/minimal/low")
     sp.add_argument("--out", default=str(ROOT / "results"))
+    sp = sub.add_parser("stream", help="streaming STT spike (real-time paced upload vs batch)")
+    sp.add_argument("--paths", default="batch_prompt,stream,stream_prompt")
+    sp.add_argument("--repeat", type=int, default=3)
+    sp.add_argument("--limit", type=int)
+    sp.add_argument("--budget-usd", type=float, default=0.5)
+    sp.add_argument("--out", default=str(ROOT / "results"))
     return p
 
 
@@ -57,6 +63,12 @@ def main() -> None:
         for m in sorted(x.id for x in OpenAI().models.list().data):
             if any(k in m for k in ("gpt", "tts", "transcribe", "whisper", "realtime")):
                 logger.info(m)
+        return
+    if args.cmd == "stream":
+        from s2.stream_runner import run as run_stream_spike
+
+        paths = [p.strip() for p in args.paths.split(",") if p.strip()]
+        asyncio.run(run_stream_spike(paths, args.repeat, args.budget_usd, args.limit, Path(args.out)))
         return
     models = Models(args.stt_model, args.llm_model, args.tts_model, args.realtime_model)
     if args.cmd == "synth":
