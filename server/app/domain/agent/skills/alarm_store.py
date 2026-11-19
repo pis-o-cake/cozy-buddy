@@ -19,6 +19,7 @@ from app.domain.hub.service import HubService
 KEY_HUB_REQUIRED = "agent.hub_required"
 PENDING_DELETE = "pending_delete"
 TIMER_KIND = "timer"
+REMINDER_KIND = "reminder"
 
 
 class AlarmStore:

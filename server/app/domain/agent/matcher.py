@@ -28,6 +28,7 @@ from app.domain.agent.model import (
     UtteranceContext,
 )
 from app.domain.agent.normalize import NormalizedText, normalize
+from app.domain.agent.reminder_intent import match_reminder
 from app.domain.agent.schedule import match_alarm, match_cancel, match_timer
 from app.domain.agent.weather_intent import match_weather
 
@@ -71,7 +72,10 @@ def match(
     if context.ringing and (control := match_alarm_control(norm)) is not None:
         return control
     scheduled = (
-        match_cancel(norm, context.now) or match_timer(norm) or match_alarm(norm, context.now)
+        match_reminder(norm, context.now)
+        or match_cancel(norm, context.now)
+        or match_timer(norm)
+        or match_alarm(norm, context.now)
     )
     if scheduled is not None:
         return scheduled

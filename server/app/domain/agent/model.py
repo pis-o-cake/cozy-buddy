@@ -127,6 +127,17 @@ class TimerIntent:
 
 
 @dataclass(frozen=True, slots=True)
+class ReminderIntent:
+    """말로 하는 리마인더 생성. 일정은 AlarmIntent 와 같은 규칙이고 label 은 알릴 내용이다."""
+
+    label: str
+    hour: int
+    minute: int
+    days: tuple[int, ...] | None = None
+    one_shot_epoch_ms: int | None = None
+
+
+@dataclass(frozen=True, slots=True)
 class CancelAlarmIntent:
     """알람/타이머 취소.
 
@@ -207,6 +218,7 @@ MatchResult = (
     | StateQuery
     | AlarmIntent
     | TimerIntent
+    | ReminderIntent
     | CancelAlarmIntent
     | AlarmControlIntent
     | WeatherIntent
@@ -220,6 +232,7 @@ Intent = (
     | StateQuery
     | AlarmIntent
     | TimerIntent
+    | ReminderIntent
     | CancelAlarmIntent
     | AlarmControlIntent
     | WeatherIntent

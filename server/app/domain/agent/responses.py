@@ -19,6 +19,7 @@ from app.domain.agent.model import (
     EntityRef,
     HomeModel,
     MatchResult,
+    ReminderIntent,
     SceneCommand,
     TimerIntent,
 )
@@ -210,6 +211,17 @@ def _alarm(result: AlarmIntent, now: datetime, translate: Translate) -> Template
     return TemplateResponse(f"agent.alarm.{suffix}{'_label' if result.label else ''}", args)
 
 
+def _reminder(result: ReminderIntent, now: datetime, translate: Translate) -> TemplateResponse:
+    time_text = _time_text(result.hour, result.minute, translate, meridiem=True)
+    if result.days is not None:
+        when = f"{_days_text(result.days, translate)} {time_text}"
+        key = "agent.reminder.set_repeat"
+    else:
+        when = f"{_date_text(result.one_shot_epoch_ms or 0, now, translate)} {time_text}"
+        key = "agent.reminder.set_once"
+    return TemplateResponse(key, {"when": when, "label": result.label})
+
+
 def duration_text(total_seconds: int, translate: Translate) -> str:
     """ "1시간 5분" 같은 길이 문구."""
     hours, rest = divmod(total_seconds, _SECONDS_PER_HOUR)
@@ -297,6 +309,8 @@ def build_response(
         return _alarm(result, now, translate)
     if isinstance(result, TimerIntent):
         return _timer(result, translate)
+    if isinstance(result, ReminderIntent):
+        return _reminder(result, now, translate)
     if isinstance(result, CancelAlarmIntent):
         return _cancel(result, translate)
     if isinstance(result, Clarify):

@@ -201,6 +201,7 @@ def test_llm_fallback_runs_tool_then_streams_final_text(
         "get_device_state",
         "set_alarm",
         "set_timer",
+        "set_reminder",
         "cancel_alarm",
         "get_weather",
     ]
