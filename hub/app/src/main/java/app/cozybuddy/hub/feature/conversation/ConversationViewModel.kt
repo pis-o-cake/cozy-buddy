@@ -3,6 +3,7 @@ package app.cozybuddy.hub.feature.conversation
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.cozybuddy.hub.domain.voice.AssistantPhase
+import app.cozybuddy.hub.domain.voice.BroadcastSubtitle
 import app.cozybuddy.hub.domain.voice.VoiceClient
 import app.cozybuddy.hub.domain.voice.VoiceNotice
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -11,6 +12,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
@@ -23,6 +25,9 @@ object ConversationConfig {
 
     /** 파형에 그리는 최근 레벨 개수. */
     const val LEVEL_HISTORY = 28
+
+    /** 방송 자막이 화면에 남는 시간. */
+    const val BROADCAST_DISMISS_MS = 8_000L
 }
 
 enum class ConversationNotice { NONE, OFFLINE, MIC_UNAVAILABLE, ERROR }
@@ -66,7 +71,20 @@ class ConversationViewModel @Inject constructor(
         )
     }.stateIn(viewModelScope, SharingStarted.Eagerly, ConversationUiState())
 
+    private val _broadcast = MutableStateFlow<BroadcastSubtitle?>(null)
+
+    /** 다른 허브가 보낸 방송 자막. 대화·알람과 무관하게 정해진 시간만 보인다. */
+    val broadcast: StateFlow<BroadcastSubtitle?> = _broadcast.asStateFlow()
+
     init {
+        viewModelScope.launch {
+            // 새 방송이 오면 이전 자막과 타이머를 버리고 다시 센다.
+            client.broadcasts.collectLatest { subtitle ->
+                _broadcast.value = subtitle
+                delay(ConversationConfig.BROADCAST_DISMISS_MS)
+                _broadcast.value = null
+            }
+        }
         viewModelScope.launch {
             client.notices.collect { value ->
                 notice.value = value.toNotice()

@@ -137,7 +137,7 @@ class BroadcastService:
         spoken = self._spoken_text(request)
         notice = BroadcastNotice(
             from_hub_id=request.from_hub_id,
-            from_area=request.from_area_id,
+            from_area=request.from_area_name or request.from_area_id,
             text=request.text,
             stream_id=stream_id,
         )
