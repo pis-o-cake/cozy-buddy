@@ -28,5 +28,6 @@ class TurnLog(Base):
     t_first_audio_ms: Mapped[int | None] = mapped_column(Integer, default=None)
     llm_tool_calls: Mapped[int] = mapped_column(Integer, default=0)
     stt_hedged: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    tts_cache_hit: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
     error_code: Mapped[str] = mapped_column(String(64), default="")
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, index=True)

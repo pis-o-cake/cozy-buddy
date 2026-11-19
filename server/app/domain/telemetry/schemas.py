@@ -24,6 +24,7 @@ class TurnRead(BaseModel):
     t_first_audio_ms: int | None
     llm_tool_calls: int
     stt_hedged: bool
+    tts_cache_hit: bool
     error_code: str
     created_at: datetime
 
@@ -47,6 +48,8 @@ class TurnSummary(BaseModel):
     """윈도 안의 경로 비율과 단계별 지연.
 
     deterministic_ratio 는 LLM 없이 처리한 턴(context·matcher·weather·clarify)의 비율이다.
+    tts_cache_hit_ratio 는 음성을 낸 턴(t_first_audio_ms 가 있는 턴) 중
+    첫 문장을 캐시에서 낸 턴의 비율이다.
     stt_hedge_ratio 는 STT 를 거친 턴(t_stt_ms 가 있는 턴) 중 헤지 요청을 보낸 턴의 비율이다.
     """
 
@@ -55,5 +58,7 @@ class TurnSummary(BaseModel):
     deterministic_ratio: float
     stt_hedged_count: int
     stt_hedge_ratio: float
+    tts_cache_hit_count: int
+    tts_cache_hit_ratio: float
     paths: dict[str, PathStat]
     stages: dict[str, StageStat]

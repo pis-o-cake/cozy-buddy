@@ -70,6 +70,7 @@ class Turn:
     t_first_audio_ms: int | None = None
     llm_tool_calls: int = 0
     stt_hedged: bool = False
+    tts_cache_hit: bool = False
     error_code: str = ""
 
     def add_seconds(self, stage: Stage, seconds: float) -> None:
