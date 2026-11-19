@@ -11,6 +11,7 @@ from app.config import ClientRole
 from app.core.hub_control import HubControl
 
 CLOSE_REPLACED = 4000
+SERVING_DRAIN_SECONDS = 5.0
 
 
 class ClientConnection:
@@ -53,6 +54,26 @@ class ConnectionManager:
         self._hubs: dict[str, ClientConnection] = {}
         self._mobiles: dict[str, ClientConnection] = {}
         self.hub_control = HubControl(self)
+        self._serving: set[asyncio.Future[None]] = set()
+
+    def track_serving(self, task: asyncio.Future[None]) -> None:
+        """연결 처리 태스크를 추적한다. 종료 시 `drain_serving` 이 끝나기를 기다린다."""
+        self._serving.add(task)
+        task.add_done_callback(self._serving.discard)
+
+    async def drain_serving(self, grace_seconds: float) -> None:
+        """진행 중인 연결 처리 태스크가 끝나길 기다리고, 남은 것은 취소한다.
+
+        IMPORTANT: DB 세션을 쥔 채 엔진이 먼저 dispose 되면 그 커넥션이 닫히지 않고 새어
+        aiosqlite 워커 스레드가 닫힌 이벤트 루프에 접근한다. 반드시 dispose 전에 호출한다.
+        """
+        pending = {t for t in self._serving if not t.done()}
+        if not pending:
+            return
+        await asyncio.wait(pending, timeout=grace_seconds)
+        for task in pending:
+            task.cancel()
+        await asyncio.gather(*pending, return_exceptions=True)
 
     def _pool(self, role: ClientRole) -> dict[str, ClientConnection]:
         return self._hubs if role == ClientRole.HUB else self._mobiles

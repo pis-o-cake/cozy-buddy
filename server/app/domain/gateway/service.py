@@ -77,6 +77,7 @@ class GatewayService:
         # shield 태스크로 띄우는데, 그 태스크가 끝나지 않아 이벤트 루프 종료가 멈춘다.
         # TestClient 는 클라이언트가 WebSocket 을 닫는 즉시 엔드포인트를 취소한다.
         task = asyncio.ensure_future(self._serve(websocket))
+        self._connections.track_serving(task)
         try:
             await asyncio.shield(task)
         except asyncio.CancelledError:
