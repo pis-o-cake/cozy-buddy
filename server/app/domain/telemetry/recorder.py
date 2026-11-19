@@ -48,7 +48,8 @@ class TurnRecorder:
             turn.fail("no_path")
         logger.info(
             "Turn finished: turn_id={} hub_id={} source={} path={} intent={} skill={} "
-            "stt_ms={} understand_ms={} act_ms={} first_audio_ms={} tool_calls={} error={}",
+            "stt_ms={} understand_ms={} act_ms={} first_audio_ms={} tts_cache_hit={} "
+            "tool_calls={} error={}",
             turn.turn_id,
             turn.hub_id,
             turn.source.value,
@@ -59,6 +60,7 @@ class TurnRecorder:
             turn.t_understand_ms,
             turn.t_act_ms,
             turn.t_first_audio_ms,
+            turn.tts_cache_hit,
             turn.llm_tool_calls,
             turn.error_code or "-",
         )
@@ -123,6 +125,7 @@ class TurnRecorder:
             t_first_audio_ms=turn.t_first_audio_ms,
             llm_tool_calls=turn.llm_tool_calls,
             stt_hedged=turn.stt_hedged,
+            tts_cache_hit=turn.tts_cache_hit,
             error_code=turn.error_code,
             created_at=turn.created_at,
         )

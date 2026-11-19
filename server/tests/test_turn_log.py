@@ -33,6 +33,7 @@ def make_row(
     act: int | None = None,
     first_audio: int | None = None,
     hedged: bool = False,
+    cache_hit: bool = False,
 ) -> TurnLog:
     return TurnLog(
         turn_id=turn_id,
@@ -49,6 +50,7 @@ def make_row(
         t_first_audio_ms=first_audio,
         llm_tool_calls=0,
         stt_hedged=hedged,
+        tts_cache_hit=cache_hit,
         error_code="",
         created_at=utcnow() - age,
     )
@@ -308,3 +310,17 @@ def test_finish_logs_one_info_line_without_transcript_and_debug_with_it() -> Non
     debug = [m for level, m in lines if level == "DEBUG" and m.startswith("Turn transcript")]
     assert len(info) == 1 and "turn_id=t1" in info[0] and "path=matcher" in info[0]
     assert "비밀 문장" not in info[0] and "비밀 문장" in debug[0]
+
+
+def test_summary_reports_tts_cache_hit_ratio_over_audio_turns() -> None:
+    rows = [
+        make_row("a", first_audio=900, cache_hit=True),
+        make_row("b", first_audio=1500),
+        make_row("c", first_audio=800, cache_hit=True),
+        make_row("silent", first_audio=None),
+    ]
+
+    summary = summarize(rows, 24)
+
+    assert summary.tts_cache_hit_count == 2
+    assert summary.tts_cache_hit_ratio == round(2 / 3, 4)

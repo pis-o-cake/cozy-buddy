@@ -46,12 +46,16 @@ def summarize(rows: Iterable[TurnLog], window_hours: float) -> TurnSummary:
         )
     stt_turns = sum(1 for row in turns if row.t_stt_ms is not None)
     hedged = sum(1 for row in turns if row.stt_hedged)
+    audio_turns = sum(1 for row in turns if row.t_first_audio_ms is not None)
+    cache_hits = sum(1 for row in turns if row.tts_cache_hit)
     return TurnSummary(
         window_hours=window_hours,
         total=total,
         deterministic_ratio=round(deterministic / total, 4) if total else 0.0,
         stt_hedged_count=hedged,
         stt_hedge_ratio=round(hedged / stt_turns, 4) if stt_turns else 0.0,
+        tts_cache_hit_count=cache_hits,
+        tts_cache_hit_ratio=round(cache_hits / audio_turns, 4) if audio_turns else 0.0,
         paths=paths,
         stages=stages,
     )
