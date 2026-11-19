@@ -30,9 +30,7 @@ def _accepted_tokens(settings: Settings) -> list[bytes]:
         for entry in settings.token_entries
         if entry.kind == ClientRole.MOBILE
     ]
-    # TODO: W3-1 의 COZY_ADMIN_TOKEN 설정이 병합되면 admin_token 이 여기서 자동으로 허용된다.
-    admin = getattr(settings, "admin_token", None)
-    secret = admin.get_secret_value() if admin is not None else ""
+    secret = settings.admin_token.get_secret_value()
     if secret:
         tokens.append(secret)
     return [token.encode() for token in tokens]
