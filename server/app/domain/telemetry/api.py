@@ -11,10 +11,12 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_session
+from app.core.rest_auth import require_admin_only
 from app.domain.telemetry.schemas import TurnRead, TurnSummary
 from app.domain.telemetry.service import TurnQueryService
 
-root_router = APIRouter(prefix="/api/system")
+# 가족 대화 전사가 담기므로 관리자만 읽는다.
+root_router = APIRouter(prefix="/api/system", dependencies=[Depends(require_admin_only)])
 
 MAX_LIMIT = 500
 MAX_WINDOW_HOURS = 24 * 90

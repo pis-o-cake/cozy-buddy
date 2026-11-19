@@ -24,6 +24,7 @@ class ClientConnection:
         self.websocket = websocket
         self.role: ClientRole | None = None
         self.client_id = ""
+        self.client_ip = ""
         self._seq = 0
         self._lock = asyncio.Lock()
 

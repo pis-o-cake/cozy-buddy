@@ -35,6 +35,13 @@ class AuthenticationError(CozyError):
     default_key = "error.unauthenticated"
 
 
+class ForbiddenError(CozyError):
+    """인증은 됐지만 권한이 없다."""
+
+    status_code = 403
+    default_key = "error.forbidden"
+
+
 class NotFoundError(CozyError):
     """대상 없음."""
 

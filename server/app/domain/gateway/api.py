@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, WebSocket
 from app.config import Settings
 from app.core.connections import ConnectionManager, get_connections
 from app.core.database import Database, get_database
+from app.core.ws_guard import WsGuard
 from app.domain.gateway.service import GatewayService
 from app.domain.home.service import HomeService
 from app.domain.voice.service import VoiceService
@@ -39,6 +40,12 @@ def get_voice_service(websocket: WebSocket) -> VoiceService:
     return voice
 
 
+def get_ws_guard(websocket: WebSocket) -> WsGuard:
+    """WebSocket 접속 한도 의존성."""
+    guard: WsGuard = websocket.app.state.ws_guard
+    return guard
+
+
 def get_gateway_service(
     settings: Annotated[Settings, Depends(get_settings)],
     database: Annotated[Database, Depends(get_database)],
@@ -46,9 +53,10 @@ def get_gateway_service(
     home: Annotated[HomeService, Depends(get_home_service)],
     voice: Annotated[VoiceService, Depends(get_voice_service)],
     weather: Annotated[WeatherService, Depends(get_weather_service)],
+    guard: Annotated[WsGuard, Depends(get_ws_guard)],
 ) -> GatewayService:
     """GatewayService 의존성."""
-    return GatewayService(settings, database, connections, home, voice, weather)
+    return GatewayService(settings, database, connections, home, voice, weather, guard)
 
 
 @root_router.get("/health")

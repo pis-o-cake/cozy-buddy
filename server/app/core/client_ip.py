@@ -3,7 +3,7 @@
 import ipaddress
 from functools import lru_cache
 
-from fastapi import Request
+from starlette.requests import HTTPConnection
 
 UNKNOWN_IP = "unknown"
 
@@ -34,7 +34,7 @@ def _parse_ip(value: str) -> str | None:
         return None
 
 
-def resolve_client_ip(request: Request, trusted_proxies: str) -> str:
+def resolve_client_ip(request: HTTPConnection, trusted_proxies: str) -> str:
     """클라이언트 IP 를 돌려준다.
 
     직접 연결한 peer 가 신뢰 프록시일 때만 `X-Real-IP`, 없으면 `X-Forwarded-For` 의

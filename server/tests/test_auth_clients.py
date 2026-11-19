@@ -38,13 +38,17 @@ def pair_hub(client: TestClient, name: str = "주방", area: str = "kitchen") ->
 
 
 def test_list_requires_admin(admin_client: TestClient) -> None:
+    del admin_client.headers["authorization"]
     assert admin_client.get("/api/auth/clients").status_code == 401
     bad = {"Authorization": "Bearer nope"}
     assert admin_client.get("/api/auth/clients", headers=bad).status_code == 401
 
 
-def test_list_unconfigured_is_503(client: TestClient) -> None:
-    assert client.get("/api/auth/clients", headers=ADMIN).status_code == 503
+def test_list_unconfigured_is_503(settings: Settings) -> None:
+    migrate(settings.database_url)
+    unset = settings.model_copy(update={"admin_token": SecretStr("")})
+    with TestClient(create_app(unset)) as client:
+        assert client.get("/api/auth/clients", headers=ADMIN).status_code == 503
 
 
 def test_list_fields_and_no_secrets(admin_client: TestClient) -> None:

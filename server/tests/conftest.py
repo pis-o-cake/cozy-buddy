@@ -4,6 +4,7 @@ import threading
 import time
 from collections.abc import Callable, Iterator
 from pathlib import Path
+from typing import Any
 
 import pytest
 from alembic import command
@@ -26,6 +27,8 @@ HUB_ID = "hub-1"
 HUB_TOKEN = "hub-secret"
 MOBILE_ID = "phone-1"
 MOBILE_TOKEN = "mobile-secret"
+ADMIN_TOKEN = "admin-secret"
+ADMIN_HEADERS = {"Authorization": f"Bearer {ADMIN_TOKEN}"}
 
 
 def migrate(url: str) -> None:
@@ -36,6 +39,22 @@ def migrate(url: str) -> None:
     command.upgrade(cfg, "head")
 
 
+@pytest.fixture(autouse=True)
+def _admin_by_default(monkeypatch: pytest.MonkeyPatch) -> None:
+    """REST 는 기본 거부라, 테스트 클라이언트는 관리자 토큰을 기본으로 보낸다.
+
+    인증 없는 호출을 확인하는 테스트는 `del client.headers["authorization"]` 로 지운다.
+    """
+    original = TestClient.__init__
+
+    def init(self: TestClient, *args: Any, **kwargs: Any) -> None:
+        headers = dict(kwargs.pop("headers", None) or {})
+        headers.setdefault("Authorization", ADMIN_HEADERS["Authorization"])
+        original(self, *args, headers=headers, **kwargs)
+
+    monkeypatch.setattr(TestClient, "__init__", init)
+
+
 @pytest.fixture
 def settings(tmp_path: Path) -> Settings:
     return Settings(
@@ -44,6 +63,7 @@ def settings(tmp_path: Path) -> Settings:
         static_tokens=(
             f"hub:{HUB_ID}:{HUB_TOKEN},hub:hub-2:hub2-secret,mobile:{MOBILE_ID}:{MOBILE_TOKEN}"
         ),
+        admin_token=ADMIN_TOKEN,
         hello_timeout_seconds=0.5,
         tts_cache_enabled=False,
         tts_cache_dir=str(tmp_path / "tts-cache"),
