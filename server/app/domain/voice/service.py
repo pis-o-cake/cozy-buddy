@@ -10,6 +10,7 @@ from app.core.openai_gateway import OpenAIGateway
 from app.domain.agent.service import AgentService
 from app.domain.hub import crud as hub_crud
 from app.domain.telemetry.recorder import TurnRecorder
+from app.domain.voice.arbiter import UtteranceArbiter
 from app.domain.voice.session import VoiceDeps, VoiceSession
 from app.domain.voice.tts_cache import TtsCache
 
@@ -40,6 +41,7 @@ class VoiceService:
             hub_area=self._hub_area,
             resolve_hub=self._resolve_hub,
             tts_cache=tts_cache,
+            arbiter=UtteranceArbiter(),
         )
 
     def session_for(self, conn: ClientConnection) -> VoiceSession:

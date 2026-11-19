@@ -38,6 +38,8 @@ def summarize(rows: Iterable[TurnLog], window_hours: float) -> TurnSummary:
         for path, n in counts.items()
     }
     deterministic = sum(n for path, n in counts.items() if path in DETERMINISTIC_PATHS)
+    # 거절된 턴은 응답하지 않았으므로 결정론 비율의 분모에서 뺀다.
+    answered = total - counts[TurnPath.DECLINED]
     stages: dict[str, StageStat] = {}
     for name in STAGE_FIELDS:
         values = [v for row in turns if (v := getattr(row, name)) is not None]
@@ -51,7 +53,7 @@ def summarize(rows: Iterable[TurnLog], window_hours: float) -> TurnSummary:
     return TurnSummary(
         window_hours=window_hours,
         total=total,
-        deterministic_ratio=round(deterministic / total, 4) if total else 0.0,
+        deterministic_ratio=round(deterministic / answered, 4) if answered else 0.0,
         stt_hedged_count=hedged,
         stt_hedge_ratio=round(hedged / stt_turns, 4) if stt_turns else 0.0,
         tts_cache_hit_count=cache_hits,

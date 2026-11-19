@@ -14,12 +14,14 @@ from cozy.v1.common_pb2 import (
 from cozy.v1.envelope_pb2 import Envelope
 from cozy.v1.voice_pb2 import (
     AUDIO_ENCODING_PCM_S16LE,
+    DECLINE_REASON_DUPLICATE,
     STREAM_KIND_UTTERANCE_UP,
     AssistantState,
     AudioChunk,
     TextQuery,
     Transcript,
     UtteranceCancel,
+    UtteranceDeclined,
     UtteranceEnd,
     UtteranceStart,
 )
@@ -38,6 +40,7 @@ from app.core.protocol import error_envelope
 from app.domain.agent.service import AgentService
 from app.domain.telemetry.recorder import TurnRecorder
 from app.domain.telemetry.turn import Stage, Turn, TurnPath, TurnSource
+from app.domain.voice.arbiter import Ticket, UtteranceArbiter
 from app.domain.voice.audio import PCM_CHANNELS, PCM_SAMPLE_WIDTH_BYTES, max_pcm_bytes, pcm_to_wav
 from app.domain.voice.responder import ResponseStreamer
 from app.domain.voice.tts_cache import TtsCache
@@ -67,6 +70,7 @@ class VoiceDeps:
     hub_area: Callable[[str], Awaitable[str]]
     resolve_hub: Callable[[ClientConnection], str]
     tts_cache: TtsCache | None = None
+    arbiter: UtteranceArbiter | None = None
 
 
 @dataclass(slots=True)
@@ -77,6 +81,7 @@ class _Utterance:
     buffer: bytearray = field(default_factory=bytearray)
     next_index: int = 0
     ended_at: float = 0.0
+    ticket: Ticket | None = None
 
 
 async def _single(text: str) -> AsyncIterator[str]:
@@ -197,7 +202,14 @@ class VoiceSession:
         utt.ended_at = time.monotonic()
         await self._send_state(State.STATE_THINKING, utt.stream_id)
         self._task_stream = utt.stream_id
-        self._task = asyncio.create_task(self._process(utt), name="voice-utterance")
+        arbiter = self._deps.arbiter
+        if arbiter is not None:
+            utt.ticket = arbiter.begin(self._deps.resolve_hub(self._conn), utt.ended_at)
+        task = self._task = asyncio.create_task(self._process(utt), name="voice-utterance")
+        if arbiter is not None and utt.ticket is not None:
+            # 태스크가 시작도 못 하고 취소돼도 기다리는 다른 허브가 풀리게 한다.
+            ticket = utt.ticket
+            task.add_done_callback(lambda _: arbiter.abandon(ticket))
 
     async def _on_cancel(self, cancel: UtteranceCancel) -> None:
         cancelled = False
@@ -268,6 +280,8 @@ class VoiceSession:
         elif not transcript.strip():
             turn.path = TurnPath.CLARIFY
             reply = self._canned(turn, KEY_NOT_HEARD)
+        elif await self._declined_as_duplicate(utt, turn, transcript):
+            return
         else:
             await self._send(
                 Envelope(
@@ -296,6 +310,31 @@ class VoiceSession:
             turn.t_stt_ms,
             turn.t_first_audio_ms,
         )
+
+    async def _declined_as_duplicate(self, utt: _Utterance, turn: Turn, transcript: str) -> bool:
+        """다른 허브가 같은 발화를 먼저 처리했으면 거절 통지를 보내고 True."""
+        arbiter = self._deps.arbiter
+        if arbiter is None or utt.ticket is None:
+            return False
+        started = time.monotonic()
+        decision = await arbiter.decide(utt.ticket, transcript)
+        held = time.monotonic() - started
+        if held > 0.001:
+            logger.debug("Arbitration held: stream={} held_ms={}", utt.stream_id, round(held * 1e3))
+        if decision.winner:
+            return False
+        turn.transcript = transcript
+        turn.path = TurnPath.DECLINED
+        await self._send(
+            Envelope(
+                utterance_declined=UtteranceDeclined(
+                    stream_id=utt.stream_id,
+                    reason=DECLINE_REASON_DUPLICATE,
+                    winner_hub_id=decision.winner_hub_id,
+                )
+            )
+        )
+        return True
 
     def _turn_guard(self) -> contextlib.AbstractContextManager[None]:
         cache = self._deps.tts_cache
