@@ -8,7 +8,12 @@ from loguru import logger
 
 from app.config import Settings
 from app.core.i18n import Translator
-from app.core.openai_gateway import OpenAIGateway, OpenAIGatewayError, ToolCall
+from app.core.openai_gateway import (
+    OpenAIGateway,
+    OpenAIGatewayError,
+    ToolCall,
+    UsageLimitExceeded,
+)
 from app.domain.agent.context import TurnContext
 from app.domain.agent.memory import ConversationMemory, target_from_intent
 from app.domain.agent.model import Intent
@@ -86,6 +91,11 @@ class LlmStep:
                     messages.append(
                         {"role": "tool", "tool_call_id": call.id, "content": tool_message(result)}
                     )
+        except UsageLimitExceeded:
+            turn.fail("llm_budget")
+            if not emitted:
+                yield self._t("voice.budget_exceeded")
+            return
         except (TimeoutError, OpenAIGatewayError) as exc:
             logger.warning("LLM fallback failed: {}", exc or type(exc).__name__)
             turn.fail("llm_timeout" if isinstance(exc, TimeoutError) else "llm_error")

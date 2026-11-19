@@ -151,6 +151,19 @@ class Settings(BaseSettings):
     weather_max_attempts: int = 3
     weather_backoff_seconds: float = 1.0
 
+    # --- 유료 API 남용 방어(S2) ---
+    # 가족 하루 약 300턴 x 안전계수 5 를 기준으로 잡았다. 일일 한도 0 은 해당 한도를 끈다.
+    max_text_query_chars: int = Field(default=300, ge=1)
+    turn_rate_per_minute: int = Field(default=20, ge=1)
+    reminder_rate_per_minute: int = Field(default=6, ge=1)
+    daily_llm_calls: int = Field(default=1500, ge=0)
+    daily_tts_chars: int = Field(default=100_000, ge=0)
+    daily_stt_seconds: int = Field(default=7_500, ge=0)
+
+    # --- Home Assistant 제어 안전(S2) ---
+    # 제어를 허용할 script 엔티티 ID 쉼표 목록. 비어 있으면 script 는 어떤 경로로도 실행하지 않는다.
+    allowed_scripts: str = ""
+
     @field_validator("home_latitude", "home_longitude", mode="before")
     @classmethod
     def _blank_coordinate_is_unset(cls, value: object) -> object:
@@ -201,6 +214,11 @@ class Settings(BaseSettings):
     def token_entries(self) -> tuple[TokenEntry, ...]:
         """파싱된 정적 토큰 목록."""
         return parse_static_tokens(self.static_tokens.get_secret_value())
+
+    @property
+    def allowed_script_ids(self) -> frozenset[str]:
+        """제어를 허용한 script 엔티티 ID 집합."""
+        return frozenset(s.strip() for s in self.allowed_scripts.split(",") if s.strip())
 
     @property
     def weather_enabled(self) -> bool:
