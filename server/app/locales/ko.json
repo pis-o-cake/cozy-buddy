@@ -132,6 +132,7 @@
   "weather.condition.snow_shower": "눈보라가 치고",
   "weather.condition.thunder": "천둥번개가 치고",
   "weather.condition.unknown": "날씨를 알 수 없고",
+  "broadcast.sender_app": "휴대폰",
   "broadcast.target_all": "모든 허브",
   "broadcast.spoken": "방송이에요. {text}",
   "broadcast.spoken_from": "{area}에서 방송이에요. {text}",

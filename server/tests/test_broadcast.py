@@ -1,6 +1,8 @@
 """허브 간 방송: 가짜 허브 여러 대에 알림과 음성이 같은 모양으로 내려가는지 검증한다."""
 
-from collections.abc import Iterator
+import asyncio
+import threading
+from collections.abc import AsyncIterator, Iterator
 
 import pytest
 from cozy.v1.envelope_pb2 import Envelope
@@ -197,7 +199,8 @@ def test_tts_failure_falls_back_to_notice_only(client: TestClient, gateway: Fake
         notice = recv(kitchen)
 
     assert notice.WhichOneof("body") == "broadcast_notice"
-    assert reply == "주방에 방송했어요. 음성은 만들지 못해 자막으로만 전했어요."
+    # 확인은 자막 전달 기준이라 음성이 나중에 실패해도 그대로다.
+    assert reply == "주방에 방송했어요."
 
 
 def test_llm_tool_call_broadcasts(client: TestClient, gateway: FakeOpenAI) -> None:
@@ -284,3 +287,38 @@ def test_rest_unknown_target_is_not_found(client: TestClient) -> None:
         )
 
     assert response.status_code == 404
+
+
+def test_confirmation_is_sent_before_the_slow_broadcast_stream_ends(
+    client: TestClient, gateway: FakeOpenAI
+) -> None:
+    release = threading.Event()
+    original = gateway.stream_speech
+
+    async def slow_speech(text: str) -> AsyncIterator[bytes]:
+        async for pcm in original(text):
+            await asyncio.get_running_loop().run_in_executor(None, release.wait, 5)
+            yield pcm
+
+    gateway.stream_speech = slow_speech  # type: ignore[method-assign]
+    with connect_hub(client) as speaker, connect_hub(client, HUB_B, HUB_B_TOKEN) as kitchen:
+        set_area(client, HUB_B, "주방")
+
+        reply = say(speaker, "주방에 밥 먹으라고 방송해줘")
+        notice = recv(kitchen)
+        # 합성이 아직 막혀 있는 동안 확인과 자막이 이미 도착했다.
+        assert not release.is_set()
+        release.set()
+        frames = [notice, *receive_broadcast(kitchen)]
+
+    assert reply == "주방에 방송했어요."
+    assert_complete_broadcast(frames, "밥 먹으세요", HUB_ID)
+
+
+def test_rest_broadcast_without_hub_labels_the_sender(client: TestClient) -> None:
+    headers = {"Authorization": f"Bearer {MOBILE_TOKEN}"}
+    with connect_hub(client, HUB_B, HUB_B_TOKEN) as kitchen:
+        client.post("/api/broadcast", json={"text": "밥 먹으세요"}, headers=headers)
+        notice = recv(kitchen)
+
+    assert notice.broadcast_notice.from_area == "휴대폰"

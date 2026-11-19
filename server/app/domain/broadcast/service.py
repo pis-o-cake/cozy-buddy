@@ -33,6 +33,7 @@ MAX_TEXT_CHARS = 200
 KEY_TARGET_ALL = "broadcast.target_all"
 KEY_SPOKEN = "broadcast.spoken"
 KEY_SPOKEN_FROM = "broadcast.spoken_from"
+KEY_SENDER_APP = "broadcast.sender_app"
 STREAM_PREFIX = "bc-"
 
 
@@ -66,7 +67,8 @@ class BroadcastReport:
         everyone: 말한 허브를 뺀 전체가 대상이었는지.
         delivered: 알림을 보낸 허브.
         offline: 대상이지만 연결돼 있지 않거나 전송에 실패한 허브.
-        audio: 음성을 내려보냈는지. 합성할 수 없으면 자막만 갔다.
+        audio: 음성을 내려보내기로 했는지. 합성 수단이 없으면 False. True 여도 합성이 나중에
+            실패하면 자막만 간다. 음성은 응답 뒤 백그라운드에서 흐르기 때문이다.
     """
 
     label: str
@@ -114,7 +116,11 @@ class BroadcastService:
         return self._t(KEY_TARGET_ALL) if _is_everyone(target) else str(target)
 
     async def send(self, request: BroadcastRequest) -> BroadcastReport:
-        """대상 허브에 방송 알림과 음성을 보낸다.
+        """대상 허브에 방송 알림을 보내고, 음성은 백그라운드로 흘리기 시작한다.
+
+        Intent: 말한 사람에게 확인 답이 방송 스트림이 끝나길 기다리면 2~3초 늦는다. 그래서
+        확인은 동기로 끝나는 BroadcastNotice 전달 결과로만 정하고, 음성은 추적되는 태스크로
+        떼어 최선 노력으로 보낸다. 합성이 나중에 실패해도 자막은 이미 갔으므로 확인은 참이다.
 
         IMPORTANT: 방송 문장은 사용자가 정한 자유 문장이라 TTS 캐시를 쓰지 않는다.
         음성은 한 번만 합성하고 같은 PCM 조각을 대상 허브 모두에게 보낸다.
@@ -137,15 +143,15 @@ class BroadcastService:
         spoken = self._spoken_text(request)
         notice = BroadcastNotice(
             from_hub_id=request.from_hub_id,
-            from_area=request.from_area_name or request.from_area_id,
+            from_area=self._sender_label(request),
             text=request.text,
             stream_id=stream_id,
         )
         reached = await self._push(live, Envelope(broadcast_notice=notice))
         offline.extend(hub_id for hub_id in live if hub_id not in reached)
-        audio = False
-        if reached:
-            audio = await self._stream_audio(_Stream(stream_id, list(reached)), spoken)
+        audio = bool(reached) and self._can_speak(spoken)
+        if audio:
+            self._start_fan_out(_Stream(stream_id, list(reached)), spoken)
         logger.info(
             "Broadcast sent: from={} target={} delivered={} offline={} audio={}",
             request.from_hub_id or "-",
@@ -155,6 +161,27 @@ class BroadcastService:
             audio,
         )
         return BroadcastReport(label, everyone, tuple(reached), tuple(offline), audio)
+
+    def _sender_label(self, request: BroadcastRequest) -> str:
+        label = request.from_area_name or request.from_area_id
+        if label or request.from_hub_id:
+            return label
+        return self._t(KEY_SENDER_APP)
+
+    def _can_speak(self, spoken: str) -> bool:
+        return self._openai is not None and bool(normalize_for_tts(spoken))
+
+    def _start_fan_out(self, stream: _Stream, spoken: str) -> None:
+        task = asyncio.ensure_future(self._fan_out(stream, spoken))
+        self._connections.track_serving(task)
+
+    async def _fan_out(self, stream: _Stream, spoken: str) -> None:
+        try:
+            await self._stream_audio(stream, spoken)
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            logger.exception("Broadcast audio fan-out crashed: {}", stream.stream_id)
 
     def _spoken_text(self, request: BroadcastRequest) -> str:
         if request.from_area_name:
