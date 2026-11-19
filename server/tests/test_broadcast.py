@@ -170,6 +170,15 @@ def test_all_targets_offline_reports_failure_without_audio(
     assert gateway.tts_texts == []
 
 
+def test_everyone_offline_uses_the_generic_wording(client: TestClient) -> None:
+    with connect_hub(client, HUB_B, HUB_B_TOKEN):
+        pass
+    with connect_hub(client) as speaker:
+        reply = say(speaker, "다들 밥 먹으라고 방송해줘")
+
+    assert reply == "다른 허브가 모두 오프라인이라 방송하지 못했어요."
+
+
 def test_unknown_target_is_reported(client: TestClient) -> None:
     with connect_hub(client) as speaker, connect_hub(client, HUB_B, HUB_B_TOKEN):
         set_area(client, HUB_B, "주방")
