@@ -46,6 +46,8 @@ data class HubConnectionConfig(
     /** 소켓을 연 뒤 ServerHello 를 기다리는 한도. */
     val handshakeTimeoutMs: Long = 10_000L,
     val protocolVersion: Int = 1,
+    /** ServerHello 뒤 이만큼 연결이 유지돼야 재접속 백오프를 초기화한다. hello 직후 끊는 서버에 폭주하지 않게 한다. */
+    val stableConnectionMs: Long = 30_000L,
 )
 
 /**
@@ -118,24 +120,26 @@ class HubConnection(
         var attempt = 0
         while (true) {
             _state.value = ConnectionState.Connecting
-            val (end, reachedHello) = runSession(cfg)
+            val (end, helloUptimeMs) = runSession(cfg)
             if (end == SessionEnd.AUTH_FAILED) {
                 _state.value = ConnectionState.AuthFailed
                 return
             }
             _state.value = ConnectionState.Disconnected
-            if (reachedHello) attempt = 0
+            if (helloUptimeMs != null && helloUptimeMs >= config.stableConnectionMs) attempt = 0
             val wait = backoff.delayMs(attempt++)
             Timber.i("Reconnecting in %d ms", wait)
             delay(wait)
         }
     }
 
-    private suspend fun runSession(cfg: ServerConfig): Pair<SessionEnd, Boolean> {
+    /** 세션 종료 사유와, ServerHello 를 받은 뒤 연결이 유지된 시간(ms; hello 전에 끝났으면 null)을 돌려준다. */
+    private suspend fun runSession(cfg: ServerConfig): Pair<SessionEnd, Long?> {
         val events = Channel<SocketEvent>(Channel.UNLIMITED)
         val request = Request.Builder().url(cfg.url.trim()).build()
         val socket = client.newWebSocket(request, listener(events))
         val session = ActiveSocket(socket)
+        var helloAtNanos = 0L
         var reachedHello = false
         try {
             return coroutineScope {
@@ -154,10 +158,11 @@ class HubConnection(
                 }
                 val end = processEvents(cfg, session, events) {
                     reachedHello = true
+                    helloAtNanos = System.nanoTime()
                     helloSignal.complete(Unit)
                 }
                 ticker.cancel()
-                end to reachedHello
+                end to if (reachedHello) (System.nanoTime() - helloAtNanos) / NANOS_PER_MS else null
             }
         } finally {
             withContext(NonCancellable) {
@@ -290,6 +295,7 @@ class HubConnection(
 
     private companion object {
         const val INBOUND_BUFFER = 64
+        const val NANOS_PER_MS = 1_000_000L
         const val NORMAL_CLOSE = 1000
     }
 }

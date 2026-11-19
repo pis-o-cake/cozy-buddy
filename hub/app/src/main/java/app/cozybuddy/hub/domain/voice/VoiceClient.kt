@@ -320,7 +320,7 @@ class VoiceClient @Inject constructor(
             Envelope.BodyCase.BROADCAST_NOTICE -> handleBroadcastNotice(envelope.broadcastNotice)
             Envelope.BodyCase.ASSISTANT_STATE ->
                 Timber.d("Server assistant state: %s", envelope.assistantState.state)
-            Envelope.BodyCase.ERROR -> handleServerError(envelope.error.streamId)
+            Envelope.BodyCase.ERROR -> handleServerError(envelope.error.streamId, envelope.error.requestId)
             Envelope.BodyCase.UTTERANCE_DECLINED -> handleDeclined(envelope.utteranceDeclined.streamId)
             else -> Unit
         }
@@ -397,11 +397,19 @@ class VoiceClient @Inject constructor(
         if (known) player.finish(streamId)
     }
 
-    private fun handleServerError(streamId: String) {
+    /**
+     * 현재 발화·응답 스트림을 가리키는 오류만 발화를 실패시킨다.
+     *
+     * 허브는 발화에 request_id 를 쓰지 않으므로 stream_id 가 비었거나 다른 스트림·요청의 오류는 로그만 남기고 무시한다.
+     */
+    private fun handleServerError(streamId: String, requestId: String) {
         val state = machine.state.value
         if (state.phase == AssistantPhase.IDLE) return
-        val relevant = streamId.isEmpty() || streamId == state.utteranceId || streamId == state.responseId
-        if (!relevant) return
+        val relevant = streamId.isNotEmpty() && (streamId == state.utteranceId || streamId == state.responseId)
+        if (!relevant) {
+            Timber.w("Ignoring server error unrelated to the current utterance stream=%s request=%s", streamId, requestId)
+            return
+        }
         state.utteranceId?.let { failCurrent(it) }
     }
 

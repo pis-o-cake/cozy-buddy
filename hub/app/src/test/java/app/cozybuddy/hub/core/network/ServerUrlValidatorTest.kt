@@ -3,6 +3,7 @@ package app.cozybuddy.hub.core.network
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 class ServerUrlValidatorTest {
@@ -25,6 +26,24 @@ class ServerUrlValidatorTest {
         assertEquals(UrlError.CLEARTEXT_NOT_LOCAL, ServerUrlValidator.validate("ws://8.8.8.8/ws"))
         assertEquals(UrlError.CLEARTEXT_NOT_LOCAL, ServerUrlValidator.validate("ws://172.32.0.1/ws"))
         assertNull(ServerUrlValidator.validate("wss://example.com/ws"))
+    }
+
+    @Test
+    fun `numeric prefix of a public domain is not a local address`() {
+        listOf(
+            "ws://10.0.0.1.evil.com/ws",
+            "ws://192.168.0.1.example.org/ws",
+            "ws://10.0.0.x/ws",
+        ).forEach { assertEquals(UrlError.CLEARTEXT_NOT_LOCAL, ServerUrlValidator.validate(it), it) }
+    }
+
+    @Test
+    fun `host check requires exactly four numeric labels in range`() {
+        listOf("10.0.0.1.5", "10.0.0.256", "10.0.0", "10..0.1", "10.0.0.1x", "+10.0.0.1").forEach {
+            assertFalse(ServerUrlValidator.isLocalHost(it), it)
+        }
+        assertTrue(ServerUrlValidator.isLocalHost("10.0.0.1"))
+        assertTrue(ServerUrlValidator.isLocalHost("hub"))
     }
 
     @Test
