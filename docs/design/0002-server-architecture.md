@@ -10,6 +10,12 @@ Cozy Server는 허브와 휴대폰 앱이 상대하는 유일한 백엔드다. �
 원장, 자동화 스케줄은 갖지 않는다. 전체 구조와 다른 컴포넌트와의 경계는
 [전체 시스템 아키텍처](0001-system-architecture.md)를 따른다.
 
+구현된 현재 구조는 [현행 아키텍처](../architecture/README.md)가 정본이다. 구현은 이 제안과 다음 점이 다르다.
+
+- HA 연동: MCP 클라이언트(`mcp_client.py`) 없이 HA WebSocket API(`home/ha_client.py`)로 기기 제어와 상태 구독을 모두 한다. LLM 기기 툴도 HA MCP 툴이 아니라 서버의 `agent/skills/device.py`가 제공한다.
+- 코드 구조: `agent/`는 `understand/`(이해)와 `skills/`(실행)로 나뉘었다([백엔드 파이프라인](0005-backend-pipeline.md)). `auth`, `weather`, `telemetry`, `system` 도메인이 추가됐다.
+- 미결 사항의 인증 방식은 등록 코드 페어링으로([다중 허브 대비 기능](0006-multi-hub-features.md)), 대화 로그는 `turn_log` 테이블로 정해졌다.
+
 ## 제안 요약
 
 서버가 맡는 일은 다섯 가지다.

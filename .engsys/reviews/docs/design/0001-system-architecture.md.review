@@ -1,10 +1,11 @@
 engsys-document-review: 1
 document: docs/design/0001-system-architecture.md
-blob: c473bbe3ab9da0741ec85d5f00fa1f41e88e156b
+blob: 39373900135a601e4d25c2e6933728e77a8a512f
 decision: pass
 reviewer: claude-opus-5-5
-audience: 설계 검토자와 구현 담당자
-purpose: 이 구성과 경계로 전체 시스템을 만들어도 되는가
+audience: 검토자와 구현 담당자
+purpose: 전체 시스템을 이 범위와 방법으로 구현해도 되는가
 
-- 미결 결정 표의 휴대폰 앱 행을 iOS·Android 하이브리드, 마지막 단계 구현, 착수 시 ADR로 갱신해 0004·계획과 일치
+- 제안 당시 서술은 보존하고, 구현과 다른 점(HA MCP 미사용)과 현행 아키텍처 링크를 머리말에 추가
+- ADR 0002와 모순되던 "제어 JSON" 서술 두 곳과 미결 표의 스키마 형식 행을 결정 결과로 정정
 

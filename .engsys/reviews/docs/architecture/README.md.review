@@ -1,0 +1,13 @@
+engsys-document-review: 1
+document: docs/architecture/README.md
+blob: 9cbdc5453094710a10f4660a500d3d2123abc39f
+decision: pass
+reviewer: claude-opus-5-5
+audience: 개발자와 운영자
+purpose: 지금 어떤 구성요소가 어떤 책임과 경계로 동작하는가
+
+- 결론: 허브·서버 한 대 구조, protobuf 단일 계약, HA WebSocket 위임, 휴대폰 앱 미구현을 첫 문단에 둠
+- 도메인·패키지 표를 server/app/domain, hub 패키지 목록과 대조, 테이블 이름은 __tablename__ 으로 확인
+- 흐름은 #90·#93 병합 후 동작(코드 종류 고정, ack 대기, rejected, HA 큐·송신 제한) 반영
+- 한계: MCP를 버린 판단 근거가 기록에 없음을 그대로 적고 #88 연결
+

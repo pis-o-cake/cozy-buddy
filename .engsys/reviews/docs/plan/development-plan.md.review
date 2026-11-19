@@ -1,10 +1,11 @@
 engsys-document-review: 1
 document: docs/plan/development-plan.md
-blob: 2c34077e1a4fc988844d0511e98b7cb78e245f8a
+blob: c877677dd24731ee8983544d6982a0183a209c23
 decision: pass
 reviewer: claude-opus-5-5
-audience: 프로젝트 소유자와 이후 작업 담당자
-purpose: 각 작업의 진행 상태와 막힌 이유를 한눈에 확인한다
+audience: 소유자와 구현 담당자
+purpose: 무엇을 언제까지 하며 무엇이 막고 있는가
 
-- 작업표에 W4 행 추가, 보안 검토 보고서 링크, 병합 PR 번호를 gh 와 대조
+- W4 행에 누락된 #74~#77 추가(gh pr list로 병합 확인)
+- W5 행 추가: 전체 적대적 검토 조치 #90~#94, 남은 실기기 확인 #13과 LAN 암호화 #89
 
