@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class HubRead(BaseModel):
@@ -21,5 +21,5 @@ class HubRead(BaseModel):
 class HubUpdate(BaseModel):
     """허브 수정 요청. 보낸 필드만 바꾼다."""
 
-    name: str | None = None
-    area_id: str | None = None
+    name: str | None = Field(default=None, max_length=100)
+    area_id: str | None = Field(default=None, max_length=100)

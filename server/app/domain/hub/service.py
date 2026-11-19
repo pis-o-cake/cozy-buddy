@@ -1,5 +1,7 @@
 """허브 비즈니스 로직."""
 
+from loguru import logger
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.connections import ConnectionManager
@@ -21,7 +23,15 @@ class HubService:
         """허브가 없으면 만들고, last_seen_at 을 현재로 갱신한다."""
         hub = await crud.get(self._session, hub_id)
         if hub is None:
-            return await crud.add(self._session, Hub(hub_id=hub_id, last_seen_at=utcnow()))
+            try:
+                return await crud.add(self._session, Hub(hub_id=hub_id, last_seen_at=utcnow()))
+            except IntegrityError:
+                # 새 허브의 hello 가 동시에 오면 한쪽이 먼저 만든다. 만들어진 행을 다시 읽는다.
+                await self._session.rollback()
+                logger.info("Hub registered concurrently: {}", hub_id)
+                hub = await crud.get(self._session, hub_id)
+                if hub is None:
+                    raise
         hub.last_seen_at = utcnow()
         await self._session.commit()
         return hub
