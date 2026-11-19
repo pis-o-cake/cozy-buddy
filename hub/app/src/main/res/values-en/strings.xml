@@ -18,6 +18,7 @@
 
     <string name="alarm_default_label">Alarm</string>
     <string name="alarm_default_label_timer">Timer</string>
+    <string name="alarm_default_label_reminder">Reminder</string>
     <string name="alarm_ring_stop">Stop</string>
     <string name="alarm_ring_snooze">Snooze (%1$d min)</string>
     <string name="alarm_notification_channel_name">Alarm ringing</string>

@@ -69,6 +69,23 @@ class AlarmRingViewModelTest {
     }
 
     @Test
+    fun `reminder overlay carries the kind and the spoken label`() = runTest {
+        val viewModel = AlarmRingViewModel(holder, control, timeSource, displayConfig)
+        val job = viewModel.uiState.onEach { }.launchIn(backgroundScope)
+        runCurrent()
+
+        val startedAt = timeSource.now().toInstant().toEpochMilli()
+        holder.start(RingingState.Ringing("m", AlarmKind.REMINDER, "병원 가기", startedAt))
+        runCurrent()
+
+        val ringing = viewModel.uiState.value
+        assertTrue(ringing.visible)
+        assertEquals(AlarmKind.REMINDER, ringing.kind)
+        assertEquals("병원 가기", ringing.label)
+        job.cancel()
+    }
+
+    @Test
     fun `stop and snooze are delegated to the control`() {
         val viewModel = AlarmRingViewModel(holder, control, timeSource, displayConfig)
 

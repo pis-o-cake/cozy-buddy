@@ -18,7 +18,10 @@ import app.cozybuddy.hub.domain.model.Alarm
 import app.cozybuddy.hub.domain.model.AlarmKind
 import app.cozybuddy.hub.domain.scheduling.SnoozePolicy
 import app.cozybuddy.hub.domain.usecase.AlarmCoordinator
+import app.cozybuddy.hub.domain.voice.ReminderSpeech
+import app.cozybuddy.hub.domain.voice.VoiceClient
 import app.cozybuddy.hub.feature.alarm.AlarmRingConfig
+import app.cozybuddy.hub.feature.alarm.RingProfile
 import app.cozybuddy.hub.feature.alarm.RingingState
 import app.cozybuddy.hub.feature.alarm.RingingStateHolder
 import androidx.core.app.ServiceCompat
@@ -31,6 +34,7 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import timber.log.Timber
@@ -40,6 +44,10 @@ import timber.log.Timber
  *
  * `USAGE_ALARM` 으로 반복 재생하며 볼륨을 서서히 올리고, [AlarmRingConfig.AUTO_STOP] 뒤 스스로 멈춘다.
  *
+ * [AlarmKind.REMINDER] 는 반복음 대신 짧은 알림음을 몇 번만 내고, 서버에 내용 음성 안내를 요청한다.
+ * 안내 음성이 시작되면 알림음을 멈추고, 재생이 끝난 뒤 잠시 화면을 보여 주고 스스로 끝낸다.
+ * 오프라인이면 알림음과 화면 문구만 남는다.
+ *
  * 울리는 중에 다른 알람이 겹치면 대기열에 두고, 현재 알람이 정지·스누즈된 뒤 순서대로 울린다.
  */
 @AndroidEntryPoint
@@ -48,6 +56,7 @@ class AlarmRingService : Service() {
     @Inject lateinit var coordinator: AlarmCoordinator
     @Inject lateinit var ringingStateHolder: RingingStateHolder
     @Inject lateinit var timeSource: TimeSource
+    @Inject lateinit var voiceClient: VoiceClient
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var session: Session? = null
@@ -56,7 +65,11 @@ class AlarmRingService : Service() {
     private var player: MediaPlayer? = null
     private var focusRequest: AudioFocusRequest? = null
 
-    private class Session(val alarmId: String, val jobs: MutableList<Job> = mutableListOf())
+    private class Session(
+        val alarmId: String,
+        val jobs: MutableList<Job> = mutableListOf(),
+        var chime: Job? = null,
+    )
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -145,10 +158,15 @@ class AlarmRingService : Service() {
                 startedAtEpochMs = timeSource.now().toInstant().toEpochMilli(),
             ),
         )
-        startPlayback()
-        newSession.jobs += scope.launch { rampVolume() }
+        val profile = AlarmRingConfig.profileFor(alarm.kind)
+        startPlayback(profile, alarm.kind)
+        if (profile.ramp) newSession.jobs += scope.launch { rampVolume() }
+        if (profile.chimeRepeats > 1) {
+            newSession.chime = scope.launch { repeatChime(profile) }.also { newSession.jobs += it }
+        }
+        if (profile.announcesLabel) newSession.jobs += scope.launch { announce(newSession, alarm) }
         newSession.jobs += scope.launch {
-            delay(AlarmRingConfig.AUTO_STOP.toMillis())
+            delay(profile.autoStop.toMillis())
             Timber.i("Auto stop after timeout id=%s", alarm.id)
             finishRing(snoozed = false)
         }
@@ -201,22 +219,52 @@ class AlarmRingService : Service() {
     }
 
     private fun defaultLabel(kind: AlarmKind): String = getString(
-        if (kind == AlarmKind.TIMER) R.string.alarm_default_label_timer else R.string.alarm_default_label,
+        when (kind) {
+            AlarmKind.TIMER -> R.string.alarm_default_label_timer
+            AlarmKind.REMINDER -> R.string.alarm_default_label_reminder
+            AlarmKind.ALARM -> R.string.alarm_default_label
+        },
     )
 
-    private fun startPlayback() {
+    /** 서버에 안내 음성을 요청하고 진행을 따라간다. 시작되면 알림음을 멈추고, 끝나면 잠시 뒤 울림을 끝낸다. */
+    private suspend fun announce(target: Session, alarm: Alarm) {
+        voiceClient.onReminderFired(alarm.id, alarm.label)
+        voiceClient.reminderSpeech.filter { it.alarmId == alarm.id }.collect { event ->
+            when (event) {
+                is ReminderSpeech.Started -> {
+                    target.chime?.cancel()
+                    releaseAudio()
+                    Timber.i("Reminder speech started, chime stopped id=%s", alarm.id)
+                }
+                is ReminderSpeech.Drained -> {
+                    delay(AlarmRingConfig.REMINDER_LINGER_AFTER_SPEECH.toMillis())
+                    finishRing(snoozed = false)
+                }
+            }
+        }
+    }
+
+    private suspend fun repeatChime(profile: RingProfile) {
+        repeat(profile.chimeRepeats - 1) {
+            delay(profile.chimeGap.toMillis())
+            runCatching { player?.run { seekTo(0); start() } }
+                .onFailure { Timber.w(it, "Chime replay failed") }
+        }
+    }
+
+    private fun startPlayback(profile: RingProfile, kind: AlarmKind) {
         val attributes = AudioAttributes.Builder()
             .setUsage(AudioAttributes.USAGE_ALARM)
             .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
             .build()
         requestFocus(attributes)
-        for ((index, source) in ringtoneSources().withIndex()) {
+        for ((index, source) in ringtoneSources(kind).withIndex()) {
             val candidate = MediaPlayer()
             try {
                 candidate.setAudioAttributes(attributes)
                 source(candidate)
-                candidate.isLooping = true
-                candidate.setVolume(AlarmRingConfig.START_VOLUME, AlarmRingConfig.START_VOLUME)
+                candidate.isLooping = profile.looping
+                candidate.setVolume(profile.startVolume, profile.startVolume)
                 candidate.setWakeMode(this, PowerManager.PARTIAL_WAKE_LOCK)
                 candidate.prepare()
                 candidate.start()
@@ -231,15 +279,28 @@ class AlarmRingService : Service() {
         Timber.e("All alarm audio sources failed")
     }
 
-    // 사용자 기본 알람음 -> 시스템 기본 URI -> 앱에 내장한 톤 순으로 시도한다.
-    private fun ringtoneSources(): List<(MediaPlayer) -> Unit> = listOf(
-        { p ->
-            val uri = RingtoneManager.getActualDefaultRingtoneUri(this, RingtoneManager.TYPE_ALARM)
-            p.setDataSource(this, checkNotNull(uri) { "no default alarm ringtone" })
-        },
-        { p -> p.setDataSource(this, Settings.System.DEFAULT_ALARM_ALERT_URI) },
-        { p -> resources.openRawResourceFd(R.raw.alarm_fallback).use { p.setDataSource(it) } },
-    )
+    // 사용자 기본 알람음 -> 시스템 기본 URI -> 앱에 내장한 톤 순으로 시도한다. 리마인더는 알림음부터 시작한다.
+    private fun ringtoneSources(kind: AlarmKind): List<(MediaPlayer) -> Unit> {
+        val fallback = { p: MediaPlayer -> resources.openRawResourceFd(R.raw.alarm_fallback).use { p.setDataSource(it) } }
+        if (kind == AlarmKind.REMINDER) {
+            return listOf(
+                { p ->
+                    val uri = RingtoneManager.getActualDefaultRingtoneUri(this, RingtoneManager.TYPE_NOTIFICATION)
+                    p.setDataSource(this, checkNotNull(uri) { "no default notification sound" })
+                },
+                { p -> p.setDataSource(this, Settings.System.DEFAULT_NOTIFICATION_URI) },
+                fallback,
+            )
+        }
+        return listOf(
+            { p ->
+                val uri = RingtoneManager.getActualDefaultRingtoneUri(this, RingtoneManager.TYPE_ALARM)
+                p.setDataSource(this, checkNotNull(uri) { "no default alarm ringtone" })
+            },
+            { p -> p.setDataSource(this, Settings.System.DEFAULT_ALARM_ALERT_URI) },
+            fallback,
+        )
+    }
 
     private suspend fun rampVolume() {
         val startedAt = System.nanoTime()

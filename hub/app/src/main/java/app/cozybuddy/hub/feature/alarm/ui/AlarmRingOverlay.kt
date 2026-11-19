@@ -33,6 +33,8 @@ import app.cozybuddy.hub.feature.alarm.AlarmRingViewModel
 
 private const val TIME_FONT_SIZE = 140
 private const val LABEL_FONT_SIZE = 36
+private const val REMINDER_TIME_FONT_SIZE = 56
+private const val REMINDER_LABEL_FONT_SIZE = 96
 private const val OVERLAY_ALPHA = 0.96f
 
 /** 앰비언트를 포함한 모든 화면 위에 얹히는 울림 오버레이. 울리지 않으면 아무것도 그리지 않는다. */
@@ -59,15 +61,21 @@ fun AlarmRingOverlay(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
+            // 리마인더는 내용이 주인공이라 문구를 크게, 시각을 작게 보인다.
+            val reminder = state.kind == AlarmKind.REMINDER
             Text(
                 text = state.label.ifBlank { defaultLabel(state.kind) },
-                style = MaterialTheme.typography.headlineMedium.copy(fontSize = LABEL_FONT_SIZE.sp),
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.headlineMedium.copy(
+                    fontSize = (if (reminder) REMINDER_LABEL_FONT_SIZE else LABEL_FONT_SIZE).sp,
+                ),
+                color = if (reminder) MaterialTheme.colorScheme.onBackground else MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Text(
                 text = state.timeText,
-                style = MaterialTheme.typography.displayLarge.copy(fontSize = TIME_FONT_SIZE.sp),
-                color = MaterialTheme.colorScheme.onBackground,
+                style = MaterialTheme.typography.displayLarge.copy(
+                    fontSize = (if (reminder) REMINDER_TIME_FONT_SIZE else TIME_FONT_SIZE).sp,
+                ),
+                color = if (reminder) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onBackground,
             )
             Row(Modifier.padding(top = 40.dp), horizontalArrangement = Arrangement.spacedBy(24.dp)) {
                 OutlinedButton(onClick = onSnooze, modifier = Modifier.width(220.dp).height(72.dp)) {
@@ -87,5 +95,9 @@ fun AlarmRingOverlay(
 
 @Composable
 internal fun defaultLabel(kind: AlarmKind): String = stringResource(
-    if (kind == AlarmKind.TIMER) R.string.alarm_default_label_timer else R.string.alarm_default_label,
+    when (kind) {
+        AlarmKind.TIMER -> R.string.alarm_default_label_timer
+        AlarmKind.REMINDER -> R.string.alarm_default_label_reminder
+        AlarmKind.ALARM -> R.string.alarm_default_label
+    },
 )
