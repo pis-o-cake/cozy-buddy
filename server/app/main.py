@@ -3,6 +3,7 @@
 from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
 from datetime import datetime
+from pathlib import Path
 
 from fastapi import APIRouter, FastAPI
 from loguru import logger
@@ -14,12 +15,14 @@ from app.core.discovery import discover_domain_modules
 from app.core.exceptions import register_exception_handlers
 from app.core.i18n import Translator
 from app.core.logging import configure_logging
-from app.core.openai_gateway import OpenAIGateway
+from app.core.openai_gateway import TTS_SAMPLE_RATE_HZ, OpenAIGateway
 from app.core.version import get_server_version
 from app.domain.agent.service import AgentService
 from app.domain.home.service import HomeService
 from app.domain.telemetry.recorder import TurnRecorder
 from app.domain.voice.service import VoiceService
+from app.domain.voice.tts_cache import TtsCache, TtsCacheLimits
+from app.domain.voice.tts_warmup import TtsWarmup
 from app.domain.weather.client import OpenMeteoClient
 from app.domain.weather.service import WeatherService
 from app.middleware.request_log import RequestLogMiddleware
@@ -37,6 +40,17 @@ def _include_domain_routers(app: FastAPI) -> None:
         root_router = getattr(module, "root_router", None)
         if isinstance(root_router, APIRouter):
             app.include_router(root_router, tags=[name])
+
+
+def _build_tts_cache(settings: Settings, gateway: OpenAIGateway | None) -> TtsCache | None:
+    if gateway is None or not settings.tts_cache_enabled:
+        return None
+    identity = (
+        f"{settings.openai_tts_model}|{settings.openai_tts_voice}|pcm_s16le|{TTS_SAMPLE_RATE_HZ}"
+    )
+    mb = 1024 * 1024
+    limits = TtsCacheLimits(settings.tts_cache_memory_mb * mb, settings.tts_cache_disk_mb * mb)
+    return TtsCache(Path(settings.tts_cache_dir), identity, limits)
 
 
 def create_app(
@@ -66,10 +80,16 @@ def create_app(
         await app.state.turns.start()
         await app.state.home.start()
         await app.state.weather.start()
+        if warmup is not None:
+            warmup.start()
         try:
             yield
         finally:
             await app.state.connections.drain_serving(SERVING_DRAIN_SECONDS)
+            if warmup is not None:
+                await warmup.stop()
+            if tts_cache is not None:
+                await tts_cache.drain()
             await app.state.weather.stop()
             await app.state.home.stop()
             await app.state.turns.stop()
@@ -88,6 +108,15 @@ def create_app(
     gateway = openai or (OpenAIGateway(settings) if settings.voice_enabled else None)
     if gateway is None:
         logger.info("Voice pipeline disabled: OPENAI_API_KEY not set")
+
+    tts_cache = _build_tts_cache(settings, gateway)
+    app.state.tts_cache = tts_cache
+    warmup = (
+        TtsWarmup(settings, tts_cache, gateway, app.state.translator, app.state.home.snapshot)
+        if tts_cache is not None and gateway is not None and settings.tts_warmup
+        else None
+    )
+    app.state.tts_warmup = warmup
 
     def get_db() -> Database:
         db: Database = app.state.db
@@ -112,6 +141,7 @@ def create_app(
         gateway,
         app.state.connections,
         get_db,
+        tts_cache,
     )
     app.add_middleware(RequestLogMiddleware)
     register_exception_handlers(app)

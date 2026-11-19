@@ -45,6 +45,9 @@ def settings(tmp_path: Path) -> Settings:
             f"hub:{HUB_ID}:{HUB_TOKEN},hub:hub-2:hub2-secret,mobile:{MOBILE_ID}:{MOBILE_TOKEN}"
         ),
         hello_timeout_seconds=0.5,
+        tts_cache_enabled=False,
+        tts_cache_dir=str(tmp_path / "tts-cache"),
+        tts_warmup=False,
     )
 
 

@@ -19,6 +19,7 @@ from loguru import logger
 
 from app.core.openai_gateway import TTS_SAMPLE_RATE_HZ, OpenAIGateway, OpenAIGatewayError
 from app.domain.voice.audio import PCM_CHANNELS, RESPONSE_CHUNK_MS, PcmChunker
+from app.domain.voice.tts_cache import TtsCache
 from app.domain.voice.tts_text import normalize_for_tts, split_sentences
 
 SendFn = Callable[[Envelope], Awaitable[None]]
@@ -95,16 +96,32 @@ class ResponseStreamer:
         speech: OpenAIGateway | None,
         *,
         announce_speaking: bool = True,
+        cache: TtsCache | None = None,
+        cacheable: Callable[[], bool] | None = None,
     ) -> None:
+        """
+        Args:
+            cache: 합성 음성 캐시. 없으면 매번 합성한다.
+            cacheable: 지금 문장이 캐시 대상(결정론 템플릿 응답)인지. 문장마다 호출해
+                에이전트가 경로를 정한 뒤의 값을 본다. 없으면 캐시하지 않는다.
+        """
         self._send = send
         self._stream_id = stream_id
         self._speech = speech
+        self._cache = cache
+        self._cacheable = cacheable
+        self._first_hit: bool | None = None
         self._audio = _AudioSender(send, stream_id, stream_id, announce_speaking)
 
     @property
     def first_audio_at(self) -> float | None:
         """첫 오디오 조각을 보낸 monotonic 시각. 오디오가 없으면 None."""
         return self._audio.first_audio_at
+
+    @property
+    def first_sentence_cache_hit(self) -> bool:
+        """첫 문장의 음성을 캐시에서 냈는지. 음성이 없었으면 False."""
+        return bool(self._first_hit)
 
     async def run(self, deltas: AsyncIterator[str]) -> None:
         """텍스트 스트림을 끝까지 내보낸다. 취소되면 진행 중인 TTS 도 함께 취소한다."""
@@ -150,10 +167,32 @@ class ResponseStreamer:
             if not spoken:
                 continue
             try:
-                async for pcm in self._speech.stream_speech(spoken):
-                    await self._audio.write(pcm)
+                await self._speak_sentence(spoken)
             except OpenAIGatewayError as exc:
                 # 한 문장이라도 실패하면 이후 문장은 합성하지 않고 자막만 남긴다.
                 logger.warning("TTS failed, continuing with subtitles only: {}", exc)
                 failed = True
         await self._audio.finish()
+
+    async def _speak_sentence(self, spoken: str) -> None:
+        assert self._speech is not None
+        cache = self._cache if self._cacheable is not None and self._cacheable() else None
+        first = self._first_hit is None
+        if cache is not None:
+            cached = await cache.get(spoken)
+            cache.record(hit=cached is not None)
+            if cached is not None:
+                if first:
+                    self._first_hit = True
+                await self._audio.write(cached)
+                return
+        if first:
+            self._first_hit = False
+        # 스트림이 끝까지 성공했을 때만 저장한다. 중간에 끊기거나 취소되면 버린다.
+        tee = bytearray() if cache is not None else None
+        async for pcm in self._speech.stream_speech(spoken):
+            if tee is not None:
+                tee.extend(pcm)
+            await self._audio.write(pcm)
+        if cache is not None and tee is not None:
+            cache.put(spoken, bytes(tee))
