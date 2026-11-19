@@ -59,6 +59,8 @@ class Settings(BaseSettings):
 
     database_url: str = "sqlite+aiosqlite:///data/cozy.db"
     static_tokens: SecretStr = SecretStr("")
+    # 관리 API(/api/auth 의 코드 발급·폐기) 보호용. 비어 있으면 관리 API 는 503 을 돌려준다.
+    admin_token: SecretStr = SecretStr("")
     hello_timeout_seconds: float = 10.0
     log_level: str = "INFO"
     locale: str = "ko"

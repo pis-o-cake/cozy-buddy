@@ -107,6 +107,17 @@ class ConnectionManager:
             self.hub_control.forget(conn.client_id)
         return True
 
+    async def disconnect_client(self, client_id: str, code: int) -> int:
+        """client_id 의 연결을 허브·앱 구분 없이 닫는다.
+
+        Returns:
+            닫은 연결 수.
+        """
+        conns = [pool[client_id] for pool in (self._hubs, self._mobiles) if client_id in pool]
+        for conn in conns:
+            await conn.close(code)
+        return len(conns)
+
     def is_hub_online(self, hub_id: str) -> bool:
         """허브가 연결돼 있는지."""
         return hub_id in self._hubs
