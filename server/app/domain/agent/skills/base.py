@@ -25,6 +25,7 @@ class SkillResult:
         entities: 영향을 받은 엔티티 ID. 기기 스킬이 채운다.
         text: 사용자에게 읽어 줄 완성된 문장.
         payload: LLM 툴 호출 결과로 돌려줄 JSON 객체. 결정론 실행에서는 비어 있다.
+        remember: 후속 지시용으로 기억할 만한 툴 호출이 만든 의도. 결정론 경로와 같은 모양이다.
     """
 
     ok: bool
@@ -33,6 +34,7 @@ class SkillResult:
     entities: tuple[str, ...] = ()
     text: str = ""
     payload: Mapping[str, Any] = field(default_factory=dict)
+    remember: Intent | None = None
 
 
 class BaseSkill:

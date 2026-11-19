@@ -1,5 +1,6 @@
 """후속 지시 전체 흐름: 허브 연결에서 연속 발화가 맥락 경로로 풀리고 LLM 에는 최근 대화가 간다."""
 
+import json
 from collections.abc import Iterator
 
 import pytest
@@ -9,6 +10,7 @@ from fastapi.testclient import TestClient
 from starlette.testclient import WebSocketTestSession
 
 from app.config import Settings
+from app.core.openai_gateway import ChatChunk, ToolCall
 from app.domain.telemetry.turn import TurnPath
 from app.main import create_app
 from tests.agent_fixtures import NOW
@@ -22,6 +24,7 @@ from tests.voice_support import (
     recv_until,
     spoken_text,
     text_turn,
+    tool_turn,
 )
 
 
@@ -139,3 +142,78 @@ def test_llm_receives_recent_turns_as_prior_messages(
         "거실 조명을 켰어요",
         "너 이름이 뭐야",
     ]
+
+
+def tool_call(entity_id: str, action: str, call_id: str) -> ToolCall:
+    args = json.dumps({"entity_id": entity_id, "action": action})
+    return ToolCall(call_id, "control_device", args)
+
+
+def test_llm_control_feeds_followup_memory(
+    client: TestClient, gateway: FakeOpenAI, fake_ha: FakeHomeAssistant
+) -> None:
+    captured = Captured(client.app.state.turns)  # type: ignore[attr-defined]
+    gateway.chat_turns = [
+        tool_turn("control_device", {"entity_id": "light.living", "action": "turn_off"}),
+        text_turn("껐어요."),
+    ]
+    with connect_hub(client) as hub:
+        say(hub, "분위기 좀 바꿔줘", "q1")
+        assert say(hub, "다시 켜줘", "q2") == "거실 조명을 켰어요"
+
+    eventually(lambda: len(captured.turns) == 2)
+    assert [t.path for t in captured.turns] == [TurnPath.LLM, TurnPath.CONTEXT]
+    assert len(gateway.chat_calls) == 2
+    assert [(s, e) for s, e, _ in service_calls(fake_ha)] == [
+        ("turn_off", "light.living"),
+        ("turn_on", "light.living"),
+    ]
+
+
+def test_llm_followup_remembers_last_successful_call_only(
+    client: TestClient, gateway: FakeOpenAI, fake_ha: FakeHomeAssistant
+) -> None:
+    calls = (
+        tool_call("light.living", "turn_off", "c1"),
+        tool_call("light.bed", "turn_off", "c2"),
+        tool_call("light.nope", "turn_off", "c3"),
+    )
+    gateway.chat_turns = [[ChatChunk(tool_calls=calls)], text_turn("껐어요.")]
+    with connect_hub(client) as hub:
+        say(hub, "분위기 좀 바꿔줘", "q1")
+        say(hub, "다시 켜줘", "q2")
+
+    assert [(s, e) for s, e, _ in service_calls(fake_ha)][-1] == ("turn_on", "light.bed")
+    assert len(gateway.chat_calls) == 2
+
+
+def test_llm_failed_tool_is_not_remembered(
+    client: TestClient, gateway: FakeOpenAI, fake_ha: FakeHomeAssistant
+) -> None:
+    gateway.chat_turns = [
+        tool_turn("control_device", {"entity_id": "light.nope", "action": "turn_off"}),
+        text_turn("못 찾았어요."),
+        text_turn("어떤 걸 켤까요?"),
+    ]
+    with connect_hub(client) as hub:
+        say(hub, "분위기 좀 바꿔줘", "q1")
+        assert say(hub, "다시 켜줘", "q2") == "어떤 걸 켤까요?"
+
+    assert len(gateway.chat_calls) == 3
+    assert service_calls(fake_ha) == []
+
+
+def test_llm_state_query_followup_retargets(client: TestClient, gateway: FakeOpenAI) -> None:
+    captured = Captured(client.app.state.turns)  # type: ignore[attr-defined]
+    gateway.chat_turns = [
+        tool_turn("get_device_state", {"entity_id": "light.living"}),
+        text_turn("켜져 있어요."),
+    ]
+    with connect_hub(client) as hub:
+        say(hub, "분위기 좀 알려줘", "q1")
+        reply = say(hub, "아니 침실 거", "q2")
+
+    eventually(lambda: len(captured.turns) == 2)
+    assert captured.turns[1].path == TurnPath.CONTEXT
+    assert "침실" in reply
+    assert len(gateway.chat_calls) == 2

@@ -10,7 +10,13 @@ from loguru import logger
 from app.core.i18n import Translator
 from app.domain.agent.context import TurnContext
 from app.domain.agent.home_view import HomeView
-from app.domain.agent.model import DeviceAction, DeviceCommand, Intent, SceneCommand
+from app.domain.agent.model import (
+    CommandParams,
+    DeviceAction,
+    DeviceCommand,
+    Intent,
+    SceneCommand,
+)
 from app.domain.agent.skills.base import (
     KEY_INTERNAL,
     KEY_NOT_FOUND,
@@ -99,7 +105,12 @@ class DeviceSkill(BaseSkill):
         error_key = await self._apply(ctx.view, (entity_id,), action, pct, delta)
         if error_key:
             return self.failed(error_key, (entity_id,))
-        return SkillResult(True, entities=(entity_id,), payload={"ok": True})
+        return SkillResult(
+            True,
+            entities=(entity_id,),
+            payload={"ok": True},
+            remember=_remembered_intent(entity_id, action, pct, delta),
+        )
 
     async def _apply(
         self,
@@ -133,6 +144,13 @@ class DeviceSkill(BaseSkill):
             return None
         logger.warning("Device command failed: code={} key={}", failed.code, failed.message_key)
         return failed.message_key or KEY_INTERNAL
+
+
+def _remembered_intent(entity_id: str, action: str, pct: int | None, delta: int | None) -> Intent:
+    """툴 호출을 결정론 경로가 기억하는 것과 같은 의도로 바꾼다."""
+    if action == "activate":
+        return SceneCommand(entity_id)
+    return DeviceCommand((entity_id,), DeviceAction(action), CommandParams(pct, delta))
 
 
 def _ha_action(domain: str, action: str) -> str:

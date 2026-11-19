@@ -68,4 +68,6 @@ class StateSkill(BaseSkill):
             payload["unit"] = unit
         if entity.domain == "light" and status.state != "off":
             payload["brightness_pct"] = ctx.view.brightness_pct(entity_id)
-        return SkillResult(True, entities=(entity_id,), payload=payload)
+        return SkillResult(
+            True, entities=(entity_id,), payload=payload, remember=StateQuery((entity_id,))
+        )

@@ -10,7 +10,8 @@ from app.config import Settings
 from app.core.i18n import Translator
 from app.core.openai_gateway import OpenAIGateway, OpenAIGatewayError, ToolCall
 from app.domain.agent.context import TurnContext
-from app.domain.agent.memory import ConversationMemory
+from app.domain.agent.memory import ConversationMemory, target_from_intent
+from app.domain.agent.model import Intent
 from app.domain.agent.skills.registry import SkillRegistry, tool_message
 from app.domain.telemetry.turn import Stage
 
@@ -50,6 +51,7 @@ class LlmStep:
         ]
         turn = ctx.turn
         emitted = False
+        remembered: Intent | None = None
         try:
             for iteration in range(MAX_LLM_ITERATIONS):
                 # 마지막 턴은 툴 없이 불러 반드시 텍스트로 끝나게 한다.
@@ -69,7 +71,7 @@ class LlmStep:
                     waited = turn.clock()
                 turn.add_seconds(Stage.UNDERSTAND, turn.clock() - waited)
                 if not calls:
-                    return
+                    break
                 messages.append(_assistant_message(content, calls))
                 for call in calls:
                     with turn.timed(Stage.ACT):
@@ -78,6 +80,8 @@ class LlmStep:
                         )
                     turn.llm_tool_calls += 1
                     turn.record_skill(result.ok)
+                    if result.ok and result.remember is not None:
+                        remembered = result.remember
                     logger.debug("Tool executed: {} ok={}", call.name, result.ok)
                     messages.append(
                         {"role": "tool", "tool_call_id": call.id, "content": tool_message(result)}
@@ -87,6 +91,16 @@ class LlmStep:
             turn.fail("llm_timeout" if isinstance(exc, TimeoutError) else "llm_error")
             if not emitted:
                 yield self._t("agent.llm.apology")
+            return
+        self._remember_target(remembered, ctx)
+
+    def _remember_target(self, intent: Intent | None, ctx: TurnContext) -> None:
+        """오류 없이 끝난 턴의 마지막 성공 기기·상태 툴 대상을 후속 지시용으로 기억한다."""
+        if intent is None:
+            return
+        target = target_from_intent(intent, ctx.view)
+        if target is not None:
+            self._memory.remember_target(ctx.hub_id, target)
 
     def _history_messages(self, ctx: TurnContext) -> list[dict[str, Any]]:
         """최근 대화를 사용자·어시스턴트 메시지 쌍으로 만든다. 지난 턴의 툴 메시지는 싣지 않는다."""
