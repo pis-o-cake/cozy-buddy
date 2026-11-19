@@ -110,12 +110,12 @@ class LlmStep:
             return
         target = target_from_intent(intent, ctx.view)
         if target is not None:
-            self._memory.remember_target(ctx.hub_id, target)
+            self._memory.remember_target(ctx.conversation_key, target)
 
     def _history_messages(self, ctx: TurnContext) -> list[dict[str, Any]]:
         """최근 대화를 사용자·어시스턴트 메시지 쌍으로 만든다. 지난 턴의 툴 메시지는 싣지 않는다."""
         messages: list[dict[str, Any]] = []
-        for past in self._memory.recent_turns(ctx.hub_id):
+        for past in self._memory.recent_turns(ctx.conversation_key):
             messages.append({"role": "user", "content": past.user})
             messages.append({"role": "assistant", "content": past.assistant})
         return messages

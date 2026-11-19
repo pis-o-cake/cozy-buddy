@@ -64,7 +64,7 @@ class ClarifyAnswerResolver:
         self._selector = selector
 
     async def resolve(self, text: str, ctx: TurnContext) -> Intent | None:
-        clarify = self._store.take(ctx.hub_id)
+        clarify = self._store.take(ctx.conversation_key)
         if clarify is None:
             return None
         answer = classify_answer(text)

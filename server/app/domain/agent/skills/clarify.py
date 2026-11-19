@@ -24,7 +24,7 @@ class ClarifySkill(BaseSkill):
             return SkillResult(True, KEY_CANCELLED, text=self._t(KEY_CANCELLED))
         if not isinstance(intent, Clarify):
             return self.failed(KEY_INTERNAL)
-        self._store.remember(ctx.hub_id, intent)
+        self._store.remember(ctx.conversation_key, intent)
         response = build_response(intent, ctx.view.model, ctx.now, self._t)
         if response is None:
             return self.failed(KEY_INTERNAL)

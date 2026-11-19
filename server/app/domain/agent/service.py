@@ -117,7 +117,12 @@ class AgentService:
         return self._t("voice.stt_prompt").format(names=", ".join(names))
 
     async def handle(
-        self, text: str, hub_id: str, area_id: str, turn: Turn | None = None
+        self,
+        text: str,
+        hub_id: str,
+        area_id: str,
+        turn: Turn | None = None,
+        client_id: str = "",
     ) -> AsyncIterator[str]:
         """발화를 처리하고 응답 텍스트 조각을 스트리밍한다.
 
@@ -126,19 +131,20 @@ class AgentService:
             hub_id: 말한 허브. 알람·타이머를 이 허브에 만든다. 모르면 빈 문자열.
             area_id: 말한 허브가 놓인 방. 모르면 빈 문자열.
             turn: 이 발화의 턴 기록. 경로·의도·단계 시간·응답을 채운다. 없으면 버려지는 기록을 쓴다.
+            client_id: 발화한 연결의 ID. 허브를 모를 때 대화 상태를 이 연결에만 묶는다.
 
         Yields:
             응답 텍스트 조각. 기기 제어 실패나 내부 오류도 사용자용 문장으로 낸다.
         """
         turn = turn or Turn(hub_id, TurnSource.TEXT, time.monotonic())
         view = build_home_view(self._home.snapshot())
-        ctx = TurnContext(view, hub_id, area_id, self.now(), turn)
+        ctx = TurnContext(view, hub_id, area_id, self.now(), turn, client_id)
         reply = ""
         async for delta in self._run(text, ctx):
             turn.append_response(delta)
             reply += delta
             yield delta
-        self._memory.add_turn(hub_id, text, reply.strip())
+        self._memory.add_turn(ctx.conversation_key, text, reply.strip())
 
     async def _run(self, text: str, ctx: TurnContext) -> AsyncIterator[str]:
         turn = ctx.turn
@@ -159,15 +165,14 @@ class AgentService:
                 self._remember_target(intent, result.ok, ctx)
                 yield result.text
                 return
+            turn.path = TurnPath.LLM
+            async for delta in self._llm.stream(text, ctx):
+                yield delta
         except Exception:
-            logger.exception("Agent failed to execute command")
+            logger.exception("Agent failed to handle utterance")
             turn.path = TurnPath.ERROR
             turn.fail("internal")
             yield self._t(KEY_INTERNAL)
-            return
-        turn.path = TurnPath.LLM
-        async for delta in self._llm.stream(text, ctx):
-            yield delta
 
     def _remember_target(self, intent: Intent, ok: bool, ctx: TurnContext) -> None:
         """성공한 기기·장면·상태 턴의 대상을 후속 지시용으로 기억한다."""
@@ -175,4 +180,4 @@ class AgentService:
             return
         target = target_from_intent(intent, ctx.view)
         if target is not None:
-            self._memory.remember_target(ctx.hub_id, target)
+            self._memory.remember_target(ctx.conversation_key, target)

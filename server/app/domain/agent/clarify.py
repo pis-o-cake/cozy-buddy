@@ -22,11 +22,18 @@ class ClarifyStore:
         self._pending: dict[str, _Pending] = {}
 
     def remember(self, hub_id: str, clarify: Clarify) -> None:
-        """허브의 보류 질문을 새로 잡는다. 이미 있으면 덮어쓴다."""
+        """허브의 보류 질문을 새로 잡는다. 이미 있으면 덮어쓴다.
+
+        허브를 모르면(빈 ID) 다른 발화자의 질문과 섞일 수 있어 기억하지 않는다.
+        """
+        if not hub_id:
+            return
         self._pending[hub_id] = _Pending(clarify, self._monotonic() + self._ttl)
 
     def take(self, hub_id: str) -> Clarify | None:
         """보류 질문을 꺼내고 지운다. 없거나 만료됐으면 None."""
+        if not hub_id:
+            return None
         pending = self._pending.pop(hub_id, None)
         if pending is None or pending.expires_at < self._monotonic():
             return None

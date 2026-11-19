@@ -269,3 +269,21 @@ def test_not_ringing_hub_keeps_cancel_alarm_meaning(
         recv_until(hub, is_idle)
 
     assert captured.one().intent == "CancelAlarmIntent"
+
+
+def test_unexpected_tool_error_yields_internal_fallback(
+    turn_client: TestClient, gateway: FakeOpenAI, captured: Captured
+) -> None:
+    async def explode(*_args: object, **_kwargs: object) -> object:
+        raise RuntimeError("tool crashed")
+
+    turn_client.app.state.agent._skills.run_tool = explode  # type: ignore[attr-defined]
+    gateway.chat_turns = [
+        tool_turn("control_device", {"entity_id": "light.living", "action": "turn_off"}),
+    ]
+    with connect_mobile(turn_client) as mobile:
+        _text(mobile, "불 좀 어떻게 해봐")
+
+    turn = captured.one()
+    assert (turn.path, turn.error_code) == (TurnPath.ERROR, "internal")
+    assert turn.response_text == turn_client.app.state.translator("error.internal")  # type: ignore[attr-defined]
