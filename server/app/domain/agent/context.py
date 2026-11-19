@@ -17,6 +17,7 @@ class TurnContext:
         area_id: 말한 허브가 놓인 방. 모르면 빈 문자열.
         now: 시간대가 있는 현재 시각.
         turn: 이 발화의 턴 기록. 단계가 시간과 결과를 여기에 채운다.
+        client_id: 발화한 연결(앱·허브)의 ID. 허브를 모를 때 대화 상태의 키로 쓴다.
     """
 
     view: HomeView
@@ -24,3 +25,11 @@ class TurnContext:
     area_id: str
     now: datetime
     turn: Turn
+    client_id: str = ""
+
+    @property
+    def conversation_key(self) -> str:
+        """확인 질문·후속 지시 같은 대화 상태의 키. 허브를 모르면 연결별로 나눈다."""
+        if self.hub_id:
+            return self.hub_id
+        return f"client:{self.client_id}" if self.client_id else ""

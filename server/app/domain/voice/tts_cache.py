@@ -138,8 +138,8 @@ class TtsCache:
             yield
         finally:
             self._active_turns -= 1
-        if self._active_turns == 0:
-            self._idle.set()
+            if self._active_turns == 0:
+                self._idle.set()
 
     @property
     def busy(self) -> bool:

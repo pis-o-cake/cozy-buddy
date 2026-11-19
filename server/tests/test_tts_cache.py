@@ -346,3 +346,28 @@ def test_llm_text_is_not_cached_by_default(
     run_turn(client, "u2")
 
     assert gateway.tts_texts.count("산책이 좋아요") == 2
+
+
+async def test_turn_active_restores_idle_on_cancel() -> None:
+    cache = make_cache(None)
+
+    async def turn() -> None:
+        with cache.turn_active():
+            await asyncio.sleep(10)
+
+    task = asyncio.create_task(turn())
+    await asyncio.sleep(0)
+    assert cache.busy
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+    assert not cache.busy
+    await asyncio.wait_for(cache.wait_idle(), timeout=1)
+
+
+def test_turn_active_restores_idle_on_exception() -> None:
+    cache = make_cache(None)
+    with pytest.raises(RuntimeError), cache.turn_active():
+        raise RuntimeError("boom")
+    assert not cache.busy
+    assert cache._idle.is_set()

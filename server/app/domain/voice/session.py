@@ -399,7 +399,7 @@ class VoiceSession:
             turn.transcript = transcript
             hub_id = deps.resolve_hub(self._conn)
             area_id = utt.area_id or await deps.hub_area(hub_id)
-            reply = deps.agent.handle(transcript, hub_id, area_id, turn)
+            reply = deps.agent.handle(transcript, hub_id, area_id, turn, self._conn.client_id)
         streamer = ResponseStreamer(
             self._send,
             utt.stream_id,
@@ -490,7 +490,7 @@ class VoiceSession:
         turn.transcript = query.text
         try:
             area_id = query.area_id or await deps.hub_area(hub_id)
-            reply = deps.agent.handle(query.text, hub_id, area_id, turn)
+            reply = deps.agent.handle(query.text, hub_id, area_id, turn, self._conn.client_id)
             await ResponseStreamer(self._send, query.request_id, None).run(reply)
         except asyncio.CancelledError:
             turn.fail("cancelled")

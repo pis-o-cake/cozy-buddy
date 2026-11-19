@@ -59,7 +59,7 @@ class FollowupResolver:
         self._memory = memory
 
     async def resolve(self, text: str, ctx: TurnContext) -> Intent | None:
-        target = self._memory.target(ctx.hub_id)
+        target = self._memory.target(ctx.conversation_key)
         if target is None or not _all_known(target, ctx):
             return None
         compact = normalize(text).compact
