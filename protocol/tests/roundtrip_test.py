@@ -19,6 +19,7 @@ CATALOG: dict[str, int] = {
     "text_query": 29,
     "alarm_upsert": 40, "alarm_delete": 41, "alarm_ack": 42,
     "alarm_snapshot": 43, "alarm_sync_request": 44,
+    "alarm_control": 45, "alarm_control_result": 46,
     "home_snapshot": 60, "entity_state_changed": 61, "entity_command": 62,
     "command_result": 63, "hub_status": 64,
     "weather_snapshot": 80,
@@ -87,6 +88,11 @@ def build_bodies(gen_dir: Path) -> dict:
                         hub_id="hub-1",
                         one_shot=alarm.OneShot(fires_at_epoch_ms=1_700_000_600_000))]),
         "alarm_sync_request": alarm.AlarmSyncRequest(hub_id="hub-1"),
+        "alarm_control": alarm.AlarmControl(
+            request_id="r1", alarm_id="a1",
+            action=alarm.ALARM_CONTROL_ACTION_SNOOZE, snooze_minutes=5),
+        "alarm_control_result": alarm.AlarmControlResult(
+            request_id="r1", alarm_id="a1", ok=False, code=common.ERROR_CODE_NOT_FOUND),
         "home_snapshot": home.HomeSnapshot(
             areas=[home.Area(area_id="ar1", name="Living", aliases=["안방"])],
             entities=[home.Entity(entity_id="light.a", area_id="ar1", name="Lamp",
@@ -98,7 +104,8 @@ def build_bodies(gen_dir: Path) -> dict:
         "command_result": home.CommandResult(request_id="r3", ok=False,
                                              code=common.ERROR_CODE_UPSTREAM_UNAVAILABLE,
                                              message_key="err.upstream"),
-        "hub_status": home.HubStatus(volume_pct=40, mic_muted=True, screen_brightness_pct=70),
+        "hub_status": home.HubStatus(volume_pct=40, mic_muted=True, screen_brightness_pct=70,
+                                     ringing_alarm_id="a1"),
         "weather_snapshot": weather.WeatherSnapshot(
             observed_epoch_ms=1_700_000_000_000, temperature_c=-3.5, weather_code=61, is_day=True,
             today=weather.WeatherDaily(min_c=-6.0, max_c=2.5, precipitation_probability_pct=80,
