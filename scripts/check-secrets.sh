@@ -35,14 +35,21 @@ mask() {
   printf '…'
 }
 
-# scan_pattern <이름> <ERE> [-i]
+# scan_pattern <이름> <ERE> [-i|-] [제외 ERE]
+# 제외 ERE 는 자리표시자처럼 걸러야 하는 줄에 쓴다(대소문자 무시). 대소문자 인자가 필요 없으면 - 를 준다.
 scan_pattern() {
   name=$1
   regex=$2
-  icase=${3:-}
+  icase=${3:--}
+  exclude=${4:-}
+  [ "$icase" != - ] || icase=
   [ -s "$stream" ] || return 0
   # shellcheck disable=SC2086
   grep -E $icase -e "$regex" "$stream" > "$work/hits" 2>/dev/null || return 0
+  if [ -n "$exclude" ]; then
+    grep -v -i -E -e "$exclude" "$work/hits" > "$work/hits.f" 2>/dev/null || true
+    mv "$work/hits.f" "$work/hits"
+  fi
   while IFS= read -r hit; do
     # path 에 ':' 가 없다는 가정 하에 path:line:content 로 쪼갠다.
     loc=${hit%%:*}
@@ -58,8 +65,8 @@ scan_pattern() {
 }
 
 scan_stream() {
-  # 허용 마커 줄과 리뷰 기록 경로는 제외한다.
-  grep -v -F -e "$ALLOW_MARKER" "$stream" | grep -v -e '^\.engsys/reviews/' > "$stream.f" || true
+  # 허용 마커 줄과 리뷰 기록의 메타데이터 줄(blob 해시 등)만 제외한다. 리뷰 본문은 검사한다.
+  grep -v -F -e "$ALLOW_MARKER" "$stream" | grep -v -E -e '^\.engsys/reviews/[^:]+:[0-9]+:(engsys-document-review|document|blob|decision|reviewer|audience|purpose):' > "$stream.f" || true
   mv "$stream.f" "$stream"
   # IMPORTANT: 'task-…' 같은 단어 속 'sk-'를 잡지 않도록 앞 글자가 영숫자가 아닐 때만 본다.
   scan_pattern 'OpenAI API key' '(^|[^A-Za-z0-9])sk-(proj-|svcacct-|admin-)?[A-Za-z0-9_-]{20,}'
@@ -68,6 +75,10 @@ scan_stream() {
   scan_pattern 'GitHub token' 'gh[pousr]_[A-Za-z0-9]{36,}'
   scan_pattern 'Google API key' 'AIza[0-9A-Za-z_-]{35}'
   scan_pattern 'Private key header' '-----BEGIN [A-Z ]*PRIVATE KEY-----'
+  scan_pattern 'JWT (Home Assistant long-lived token)' 'eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}'
+  scan_pattern 'Tailscale key' 'tskey-[a-z]+-[A-Za-z0-9]+'
+  # 따옴표 없는 .env 스타일 대입(대문자 변수명). 자리표시자 값은 거른다.
+  scan_pattern 'Unquoted secret assignment' '(^|:[0-9]+:)[[:space:]]*(export[[:space:]]+)?[A-Z][A-Z0-9_]*(KEY|TOKEN|SECRET|PASSWORD)[A-Z0-9_]*=[A-Za-z0-9_+/.=-]{20,}[[:space:]]*$' - ':[0-9]+:.*(change-?me|example|placeholder|your[-_]|dummy|fake|xxx|redacted)'
   scan_pattern 'Generic secret assignment' '(api[_-]?key|secret|token|password)[A-Za-z_]*[[:space:]]*[:=][[:space:]]*['"'"'"][^'"'"'"[:space:]]{16,}['"'"'"]' -i
 }
 
