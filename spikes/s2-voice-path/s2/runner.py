@@ -16,7 +16,7 @@ from s2 import pricing
 from s2.audio import ROOT, load_commands, read_pcm, synthesize_all
 from s2.config import INPUT_VOICE, RESPONSE_VOICE, Models
 from s2.home import is_correct
-from s2.normalize import normalize
+from s2.normalize import normalize, normalize_legacy
 from s2.path_a import run_cascade
 from s2.path_b import run_realtime
 
@@ -47,10 +47,14 @@ STT_PROMPT = (
 
 
 def stt_config(path: str, models: Models, mini_model: str, fast_stt: str) -> tuple[str, str | None, bool]:
-    """Resolve (stt model, prompt, fast) for a path name."""
+    """Resolve (stt model, prompt, fast) for a path name.
+
+    A path may carry an explicit STT model as ``<variant>@<model>`` (e.g. ``a_prompt@gpt-transcribe``).
+    """
     fast = path == "fast"
     base = fast_stt if fast else path
-    model = mini_model if "mini" in base else models.stt
+    base, _, override = base.partition("@")
+    model = override or (mini_model if "mini" in base else models.stt)
     return model, (STT_PROMPT if base.endswith("prompt") else None), fast
 
 
@@ -130,7 +134,7 @@ def summarize(records: list[dict[str, Any]], models: Models, spent: float, effor
     out: dict[str, Any] = {
         "models": {**models.as_dict(), "stt_mini": mini_model, "llm_reasoning_effort": effort},
         "stt_prompt": STT_PROMPT, "fast_path_stt_variant": fast_stt,
-        "normaliser": "s2/normalize.py (punctuation, spaces, sino-korean/digit numbers)",
+        "normaliser": "s2/normalize.py (punctuation, spaces, sino-korean/digit numbers, native hour words; legacy rate also reported)",
         "voices": {"input_synthetic": INPUT_VOICE, "response": RESPONSE_VOICE},
         "pricing": {"url": pricing.PRICING_URL, "date": pricing.PRICING_DATE,
                     "stt_per_min": pricing.STT_PER_MIN, "stt_prompt_tokens_cost": "ignored (negligible)", "llm_per_1m": pricing.LLM_PRICES,
@@ -175,6 +179,8 @@ def summarize(records: list[dict[str, Any]], models: Models, spent: float, effor
                                                    if "t_first_llm_token" in r], 0.5)
             raw_mism = [r for r in ok if _raw_norm(r["transcript"]) != _raw_norm(r["command_text"])]
             mism = [r for r in ok if normalize(r["transcript"]) != normalize(r["command_text"])]
+            legacy_mism = [r for r in ok if normalize_legacy(r["transcript"]) != normalize_legacy(r["command_text"])]
+            entry["transcript_exact_rate_legacy_normaliser"] = round(1 - len(legacy_mism) / len(ok), 4) if ok else None
             entry["transcript_exact_rate_raw"] = round(1 - len(raw_mism) / len(ok), 4) if ok else None
             entry["transcript_exact_rate"] = round(1 - len(mism) / len(ok), 4) if ok else None
             entry["misrecognition_rate"] = round(len(mism) / len(ok), 4) if ok else None
