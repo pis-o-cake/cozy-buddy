@@ -1,3 +1,4 @@
+import pytest
 from cozy.v1.alarm_pb2 import (
     ALARM_KIND_ALARM,
     DAY_OF_WEEK_MONDAY,
@@ -12,8 +13,10 @@ from cozy.v1.alarm_pb2 import (
 )
 from cozy.v1.common_pb2 import ERROR_CODE_NOT_FOUND
 from cozy.v1.envelope_pb2 import Envelope
+from cozy.v1.session_pb2 import Ping
 from fastapi.testclient import TestClient
 
+from app.domain.alarm.service import MAX_ALARM_LABEL_CHARS
 from tests.conftest import HUB_ID, connect_hub, connect_mobile, eventually, recv, send
 
 
@@ -160,3 +163,53 @@ def test_upsert_for_unknown_hub_returns_not_found(client: TestClient) -> None:
         reply = recv(mobile)
     assert reply.error.code == ERROR_CODE_NOT_FOUND
     assert reply.error.request_id == "r9"
+
+
+def test_mobile_upsert_with_oversized_label_is_rejected(client: TestClient) -> None:
+    register_hub(client)
+    long_alarm = repeating_alarm()
+    long_alarm.label = "가" * (MAX_ALARM_LABEL_CHARS + 1)
+    with connect_mobile(client) as mobile:
+        send(mobile, Envelope(alarm_upsert=AlarmUpsert(request_id="r", alarm=long_alarm)))
+        error = recv(mobile).error
+    assert error.message_key == "alarm.label_too_long"
+    assert alarms(client) == []
+
+
+def test_mobile_upsert_stops_at_max_alarms_per_hub(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr("app.domain.alarm.service.MAX_ALARMS_PER_HUB", 2)
+    register_hub(client)
+    with connect_mobile(client) as mobile:
+        for alarm_id in ("a1", "a2"):
+            upsert = AlarmUpsert(request_id=alarm_id, alarm=repeating_alarm(alarm_id))
+            send(mobile, Envelope(alarm_upsert=upsert))
+        eventually(lambda: len(alarms(client)) == 2)
+        upsert = AlarmUpsert(request_id="r3", alarm=repeating_alarm("a3"))
+        send(mobile, Envelope(alarm_upsert=upsert))
+        assert recv(mobile).error.message_key == "alarm.limit_reached"
+        # 기존 알람의 수정은 한도와 무관하게 허용한다.
+        upsert = AlarmUpsert(request_id="r4", alarm=repeating_alarm("a1"))
+        send(mobile, Envelope(alarm_upsert=upsert))
+        send(mobile, Envelope(ping=Ping(sent_epoch_ms=1)))
+        assert recv(mobile).WhichOneof("body") == "pong"
+    assert {a["alarm_id"] for a in alarms(client)} == {"a1", "a2"}
+
+
+def test_snapshot_truncates_labels_and_caps_alarm_count(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr("app.domain.alarm.service.MAX_ALARMS_PER_HUB", 2)
+    long_alarm = repeating_alarm("s1")
+    long_alarm.label = "나" * (MAX_ALARM_LABEL_CHARS + 50)
+    snapshot = AlarmSnapshot(
+        hub_id=HUB_ID, alarms=[long_alarm, repeating_alarm("s2"), repeating_alarm("s3")]
+    )
+    with connect_mobile(client) as mobile, connect_hub(client) as hub:
+        send(hub, Envelope(alarm_snapshot=snapshot))
+        recv(mobile)
+        stored = eventually(lambda: alarms(client))
+    assert {a["alarm_id"] for a in stored} == {"s1", "s2"}
+    label = next(a["label"] for a in stored if a["alarm_id"] == "s1")
+    assert isinstance(label, str) and len(label) == MAX_ALARM_LABEL_CHARS
