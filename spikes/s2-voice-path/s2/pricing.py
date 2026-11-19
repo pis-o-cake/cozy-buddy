@@ -7,7 +7,7 @@ PRICING_URL = "https://developers.openai.com/api/docs/pricing"
 PRICING_DATE = "2026-11-13"
 
 PER_M = 1_000_000
-STT_PER_MIN = {"gpt-4o-transcribe": 0.006, "gpt-transcribe": 0.0045, "gpt-4o-mini-transcribe": 0.003}
+STT_PER_MIN = {"gpt-4o-transcribe": 0.006, "gpt-transcribe": 0.0045, "gpt-live-transcribe": 0.017, "gpt-4o-mini-transcribe": 0.003}
 # TTS has no published per-minute price on the page; 0.015/min is OpenAI's long-standing
 # approximate figure for gpt-4o-mini-tts and is an assumption.
 TTS_PER_MIN = 0.015
