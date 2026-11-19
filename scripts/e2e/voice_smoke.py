@@ -47,6 +47,7 @@ CHUNK_BYTES = SEND_RATE * 2 * 20 // 1000
 TAIL_SILENCE_MS = 300
 HUB_ID = "hub-dev-01"
 TURN_TIMEOUT_S = 45.0
+PASSIVE_TIMEOUT_S = 90.0
 # gpt-4o-mini-tts 분당 추정가(S2 스파이크와 같은 가정)
 TTS_USD_PER_MIN = 0.015
 
@@ -104,16 +105,16 @@ class Result:
         )
 
 
-def load_env(path: Path) -> tuple[str, str, str]:
-    """(허브 토큰, OpenAI 키, TTS 모델). 값은 출력하지 않는다."""
+def load_env(path: Path, hub_id: str = HUB_ID) -> tuple[str, str, str]:
+    """(지정한 허브의 토큰, OpenAI 키, TTS 모델). 값은 출력하지 않는다."""
     load_dotenv(path)
     token = ""
     for item in os.environ.get("COZY_STATIC_TOKENS", "").split(","):
         parts = item.strip().split(":", 2)
-        if len(parts) == 3 and parts[0] == "hub" and parts[1] == HUB_ID:
+        if len(parts) == 3 and parts[0] == "hub" and parts[1] == hub_id:
             token = parts[2]
     if not token:
-        raise SystemExit(f"hub token for {HUB_ID} not found in COZY_STATIC_TOKENS")
+        raise SystemExit(f"hub token for {hub_id} not found in COZY_STATIC_TOKENS")
     model = os.environ.get("OPENAI_TTS_MODEL", "gpt-4o-mini-tts")
     return token, os.environ.get("OPENAI_API_KEY", ""), model
 
@@ -179,8 +180,8 @@ def _clone(ent: home_pb2.Entity) -> home_pb2.Entity:
 class VirtualHub:
     """허브 한 대를 흉내 내는 WebSocket 클라이언트."""
 
-    def __init__(self, url: str, token: str) -> None:
-        self.url, self.token = url, token
+    def __init__(self, url: str, token: str, hub_id: str = HUB_ID) -> None:
+        self.url, self.token, self.hub_id = url, token, hub_id
         self.ws: ClientConnection
         self.seq = 0
         self.entities: dict[str, home_pb2.Entity] = {}
@@ -205,7 +206,7 @@ class VirtualHub:
         self.ws = await connect(self.url, max_size=None)
         hello = session_pb2.ClientHello(
             kind=session_pb2.CLIENT_KIND_HUB,
-            client_id=HUB_ID,
+            client_id=self.hub_id,
             token=self.token,
             app_version="e2e-smoke",
             protocol_version=1,
@@ -229,7 +230,7 @@ class VirtualHub:
             if body == "home_snapshot":
                 got_snapshot = True
             if body == "alarm_sync_request":
-                await self.send(alarm_snapshot=alarm_pb2.AlarmSnapshot(hub_id=HUB_ID))
+                await self.send(alarm_snapshot=alarm_pb2.AlarmSnapshot(hub_id=self.hub_id))
         if not got_snapshot:
             raise SystemExit("HomeSnapshot not received")
         self.initial = {k: _clone(v) for k, v in self.entities.items()}
@@ -371,7 +372,7 @@ class VirtualHub:
                 ack = alarm_pb2.AlarmAck(request_id=dl.request_id, alarm_id=dl.alarm_id, ok=True)
                 await self.send(alarm_ack=ack)
             elif body == "alarm_sync_request":
-                await self.send(alarm_snapshot=alarm_pb2.AlarmSnapshot(hub_id=HUB_ID))
+                await self.send(alarm_snapshot=alarm_pb2.AlarmSnapshot(hub_id=self.hub_id))
             elif body == "ping":
                 await self.send(pong=session_pb2.Pong(ping_sent_epoch_ms=env.ping.sent_epoch_ms))
             elif body == "error":
@@ -419,6 +420,90 @@ class VirtualHub:
                 except TimeoutError:
                     break
         return notes
+
+
+@dataclass
+class BroadcastRecord:
+    """수동 허브가 받은 방송 하나의 기록."""
+
+    notices: list[str] = field(default_factory=list)
+    stream_ids: set[str] = field(default_factory=set)
+    kinds: set[str] = field(default_factory=set)
+    indices: list[int] = field(default_factory=list)
+    last_flags: list[bool] = field(default_factory=list)
+    audio: bytes = b""
+    ended: bool = False
+    problems: list[str] = field(default_factory=list)
+
+    @property
+    def complete(self) -> bool:
+        return bool(self.notices) and self.ended and bool(self.indices) and not self.problems
+
+    def check(self) -> None:
+        """순번 연속, last 플래그, 스트림 ID 일치를 확인해 problems 에 쌓는다."""
+        if self.indices != list(range(len(self.indices))):
+            self.problems.append("index gap")
+        if self.indices and not self.last_flags[-1]:
+            self.problems.append("no last flag")
+        if any(self.last_flags[:-1]):
+            self.problems.append("early last")
+        if self.kinds != {"BROADCAST_DOWN"}:
+            self.problems.append(f"kinds={sorted(self.kinds)}")
+        if len(self.stream_ids) != 1:
+            self.problems.append(f"stream_ids={sorted(self.stream_ids)}")
+
+
+class PassiveHub(VirtualHub):
+    """말하지 않고 방송만 받아 기록하는 두 번째 가상 허브."""
+
+    async def listen(self, timeout_s: float) -> BroadcastRecord:
+        """방송 오디오가 끝나거나 제한 시간이 지날 때까지 프레임을 기록한다."""
+        record = BroadcastRecord()
+        deadline = time.monotonic() + timeout_s
+        while time.monotonic() < deadline and not record.ended:
+            try:
+                env = await self.recv(1.0)
+            except TimeoutError:
+                continue
+            self.track(env)
+            body = env.WhichOneof("body")
+            if body == "broadcast_notice":
+                notice = env.broadcast_notice
+                record.notices.append(f"{notice.from_hub_id}@{notice.from_area}: {notice.text}")
+                record.stream_ids.add(notice.stream_id)
+            elif body == "response_audio_start":
+                start = env.response_audio_start
+                record.kinds.add(voice_pb2.StreamKind.Name(start.kind).removeprefix("STREAM_KIND_"))
+                record.stream_ids.add(start.stream_id)
+            elif body == "audio_chunk":
+                chunk = env.audio_chunk
+                record.kinds.add(voice_pb2.StreamKind.Name(chunk.kind).removeprefix("STREAM_KIND_"))
+                record.stream_ids.add(chunk.stream_id)
+                record.indices.append(chunk.index)
+                record.last_flags.append(chunk.last)
+                record.audio += chunk.data
+            elif body == "response_audio_end":
+                record.stream_ids.add(env.response_audio_end.stream_id)
+                record.ended = True
+            elif body == "ping":
+                await self.send(pong=session_pb2.Pong(ping_sent_epoch_ms=env.ping.sent_epoch_ms))
+            elif body == "alarm_sync_request":
+                await self.send(alarm_snapshot=alarm_pb2.AlarmSnapshot(hub_id=self.hub_id))
+        record.check()
+        return record
+
+
+def print_broadcast(hub_id: str, record: BroadcastRecord) -> None:
+    seconds = len(record.audio) / 2 / TTS_RATE
+    flag = "ok" if record.complete else "FAIL"
+    print(
+        f"[{flag}] passive hub {hub_id} received broadcast\n"
+        f"    notices={record.notices}\n    kinds={sorted(record.kinds)} "
+        f"stream_ids={sorted(record.stream_ids)}\n"
+        f"    chunks={len(record.indices)} ({seconds:.2f}s) "
+        f"first_index={record.indices[:1]} last_flag={record.last_flags[-1:]} "
+        f"ended={record.ended} problems={record.problems}"
+    )
 
 
 def pct(values: list[int], q: float) -> int | None:
@@ -485,7 +570,7 @@ def print_summary(results: list[Result], synth: Synth, notes: list[str]) -> None
 
 
 async def amain(args: argparse.Namespace) -> int:
-    token, api_key, tts_model = load_env(Path(args.env))
+    token, api_key, tts_model = load_env(Path(args.env), args.hub_id)
     items: list[dict[str, str]] = [{"text": t} for t in args.utterance or []]
     if args.scenario:
         loaded = yaml.safe_load(Path(args.scenario).read_text(encoding="utf-8"))["utterances"]
@@ -493,10 +578,19 @@ async def amain(args: argparse.Namespace) -> int:
     if args.expect_state and items:
         items[-1] = {**items[-1], "expect_state": args.expect_state}
     synth = Synth(api_key, tts_model)
-    hub = VirtualHub(args.url, token)
+    hub = VirtualHub(args.url, token, args.hub_id)
     await hub.connect()
+    passive: PassiveHub | None = None
+    listener: asyncio.Task[BroadcastRecord] | None = None
+    record: BroadcastRecord | None = None
+    if args.passive_hub:
+        passive_token, _, _ = load_env(Path(args.env), args.passive_hub)
+        passive = PassiveHub(args.url, passive_token, args.passive_hub)
+        await passive.connect()
+        print(f"connected passive hub={passive.hub_id}")
+        listener = asyncio.create_task(passive.listen(PASSIVE_TIMEOUT_S))
     print(
-        f"connected hub={HUB_ID} server={hub.server_version} "
+        f"connected hub={hub.hub_id} server={hub.server_version} "
         f"entities={len(hub.entities)} areas={len(hub.areas)}"
     )
     if args.dump_home:
@@ -543,6 +637,10 @@ async def amain(args: argparse.Namespace) -> int:
     if hub.live_alarm_ids:
         print(f"WARNING: alarms possibly left on server: {sorted(hub.live_alarm_ids)}")
     await hub.close()
+    if passive is not None and listener is not None:
+        record = await listener
+        print_broadcast(passive.hub_id, record)
+        await passive.close()
     print_summary(results, synth, notes)
     if args.json:
         out = Path(args.json)
@@ -554,7 +652,8 @@ async def amain(args: argparse.Namespace) -> int:
             "tts_usd_estimate": round(synth.spent_seconds / 60 * TTS_USD_PER_MIN, 4),
         }
         out.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
-    return 1 if any(r.failed for r in results) else 0
+    broadcast_failed = bool(args.expect_broadcast and not (record and record.complete))
+    return 1 if broadcast_failed or any(r.failed for r in results) else 0
 
 
 def main() -> None:
@@ -579,6 +678,17 @@ def main() -> None:
         help="HubStatus 로 이 알람이 울리는 중이라고 알리고 AlarmControl 에 ok 로 자동 응답한다",
     )
     p.add_argument("--area-id", default="")
+    p.add_argument("--hub-id", default=HUB_ID, help="말하는 가상 허브의 ID(토큰은 .env 에서 찾는다)")
+    p.add_argument(
+        "--passive-hub",
+        default="",
+        help="방송만 받아 기록하는 두 번째 가상 허브의 ID. 방송 한 건이 끝날 때까지 기다린다",
+    )
+    p.add_argument(
+        "--expect-broadcast",
+        action="store_true",
+        help="--passive-hub 가 알림과 방송 오디오를 완전하게 받지 못하면 실패로 끝낸다",
+    )
     p.add_argument("--gap", type=float, default=1.0, help="발화 사이 대기 초")
     p.add_argument("--env", default=str(DEFAULT_ENV))
     args = p.parse_args()
