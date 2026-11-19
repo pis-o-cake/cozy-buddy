@@ -93,6 +93,17 @@ class Settings(BaseSettings):
     stt_hedge_after_ms: int = 1800
     # STT 전체 제한 시간. 넘기면 stt_timeout 으로 실패 처리한다.
     stt_timeout_ms: int = Field(default=6000, ge=1)
+    # 결정론 템플릿 응답의 합성 음성 캐시. 같은 문장은 OpenAI TTS 를 다시 부르지 않는다.
+    tts_cache_enabled: bool = True
+    tts_cache_dir: str = "data/tts-cache"
+    tts_cache_memory_mb: int = Field(default=64, ge=1)
+    tts_cache_disk_mb: int = Field(default=256, ge=0)
+    # 켜면 LLM 이 만든 자유 문장도 캐시한다. 거의 재사용되지 않아 기본은 끈다.
+    tts_cache_llm: bool = False
+    # 자주 쓰는 확인 문장(기기 켜기·끄기 등)을 미리 합성한다. 하루 합성 문장 수에 상한이 있다.
+    tts_warmup: bool = True
+    tts_warmup_max_per_day: int = Field(default=200, ge=0)
+    tts_warmup_poll_seconds: float = Field(default=30.0, gt=0)
     llm_timeout_seconds: float = 10.0
     max_utterance_seconds: float = 15.0
     clarify_ttl_seconds: float = 30.0

@@ -11,6 +11,7 @@ from app.domain.agent.service import AgentService
 from app.domain.hub import crud as hub_crud
 from app.domain.telemetry.recorder import TurnRecorder
 from app.domain.voice.session import VoiceDeps, VoiceSession
+from app.domain.voice.tts_cache import TtsCache
 
 
 class VoiceService:
@@ -25,6 +26,7 @@ class VoiceService:
         openai: OpenAIGateway | None,
         connections: ConnectionManager,
         database: Callable[[], Database],
+        tts_cache: TtsCache | None = None,
     ) -> None:
         self._connections = connections
         self._database = database
@@ -37,6 +39,7 @@ class VoiceService:
             openai=openai,
             hub_area=self._hub_area,
             resolve_hub=self._resolve_hub,
+            tts_cache=tts_cache,
         )
 
     def session_for(self, conn: ClientConnection) -> VoiceSession:

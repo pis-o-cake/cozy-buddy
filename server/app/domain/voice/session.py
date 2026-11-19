@@ -40,6 +40,7 @@ from app.domain.telemetry.recorder import TurnRecorder
 from app.domain.telemetry.turn import Stage, Turn, TurnPath, TurnSource
 from app.domain.voice.audio import PCM_CHANNELS, PCM_SAMPLE_WIDTH_BYTES, max_pcm_bytes, pcm_to_wav
 from app.domain.voice.responder import ResponseStreamer
+from app.domain.voice.tts_cache import TtsCache
 
 KEY_UNAVAILABLE = "voice.unavailable"
 KEY_NOT_HEARD = "voice.not_heard"
@@ -50,6 +51,8 @@ MIN_SAMPLE_RATE_HZ = 8000
 MAX_SAMPLE_RATE_HZ = 48000
 
 State = AssistantState.State
+# 매번 같은 문장이 나오는 템플릿 경로. 날씨는 수치가 달라 제외한다.
+CACHEABLE_PATHS = frozenset({TurnPath.CONTEXT, TurnPath.MATCHER, TurnPath.CLARIFY})
 
 
 @dataclass(frozen=True, slots=True)
@@ -63,6 +66,7 @@ class VoiceDeps:
     openai: OpenAIGateway | None
     hub_area: Callable[[str], Awaitable[str]]
     resolve_hub: Callable[[ClientConnection], str]
+    tts_cache: TtsCache | None = None
 
 
 @dataclass(slots=True)
@@ -234,7 +238,8 @@ class VoiceSession:
             self._deps.resolve_hub(self._conn), TurnSource.VOICE, started_at=utt.ended_at
         )
         try:
-            await self._pipeline(utt, turn)
+            with self._turn_guard():
+                await self._pipeline(utt, turn)
         except asyncio.CancelledError:
             turn.fail("cancelled")
             raise
@@ -273,8 +278,15 @@ class VoiceSession:
             hub_id = deps.resolve_hub(self._conn)
             area_id = utt.area_id or await deps.hub_area(hub_id)
             reply = deps.agent.handle(transcript, hub_id, area_id, turn)
-        streamer = ResponseStreamer(self._send, utt.stream_id, speech)
+        streamer = ResponseStreamer(
+            self._send,
+            utt.stream_id,
+            speech,
+            cache=deps.tts_cache,
+            cacheable=lambda: self._cacheable(turn),
+        )
         await streamer.run(reply)
+        turn.tts_cache_hit = streamer.first_sentence_cache_hit
         first_audio = streamer.first_audio_at
         if first_audio is not None:
             turn.mark_first_audio(first_audio)
@@ -284,6 +296,16 @@ class VoiceSession:
             turn.t_stt_ms,
             turn.t_first_audio_ms,
         )
+
+    def _turn_guard(self) -> contextlib.AbstractContextManager[None]:
+        cache = self._deps.tts_cache
+        return cache.turn_active() if cache is not None else contextlib.nullcontext()
+
+    def _cacheable(self, turn: Turn) -> bool:
+        """결정론 템플릿 응답만 캐시한다. LLM 문장은 설정이 켜졌을 때만."""
+        if turn.path in CACHEABLE_PATHS:
+            return True
+        return turn.path is TurnPath.LLM and self._deps.settings.tts_cache_llm
 
     def _canned(self, turn: Turn, key: str) -> AsyncIterator[str]:
         """에이전트를 거치지 않는 고정 응답. 턴 기록에도 응답을 남긴다."""
