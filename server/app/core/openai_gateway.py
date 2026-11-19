@@ -4,7 +4,9 @@
 """
 
 import asyncio
+import io
 import json
+import wave
 from collections.abc import AsyncIterator, Callable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
@@ -14,6 +16,7 @@ from loguru import logger
 from openai import AsyncOpenAI
 
 from app.config import Settings
+from app.core.usage_guard import UsageGuard, UsageKind
 
 TTS_SAMPLE_RATE_HZ = 24000
 _TTS_READ_BYTES = 4096
@@ -25,6 +28,51 @@ class OpenAIGatewayError(Exception):
 
 class OpenAIGatewayTimeout(OpenAIGatewayError):
     """STT 전체 제한 시간을 넘겼다."""
+
+
+class UsageLimitExceeded(OpenAIGatewayError):
+    """하루 사용량 한도를 넘어 호출하지 않았다. 호출자는 사용자용 한도 안내를 보여 준다."""
+
+
+def _wav_seconds(wav: bytes) -> float:
+    """WAV 길이(초). 헤더를 읽을 수 없으면 16 kHz mono PCM16 으로 가정한 바이트 수 추정."""
+    try:
+        with wave.open(io.BytesIO(wav)) as reader:
+            frames: int = reader.getnframes()
+            rate: int = reader.getframerate()
+            return frames / max(rate, 1)
+    except (wave.Error, EOFError):
+        return len(wav) / 32000
+
+
+def charge_stt(usage: UsageGuard, wav: bytes) -> None:
+    """STT 한 건의 길이를 하루 예산에 더한다. 테스트용 가짜도 같은 규칙을 쓰도록 공개한다.
+
+    Raises:
+        UsageLimitExceeded: 한도를 넘게 될 때.
+    """
+    if not usage.consume(UsageKind.STT_SECONDS, _wav_seconds(wav)):
+        raise UsageLimitExceeded("Daily STT budget exceeded")
+
+
+def charge_llm(usage: UsageGuard) -> None:
+    """LLM 호출 한 번을 하루 예산에 더한다.
+
+    Raises:
+        UsageLimitExceeded: 한도를 넘게 될 때.
+    """
+    if not usage.consume(UsageKind.LLM_CALLS, 1):
+        raise UsageLimitExceeded("Daily LLM budget exceeded")
+
+
+def charge_tts(usage: UsageGuard, text: str) -> None:
+    """TTS 합성 글자 수를 하루 예산에 더한다. 캐시 적중은 합성하지 않으므로 부르지 않는다.
+
+    Raises:
+        UsageLimitExceeded: 한도를 넘게 될 때.
+    """
+    if not usage.consume(UsageKind.TTS_CHARS, len(text)):
+        raise UsageLimitExceeded("Daily TTS budget exceeded")
 
 
 @dataclass(frozen=True, slots=True)
@@ -64,6 +112,7 @@ class OpenAIGateway:
         self._language = settings.locale
         self._stt_hedge_after = settings.stt_hedge_after_ms / 1000
         self._stt_timeout = settings.stt_timeout_ms / 1000
+        self.usage = UsageGuard(settings)
         # 재시도는 지연을 숨기므로 끈다. 실패 정책은 호출하는 쪽이 정한다.
         self._client = AsyncOpenAI(
             api_key=settings.openai_api_key.get_secret_value(), max_retries=0, timeout=30.0
@@ -92,8 +141,11 @@ class OpenAIGateway:
 
         Raises:
             OpenAIGatewayTimeout: `stt_timeout_ms` 안에 결과를 받지 못했을 때.
+            UsageLimitExceeded: 하루 STT 한도를 넘었을 때.
             OpenAIGatewayError: 호출이 실패했을 때.
         """
+        # 헤지 재전송은 따로 세지 않는다. 요청 한 건의 길이만 센다.
+        charge_stt(self.usage, wav)
         try:
             async with asyncio.timeout(self._stt_timeout):
                 return await self._transcribe_hedged(wav, prompt, on_hedge)
@@ -166,8 +218,10 @@ class OpenAIGateway:
         """채팅 응답을 스트리밍한다. 텍스트 조각은 즉시, 툴 호출은 턴이 끝날 때 한 번에 낸다.
 
         Raises:
+            UsageLimitExceeded: 하루 LLM 호출 한도를 넘었을 때.
             OpenAIGatewayError: 호출이 실패했을 때.
         """
+        charge_llm(self.usage)
         kwargs: dict[str, Any] = {"messages": list(messages), "stream": True}
         if tools:
             kwargs["tools"] = list(tools)
@@ -202,8 +256,11 @@ class OpenAIGateway:
         """텍스트를 PCM_S16LE 24kHz mono 로 합성해 조각으로 낸다.
 
         Raises:
+            UsageLimitExceeded: 하루 TTS 글자 수 한도를 넘었을 때.
             OpenAIGatewayError: 호출이 실패했을 때.
         """
+        # 캐시 적중은 이 함수를 거치지 않으므로 세지 않는다.
+        charge_tts(self.usage, text)
         try:
             async with self._client.audio.speech.with_streaming_response.create(
                 model=self._tts_model,
