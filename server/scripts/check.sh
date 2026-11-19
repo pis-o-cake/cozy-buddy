@@ -20,6 +20,19 @@ poetry install --no-interaction --quiet
 echo "== generate protobuf"
 sh scripts/gen_proto.sh
 
+# 런타임 의존성(pyproject [project].dependencies)만 담은 격리 venv. Dockerfile 과 같은 방식으로
+# 설치하고, pyproject.toml 해시가 같으면 재사용해 느려지지 않게 한다.
+echo "== runtime import smoke"
+runtime_venv="$server_dir/.venv-runtime"
+dep_hash=$(shasum -a 256 pyproject.toml | cut -d' ' -f1)
+if [ ! -x "$runtime_venv/bin/python" ] || [ "$(cat "$runtime_venv/.deps-hash" 2>/dev/null)" != "$dep_hash" ]; then
+  rm -rf "$runtime_venv"
+  uv venv --quiet --python 3.12 "$runtime_venv"
+  uv pip install --quiet --python "$runtime_venv/bin/python" -r pyproject.toml
+  echo "$dep_hash" >"$runtime_venv/.deps-hash"
+fi
+PYTHONPATH="$server_dir/gen:$server_dir" "$runtime_venv/bin/python" scripts/runtime_smoke.py
+
 echo "== ruff check"
 poetry run ruff check .
 
