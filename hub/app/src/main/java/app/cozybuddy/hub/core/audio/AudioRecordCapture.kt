@@ -27,12 +27,19 @@ class AudioRecordCapture @Inject constructor(
     private val _running = MutableStateFlow(false)
     override val running: StateFlow<Boolean> = _running.asStateFlow()
 
-    private val lifecycleLock = Any()
+    @Suppress("PLATFORM_CLASS_MAPPED_TO_KOTLIN")
+    private val lifecycleLock = Object()
     private var record: AudioRecord? = null
     private var thread: Thread? = null
 
+    // 서비스가 캡처를 원하는 상태. 읽기 오류로 [_running] 이 잠시 꺼져도 true 로 남아 복구 대상이 된다.
+    @Volatile
+    private var wanted = false
+
     override fun start(): Boolean = synchronized(lifecycleLock) {
         if (_running.value) return true
+        // 복구 스레드가 재시도 중이면 두 번째 AudioRecord 를 만들지 않는다.
+        if (wanted && thread?.isAlive == true) return true
         // 읽기 오류로 루프가 스스로 끝난 잔여 객체가 있으면 먼저 정리한다.
         releaseLocked()
         val granted = ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) ==
@@ -56,7 +63,8 @@ class AudioRecordCapture @Inject constructor(
         }
         record = created
         _running.value = true
-        thread = Thread({ captureLoop(created) }, "audio-capture").also { it.start() }
+        wanted = true
+        thread = Thread({ captureAndRecover(created) }, "audio-capture").also { it.start() }
         Timber.i("Audio capture started")
         true
     }
@@ -64,9 +72,11 @@ class AudioRecordCapture @Inject constructor(
     override fun stop() {
         val worker: Thread?
         synchronized(lifecycleLock) {
+            wanted = false
             _running.value = false
             worker = thread
             record?.let { runCatching { it.stop() } }
+            lifecycleLock.notifyAll()
         }
         // 읽기 루프가 끝난 뒤에 release 해야 네이티브 객체 해제와 read 가 겹치지 않는다.
         worker?.join(JOIN_TIMEOUT_MS)
@@ -77,9 +87,13 @@ class AudioRecordCapture @Inject constructor(
 
     override fun subscribe(preRollMs: Int): FrameSubscription = distributor.subscribe(preRollMs)
 
-    private fun releaseLocked() {
+    private fun releaseRecordLocked() {
         record?.release()
         record = null
+    }
+
+    private fun releaseLocked() {
+        releaseRecordLocked()
         thread = null
     }
 
@@ -124,6 +138,61 @@ class AudioRecordCapture @Inject constructor(
         }
     }
 
+    /** 읽기 오류로 루프가 끝나면 [CaptureRetryPolicy] 간격으로 AudioRecord 를 다시 열어 캡처를 이어간다. */
+    private fun captureAndRecover(initial: AudioRecord) {
+        var current: AudioRecord = initial
+        while (wanted) {
+            captureLoop(current)
+            if (!wanted) return
+            current = recover() ?: return
+        }
+    }
+
+    private fun recover(): AudioRecord? {
+        val policy = CaptureRetryPolicy()
+        synchronized(lifecycleLock) {
+            _running.value = false
+            releaseRecordLocked()
+        }
+        while (true) {
+            val delayMs = policy.nextDelayMs()
+            Timber.w("Audio capture recovery in %d ms", delayMs)
+            synchronized(lifecycleLock) {
+                if (!wanted) return null
+                try {
+                    lifecycleLock.wait(delayMs)
+                } catch (e: InterruptedException) {
+                    Thread.currentThread().interrupt()
+                    return null
+                }
+                if (!wanted) return null
+                val reopened = openRecordLocked()
+                if (reopened != null) {
+                    Timber.i("Audio capture recovered")
+                    return reopened
+                }
+            }
+        }
+    }
+
+    private fun openRecordLocked(): AudioRecord? {
+        val created = createRecord() ?: return null
+        try {
+            created.startRecording()
+        } catch (e: IllegalStateException) {
+            Timber.e(e, "AudioRecord.startRecording failed during recovery")
+            created.release()
+            return null
+        }
+        if (created.recordingState != AudioRecord.RECORDSTATE_RECORDING) {
+            created.release()
+            return null
+        }
+        record = created
+        _running.value = true
+        return created
+    }
+
     private fun captureLoop(source: AudioRecord) {
         Process.setThreadPriority(Process.THREAD_PRIORITY_AUDIO)
         var frame = ShortArray(CaptureFormat.FRAME_SAMPLES)
@@ -132,8 +201,7 @@ class AudioRecordCapture @Inject constructor(
             val read = source.read(frame, filled, frame.size - filled, AudioRecord.READ_BLOCKING)
             if (read < 0) {
                 Timber.e("AudioRecord.read failed: %d", read)
-                _running.value = false
-                break
+                return
             }
             filled += read
             if (filled < frame.size) continue
