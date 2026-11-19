@@ -141,3 +141,16 @@ message UtteranceDeclined {
   // 이긴 허브의 ID.
   string winner_hub_id = 3;
 }
+
+// 서버→허브. 허브 간 방송 알림. 같은 방송의 오디오(BROADCAST_DOWN)보다 먼저 보낸다.
+// 허브는 text 를 자막으로 띄우고, 대화 중이거나 알람이 울리면 오디오를 재생하지 않는다.
+message BroadcastNotice {
+  // 방송한 허브.
+  string from_hub_id = 1;
+  // 방송한 허브가 놓인 방의 이름. 이름을 모르면 방 ID, 방도 모르면 빈 문자열.
+  string from_area = 2;
+  // 방송 문장. 자막으로 보인다.
+  string text = 3;
+  // 이 방송의 오디오 스트림 ID(ResponseAudioStart·AudioChunk 의 stream_id 와 같다).
+  string stream_id = 4;
+}
