@@ -277,4 +277,53 @@ class AlarmCoordinatorTest {
         verify(exactly = 0) { scheduler.scheduleSnooze(any(), any()) }
         assertTrue(snoozes.items.isEmpty())
     }
+
+    @Test
+    fun `snoozed one-shot survives rescheduleAll and rings at the snooze time`() = runBlocking {
+        repository.upsert(oneShot("t", now.minusMinutes(2)))
+        snoozes.put(Snooze("t", snoozeAt(4)))
+
+        coordinator.rescheduleAll()
+
+        assertTrue(repository.get("t")!!.enabled)
+        assertEquals(snoozeAt(4), snoozes.items["t"]?.fireAt)
+        verify { scheduler.scheduleSnooze("t", snoozeAt(4)) }
+        verify(exactly = 0) { scheduler.schedule("t", any()) }
+    }
+
+    @Test
+    fun `snoozed one-shot survives a save from the server`() = runBlocking {
+        val alarm = repository.upsert(oneShot("t", now.minusMinutes(2)))
+        snoozes.put(Snooze("t", snoozeAt(4)))
+
+        val stored = coordinator.save(alarm)
+
+        assertTrue(stored.enabled)
+        assertEquals(snoozeAt(4), snoozes.items["t"]?.fireAt)
+        verify { scheduler.scheduleSnooze("t", snoozeAt(4)) }
+    }
+
+    @Test
+    fun `one-shot with an expired snooze is disabled by rescheduleAll`() = runBlocking {
+        repository.upsert(oneShot("t", now.minusMinutes(20)))
+        snoozes.put(Snooze("t", snoozeAt(-3)))
+
+        coordinator.rescheduleAll()
+
+        assertFalse(repository.get("t")!!.enabled)
+        assertTrue(snoozes.items.isEmpty())
+        verify(exactly = 0) { scheduler.scheduleSnooze(any(), any()) }
+    }
+
+    @Test
+    fun `one-shot is disabled once the snooze ring finishes`() = runBlocking {
+        repository.upsert(oneShot("t", now.minusMinutes(2)))
+        snoozes.put(Snooze("t", snoozeAt(4)))
+
+        coordinator.onFired("t")
+        coordinator.onRingFinished("t", snoozed = false)
+
+        assertFalse(repository.get("t")!!.enabled)
+        assertTrue(snoozes.items.isEmpty())
+    }
 }
