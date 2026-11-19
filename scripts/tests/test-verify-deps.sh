@@ -9,6 +9,9 @@ trap 'rm -rf "$tmp"' EXIT INT TERM
 
 fails=0
 
+# 호출자(VERIFY_ALL=1 sh scripts/verify.sh)의 값을 상속하지 않게 한다. 필요한 케이스에서만 명시한다.
+unset VERIFY_ALL
+
 setup_repo() {
   rm -rf "$tmp/repo"
   mkdir -p "$tmp/repo" "$tmp/bin"
