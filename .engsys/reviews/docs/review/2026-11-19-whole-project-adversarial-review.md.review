@@ -1,0 +1,14 @@
+engsys-document-review: 1
+document: docs/review/2026-11-19-whole-project-adversarial-review.md
+blob: 525ac9bef0574f1734d87109af326394b136967c
+decision: pass
+reviewer: claude-opus-5-5
+audience: 수정 담당자와 소유자
+purpose: 어떤 결함이 어떤 영향을 주며 무엇이 고쳐졌고 무엇이 남았는가
+
+- 결론: 높음 6건(사용자 영향 5, ADR 삭제 1)과 같은 날 수정 병합, LAN 암호화 #89 미결을 첫 문단에 둠
+- 각 항목의 확인 방식(코드·재현·이력·설정)을 명시, 재현 수치는 서버 venv에서 직접 실행한 결과
+- 리뷰어 오판 1건(understand/skills 부재)을 제외 사유와 함께 기록
+- 조치 표는 병합된 PR #90~#94와 이슈를 대조해 채움, 배포·실기기 미확인을 잔여 위험으로 명시
+- 호출어 통계 수치는 ko_eval.json에서 다시 계산해 기재
+
