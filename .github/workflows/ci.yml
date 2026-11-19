@@ -36,15 +36,18 @@ jobs:
           filters: |
             protocol:
               - 'protocol/**'
-              - '.github/workflows/ci.yml'
+              - '.github/**'
+              - 'scripts/**'
             server:
               - 'server/**'
               - 'protocol/**'
-              - '.github/workflows/ci.yml'
+              - '.github/**'
+              - 'scripts/**'
             hub:
               - 'hub/**'
               - 'protocol/**'
-              - '.github/workflows/ci.yml'
+              - '.github/**'
+              - 'scripts/**'
 
   contract:
     name: contract
