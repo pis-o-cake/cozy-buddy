@@ -10,6 +10,7 @@ from app.config import Settings
 from app.core.i18n import Translator
 from app.core.openai_gateway import OpenAIGateway, OpenAIGatewayError, ToolCall
 from app.domain.agent.context import TurnContext
+from app.domain.agent.memory import ConversationMemory
 from app.domain.agent.skills.registry import SkillRegistry, tool_message
 from app.domain.telemetry.turn import Stage
 
@@ -28,11 +29,13 @@ class LlmStep:
         translate: Translator,
         openai: OpenAIGateway | None,
         skills: SkillRegistry,
+        memory: ConversationMemory,
     ) -> None:
         self._settings = settings
         self._t = translate
         self._openai = openai
         self._skills = skills
+        self._memory = memory
 
     async def stream(self, text: str, ctx: TurnContext) -> AsyncIterator[str]:
         """응답 텍스트 조각을 흘린다. 시간 초과·게이트웨이 오류는 사과 문장으로 끝낸다."""
@@ -42,6 +45,7 @@ class LlmStep:
         tools = self._skills.tools(ctx.view)
         messages: list[dict[str, Any]] = [
             {"role": "system", "content": self._system_prompt(ctx)},
+            *self._history_messages(ctx),
             {"role": "user", "content": text},
         ]
         turn = ctx.turn
@@ -83,6 +87,14 @@ class LlmStep:
             turn.fail("llm_timeout" if isinstance(exc, TimeoutError) else "llm_error")
             if not emitted:
                 yield self._t("agent.llm.apology")
+
+    def _history_messages(self, ctx: TurnContext) -> list[dict[str, Any]]:
+        """최근 대화를 사용자·어시스턴트 메시지 쌍으로 만든다. 지난 턴의 툴 메시지는 싣지 않는다."""
+        messages: list[dict[str, Any]] = []
+        for past in self._memory.recent_turns(ctx.hub_id):
+            messages.append({"role": "user", "content": past.user})
+            messages.append({"role": "assistant", "content": past.assistant})
+        return messages
 
     def _system_prompt(self, ctx: TurnContext) -> str:
         weekday = self._t(f"agent.day.{ctx.now.isoweekday()}")

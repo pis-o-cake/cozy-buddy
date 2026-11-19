@@ -35,8 +35,8 @@ class ContextResolver(Protocol):
 class ContextAttempt:
     """맥락 해석기를 순서대로 돌린다.
 
-    TODO: W2-1 이 직전 턴 대상에 대한 후속 지시("그거 다시 켜줘") 해석기를 ClarifyAnswerResolver
-    뒤에 추가한다. 보류 질문이 있으면 그 답으로 읽는 것이 자연스러워 확인 질문 답이 먼저다.
+    확인 질문 답(ClarifyAnswerResolver)이 먼저다. 보류 질문이 있으면 그 답으로 읽는 것이 자연스럽다.
+    그 뒤에 직전 턴 대상에 대한 후속 지시(FollowupResolver)가 온다.
     """
 
     step = Step.CONTEXT
