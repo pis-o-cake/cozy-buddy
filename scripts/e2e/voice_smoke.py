@@ -13,6 +13,7 @@
 사용 예:
   uv run python voice_smoke.py --scenario scenarios/basic.yaml --repeat 3 --json out/r.json
   uv run python voice_smoke.py --utterance "거실 불 꺼줘" --expect-state light.living=off
+  uv run python voice_smoke.py --utterance "알람 꺼줘" --ringing-alarm-id a1   # 울리는 알람 정지
 """
 
 from __future__ import annotations
@@ -90,6 +91,7 @@ class Result:
     audio_seconds: float = 0.0
     audio_problems: list[str] = field(default_factory=list)
     alarm_upserts: list[str] = field(default_factory=list)
+    alarm_controls: list[str] = field(default_factory=list)
     changed_entities: dict[str, str] = field(default_factory=dict)
     expect: str = ""
     expect_ok: bool | None = None
@@ -185,6 +187,7 @@ class VirtualHub:
         self.areas: dict[str, str] = {}
         self.initial: dict[str, home_pb2.Entity] = {}
         self.live_alarm_ids: set[str] = set()
+        self.ringing_alarm_id = ""
         self.server_version = ""
         self.audio: list[bytes] = []
 
@@ -230,6 +233,24 @@ class VirtualHub:
         if not got_snapshot:
             raise SystemExit("HomeSnapshot not received")
         self.initial = {k: _clone(v) for k, v in self.entities.items()}
+
+    async def report_ringing(self, alarm_id: str) -> None:
+        """HubStatus 로 울리는 알람 ID 를 서버에 알린다. 빈 문자열이면 울리지 않는다는 뜻이다."""
+        self.ringing_alarm_id = alarm_id
+        await self.send(hub_status=home_pb2.HubStatus(ringing_alarm_id=alarm_id))
+
+    async def answer_alarm_control(self, result: Result, control: alarm_pb2.AlarmControl) -> None:
+        """AlarmControl 에 ok 로 답하고, 실제 허브처럼 울림이 끝났다고 HubStatus 를 다시 보낸다."""
+        action = alarm_pb2.AlarmControlAction.Name(control.action).removeprefix(
+            "ALARM_CONTROL_ACTION_"
+        )
+        minutes = f":{control.snooze_minutes}m" if control.snooze_minutes else ""
+        result.alarm_controls.append(f"{action}{minutes}@{control.alarm_id}")
+        reply = alarm_pb2.AlarmControlResult(
+            request_id=control.request_id, alarm_id=control.alarm_id, ok=True
+        )
+        await self.send(alarm_control_result=reply)
+        await self.report_ringing("")
 
     def track(self, env: Envelope) -> None:
         body = env.WhichOneof("body")
@@ -342,6 +363,8 @@ class VirtualHub:
                     ok=True,
                 )
                 await self.send(alarm_ack=ack)
+            elif body == "alarm_control":
+                await self.answer_alarm_control(result, env.alarm_control)
             elif body == "alarm_delete":
                 dl = env.alarm_delete
                 self.live_alarm_ids.discard(dl.alarm_id)
@@ -433,7 +456,7 @@ def print_row(r: Result) -> None:
         f"    ms: transcript={fmt(r.transcript_ms)} text={fmt(r.first_text_ms)} "
         f"audio={fmt(r.first_audio_ms)} audio_end={fmt(r.audio_end_ms)} done={fmt(r.done_ms)} "
         f"chunks={r.audio_chunks} ({r.audio_seconds}s)\n"
-        f"    states={'>'.join(r.states)} alarms={r.alarm_upserts} changed={r.changed_entities} "
+        f"    states={'>'.join(r.states)} alarms={r.alarm_upserts} controls={r.alarm_controls} changed={r.changed_entities} "
         f"expect={r.expect or '-'}:{r.expect_ok} errors={r.errors} problems={r.audio_problems}"
     )
 
@@ -481,6 +504,9 @@ async def amain(args: argparse.Namespace) -> int:
             area = hub.areas.get(e.area_id, "-")
             print(f"  {e.entity_id:35} {area:8} {e.name!r:20} {e.state.state}")
 
+    if args.ringing_alarm_id:
+        await hub.report_ringing(args.ringing_alarm_id)
+
     jobs: list[tuple[dict[str, str], bytes | None, bool]] = []
     for item in items:
         pcm, cached = synth.synth(item["text"])
@@ -498,6 +524,8 @@ async def amain(args: argparse.Namespace) -> int:
         for item, pcm, cached in jobs:
             r = Result(text=item["text"], repeat=rep, tts_cached=cached)
             hub.audio = []
+            if args.ringing_alarm_id and not hub.ringing_alarm_id:
+                await hub.report_ringing(args.ringing_alarm_id)
             spec = item.get("expect_state") or item.get("expect_area_light", "")
             r.expect = spec
             query = item["text"] if "text_query" in item else None
@@ -545,6 +573,11 @@ def main() -> None:
     p.add_argument("--realtime", action="store_true", help="오디오를 20ms 간격으로 전송")
     p.add_argument("--no-restore", action="store_true")
     p.add_argument("--dump-home", action="store_true")
+    p.add_argument(
+        "--ringing-alarm-id",
+        default="",
+        help="HubStatus 로 이 알람이 울리는 중이라고 알리고 AlarmControl 에 ok 로 자동 응답한다",
+    )
     p.add_argument("--area-id", default="")
     p.add_argument("--gap", type=float, default=1.0, help="발화 사이 대기 초")
     p.add_argument("--env", default=str(DEFAULT_ENV))
