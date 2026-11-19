@@ -92,6 +92,8 @@ class Settings(BaseSettings):
     max_utterance_seconds: float = 15.0
     clarify_ttl_seconds: float = 30.0
     timezone: str = "Asia/Seoul"
+    # 턴 로그(발화별 경로·지연 기록) 보존 기간. 시작할 때와 하루마다 이보다 오래된 행을 지운다.
+    turn_log_days: int = Field(default=30, ge=1)
     # 집 좌표. 둘 중 하나라도 비어 있으면 날씨 기능은 꺼진다.
     home_latitude: float | None = Field(default=None, ge=-90, le=90)
     home_longitude: float | None = Field(default=None, ge=-180, le=180)
