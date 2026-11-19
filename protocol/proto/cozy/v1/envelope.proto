@@ -45,6 +45,8 @@ message Envelope {
     AlarmAck alarm_ack = 42;
     AlarmSnapshot alarm_snapshot = 43;
     AlarmSyncRequest alarm_sync_request = 44;
+    AlarmControl alarm_control = 45;
+    AlarmControlResult alarm_control_result = 46;
 
     // home
     HomeSnapshot home_snapshot = 60;

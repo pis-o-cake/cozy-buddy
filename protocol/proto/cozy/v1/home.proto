@@ -72,4 +72,6 @@ message HubStatus {
   uint32 volume_pct = 1;
   bool mic_muted = 2;
   uint32 screen_brightness_pct = 3;
+  // 지금 울리는 알람의 ID. 울리지 않으면 빈 문자열.
+  string ringing_alarm_id = 4;
 }
