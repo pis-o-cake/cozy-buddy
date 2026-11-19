@@ -63,6 +63,7 @@ def create_app(
         configure_logging(settings.log_level)
         app.state.db = Database(settings.database_url)
         logger.info("Server started: version={}", get_server_version())
+        await app.state.turns.start()
         await app.state.home.start()
         await app.state.weather.start()
         try:
@@ -70,6 +71,7 @@ def create_app(
         finally:
             await app.state.weather.stop()
             await app.state.home.stop()
+            await app.state.turns.stop()
             if gateway is not None:
                 await gateway.aclose()
             await app.state.db.dispose()
@@ -90,6 +92,7 @@ def create_app(
         db: Database = app.state.db
         return db
 
+    app.state.turns = TurnRecorder(get_db, settings.turn_log_days)
     app.state.agent = AgentService(
         settings,
         app.state.translator,
@@ -100,7 +103,6 @@ def create_app(
         clock,
         app.state.weather,
     )
-    app.state.turns = TurnRecorder()
     app.state.voice = VoiceService(
         settings,
         app.state.translator,
