@@ -50,12 +50,16 @@ class _Group:
     ids: frozenset[str] | None = None
 
 
-def match(context: UtteranceContext, home: HomeModel) -> MatchResult:
+def match(
+    context: UtteranceContext, home: HomeModel, *, include_weather: bool = True
+) -> MatchResult:
     """발화를 결정론으로 해석한다.
 
     Args:
         context: 발화 문맥(텍스트, 허브가 놓인 방, 현재 시각).
         home: 집 구조 스냅샷.
+        include_weather: 기기 매칭이 실패했을 때 날씨 질문도 해석할지. 이해 단계는 날씨를
+            별도 시도로 분리하므로 False 로 부른다.
 
     Returns:
         해석 결과. 확신 있게 해석하지 못하면 NoMatch.
@@ -69,7 +73,7 @@ def match(context: UtteranceContext, home: HomeModel) -> MatchResult:
     if scheduled is not None:
         return scheduled
     result = _match_home(norm, context, home)
-    if isinstance(result, NoMatch):
+    if include_weather and isinstance(result, NoMatch):
         result = match_weather(norm, context.text) or result
     logger.debug("Matched utterance to {}", type(result).__name__)
     return result

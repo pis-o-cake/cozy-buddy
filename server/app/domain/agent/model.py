@@ -166,6 +166,24 @@ class NoMatch:
     """확신 있게 해석하지 못함. 이후 LLM 이 처리한다."""
 
 
+@dataclass(frozen=True, slots=True)
+class Dismiss:
+    """보류 중이던 확인 질문을 사용자가 거절했다."""
+
+
+@dataclass(frozen=True, slots=True)
+class CancelSelected:
+    """확인 질문으로 고른 알람·타이머 취소. confirmed 가 False 이고 둘 이상이면 되묻는다."""
+
+    alarm_ids: tuple[str, ...]
+    confirmed: bool = False
+
+
+@dataclass(frozen=True, slots=True)
+class CancelAllAlarms:
+    """허브의 알람과 타이머를 모두 취소한다. 확인 질문에 "응"이라고 답한 뒤에만 만들어진다."""
+
+
 MatchResult = (
     DeviceCommand
     | SceneCommand
@@ -177,3 +195,18 @@ MatchResult = (
     | Clarify
     | NoMatch
 )
+
+Intent = (
+    DeviceCommand
+    | SceneCommand
+    | StateQuery
+    | AlarmIntent
+    | TimerIntent
+    | CancelAlarmIntent
+    | WeatherIntent
+    | Clarify
+    | Dismiss
+    | CancelSelected
+    | CancelAllAlarms
+)
+"""이해 단계가 낼 수 있는 의도. 실행 단계의 스킬이 처리한다."""
