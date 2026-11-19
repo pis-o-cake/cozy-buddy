@@ -225,6 +225,12 @@ class GatewayService:
         if body in _HUB_VOICE_BODIES and is_hub:
             await self._voice.session_for(conn).handle(envelope)
             return
+        if is_hub and body == "hub_status":
+            self._connections.hub_control.update_status(conn.client_id, envelope.hub_status)
+            return
+        if is_hub and body == "alarm_control_result":
+            self._connections.hub_control.resolve(conn.client_id, envelope.alarm_control_result)
+            return
         if body == "text_query":
             await self._voice.session_for(conn).handle_text_query(envelope.text_query)
             return
