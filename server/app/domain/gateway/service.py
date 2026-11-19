@@ -241,6 +241,9 @@ class GatewayService:
         if is_hub and body == "alarm_control_result":
             self._connections.hub_control.resolve(conn.client_id, envelope.alarm_control_result)
             return
+        if is_hub and body == "reminder_fired":
+            await self._voice.session_for(conn).handle_reminder(envelope.reminder_fired)
+            return
         if body == "text_query":
             await self._voice.session_for(conn).handle_text_query(envelope.text_query)
             return

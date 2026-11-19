@@ -5,7 +5,7 @@
 """
 
 import uuid
-from typing import cast
+from typing import Any, cast
 
 from cozy.v1 import alarm_pb2
 from cozy.v1.envelope_pb2 import Envelope
@@ -19,12 +19,19 @@ from app.domain.alarm.models import Alarm, AlarmKindName, SyncState
 from app.domain.alarm.schemas import AlarmRead
 from app.domain.hub.service import HubService
 
+_KIND_NAMES: dict[int, AlarmKindName] = {
+    alarm_pb2.ALARM_KIND_TIMER: AlarmKindName.TIMER,
+    alarm_pb2.ALARM_KIND_REMINDER: AlarmKindName.REMINDER,
+}
+_KIND_PROTOS: dict[str, Any] = {
+    AlarmKindName.TIMER: alarm_pb2.ALARM_KIND_TIMER,
+    AlarmKindName.REMINDER: alarm_pb2.ALARM_KIND_REMINDER,
+}
+
 
 def apply_proto(row: Alarm, alarm: alarm_pb2.Alarm) -> None:
     """cozy.v1.Alarm 의 내용을 모델 컬럼으로 옮긴다. revision 은 건드리지 않는다."""
-    row.kind = (
-        AlarmKindName.TIMER if alarm.kind == alarm_pb2.ALARM_KIND_TIMER else AlarmKindName.ALARM
-    )
+    row.kind = _KIND_NAMES.get(alarm.kind, AlarmKindName.ALARM)
     row.label = alarm.label
     row.enabled = alarm.enabled
     row.sunrise = alarm.sunrise
@@ -45,9 +52,7 @@ def to_proto(row: Alarm) -> alarm_pb2.Alarm:
     """모델을 cozy.v1.Alarm 으로 되돌린다."""
     alarm = alarm_pb2.Alarm(
         alarm_id=row.alarm_id,
-        kind=alarm_pb2.ALARM_KIND_TIMER
-        if row.kind == AlarmKindName.TIMER
-        else alarm_pb2.ALARM_KIND_ALARM,
+        kind=_KIND_PROTOS.get(row.kind, alarm_pb2.ALARM_KIND_ALARM),
         label=row.label,
         enabled=row.enabled,
         sunrise=row.sunrise,

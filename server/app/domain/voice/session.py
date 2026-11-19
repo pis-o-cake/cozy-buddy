@@ -6,6 +6,7 @@ import time
 from collections.abc import AsyncIterator, Awaitable, Callable
 from dataclasses import dataclass, field
 
+from cozy.v1.alarm_pb2 import ReminderFired
 from cozy.v1.common_pb2 import (
     ERROR_CODE_BAD_REQUEST,
     ERROR_CODE_INTERNAL,
@@ -37,6 +38,7 @@ from app.core.openai_gateway import (
     OpenAIGatewayTimeout,
 )
 from app.core.protocol import error_envelope
+from app.domain.agent.reminder_text import fired_text
 from app.domain.agent.service import AgentService
 from app.domain.telemetry.recorder import TurnRecorder
 from app.domain.telemetry.turn import Stage, Turn, TurnPath, TurnSource
@@ -50,6 +52,9 @@ KEY_NOT_HEARD = "voice.not_heard"
 KEY_STREAM_INVALID = "voice.stream_invalid"
 KEY_TOO_LONG = "voice.utterance_too_long"
 KEY_INTERNAL = "error.internal"
+# 허브가 대화 응답과 구분하려고 보는 접두어다. 허브와의 계약이므로 바꾸지 않는다.
+REMINDER_STREAM_PREFIX = "reminder-"
+MAX_REMINDER_LABEL_CHARS = 100
 MIN_SAMPLE_RATE_HZ = 8000
 MAX_SAMPLE_RATE_HZ = 48000
 
@@ -135,6 +140,41 @@ class VoiceSession:
         task = asyncio.create_task(self._run_text(query), name="voice-text-query")
         self._text_tasks.add(task)
         task.add_done_callback(self._text_tasks.discard)
+
+    async def handle_reminder(self, fired: ReminderFired) -> None:
+        """허브가 알린 리마인더를 읽어 주는 음성 응답(RESPONSE_DOWN)을 백그라운드로 보낸다.
+
+        Args:
+            fired: 울린 리마인더. label 이 알릴 내용이다.
+
+        Raises:
+            BadRequestError: alarm_id 나 label 이 비어 있을 때.
+        """
+        label = fired.label.strip()[:MAX_REMINDER_LABEL_CHARS]
+        if not fired.alarm_id or not label:
+            raise BadRequestError("Invalid reminder")
+        task = asyncio.create_task(self._run_reminder(fired.alarm_id, label), name="voice-reminder")
+        self._text_tasks.add(task)
+        task.add_done_callback(self._text_tasks.discard)
+
+    async def _run_reminder(self, alarm_id: str, label: str) -> None:
+        deps = self._deps
+        text = fired_text(label, deps.translate)
+        stream_id = f"{REMINDER_STREAM_PREFIX}{alarm_id}"
+        try:
+            streamer = ResponseStreamer(
+                self._send,
+                stream_id,
+                deps.openai,
+                announce_speaking=False,
+                cache=deps.tts_cache,
+                cacheable=lambda: True,
+            )
+            await streamer.run(_single(text))
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            logger.exception("Reminder announcement failed: alarm={}", alarm_id)
 
     async def close(self) -> None:
         """연결이 끊겼을 때 진행 중인 작업을 모두 취소한다."""

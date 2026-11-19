@@ -23,12 +23,14 @@ from app.domain.agent.model import (
     Clarify,
     ClarifyReason,
     Intent,
+    ReminderIntent,
     TimerIntent,
 )
 from app.domain.agent.responses import which_alarm_response
 from app.domain.agent.skills.alarm_select import AlarmSelector
 from app.domain.agent.skills.alarm_store import (
     KEY_HUB_REQUIRED,
+    REMINDER_KIND,
     TIMER_KIND,
     AlarmStore,
     new_alarm,
@@ -37,6 +39,7 @@ from app.domain.agent.skills.alarm_tools import (
     MAX_TIMER_SECONDS,
     TOOL_CANCEL,
     TOOL_SET_ALARM,
+    TOOL_SET_REMINDER,
     TOOL_SET_TIMER,
     alarm_tool_specs,
 )
@@ -73,8 +76,15 @@ class _CancelOutcome:
 class AlarmSkill(BaseSkill):
     """알람 설정·타이머·취소. 결정론 의도와 LLM 툴이 같은 `_schedule`·`_cancel_matching` 을 쓴다."""
 
-    intents = (AlarmIntent, TimerIntent, CancelAlarmIntent, CancelSelected, CancelAllAlarms)
-    tool_names = frozenset({TOOL_SET_ALARM, TOOL_SET_TIMER, TOOL_CANCEL})
+    intents = (
+        AlarmIntent,
+        TimerIntent,
+        ReminderIntent,
+        CancelAlarmIntent,
+        CancelSelected,
+        CancelAllAlarms,
+    )
+    tool_names = frozenset({TOOL_SET_ALARM, TOOL_SET_TIMER, TOOL_SET_REMINDER, TOOL_CANCEL})
 
     def __init__(
         self,
@@ -94,7 +104,7 @@ class AlarmSkill(BaseSkill):
         return alarm_tool_specs()
 
     async def execute(self, intent: Intent, ctx: TurnContext) -> SkillResult:
-        if isinstance(intent, AlarmIntent | TimerIntent):
+        if isinstance(intent, AlarmIntent | TimerIntent | ReminderIntent):
             error_key = await self._schedule(intent, ctx)
             return self.failed(error_key) if error_key else self.templated(intent, ctx)
         if isinstance(intent, CancelAlarmIntent):
@@ -111,18 +121,27 @@ class AlarmSkill(BaseSkill):
             return await self._tool_set_alarm(args, ctx)
         if name == TOOL_SET_TIMER:
             return await self._tool_set_timer(args, ctx)
+        if name == TOOL_SET_REMINDER:
+            return await self._tool_set_reminder(args, ctx)
         return await self._tool_cancel(args, ctx)
 
     # --- 설정 -----------------------------------------------------------------------------
 
-    async def _schedule(self, intent: AlarmIntent | TimerIntent, ctx: TurnContext) -> str | None:
+    async def _schedule(
+        self, intent: AlarmIntent | TimerIntent | ReminderIntent, ctx: TurnContext
+    ) -> str | None:
         """알람·타이머를 허브에 만든다. 실패하면 사용자 메시지 키를, 성공하면 None 을 돌려준다."""
+        kind = (
+            alarm_pb2.ALARM_KIND_REMINDER
+            if isinstance(intent, ReminderIntent)
+            else alarm_pb2.ALARM_KIND_ALARM
+        )
         if isinstance(intent, TimerIntent):
             fires_at = ctx.now + timedelta(seconds=intent.duration_seconds)
             alarm = new_alarm(alarm_pb2.ALARM_KIND_TIMER, intent.label, fires_at=fires_at)
         elif intent.days is not None:
             alarm = new_alarm(
-                alarm_pb2.ALARM_KIND_ALARM,
+                kind,
                 intent.label,
                 hour=intent.hour,
                 minute=intent.minute,
@@ -130,7 +149,7 @@ class AlarmSkill(BaseSkill):
             )
         else:
             fires_at = datetime.fromtimestamp((intent.one_shot_epoch_ms or 0) / 1000, tz=self._tz)
-            alarm = new_alarm(alarm_pb2.ALARM_KIND_ALARM, intent.label, fires_at=fires_at)
+            alarm = new_alarm(kind, intent.label, fires_at=fires_at)
         error_key = await self._store.upsert(ctx.hub_id, alarm)
         if error_key:
             return error_key
@@ -175,6 +194,37 @@ class AlarmSkill(BaseSkill):
             return self.failed(error_key)
         return SkillResult(True, payload={"ok": True, "duration_seconds": seconds})
 
+    async def _tool_set_reminder(self, args: dict[str, Any], ctx: TurnContext) -> SkillResult:
+        message = str(args["message"]).strip()
+        if not message:
+            raise ValueError("message is empty")
+        if args.get("delay_seconds") is not None:
+            seconds = required_int(args, "delay_seconds", 1, MAX_TIMER_SECONDS)
+            fires_at = ctx.now + timedelta(seconds=seconds)
+            intent = ReminderIntent(
+                message,
+                fires_at.hour,
+                fires_at.minute,
+                one_shot_epoch_ms=int(fires_at.timestamp() * 1000),
+            )
+            summary: dict[str, Any] = {"fires_at": fires_at.isoformat(timespec="minutes")}
+        else:
+            hour = required_int(args, "hour", 0, 23)
+            minute = required_int(args, "minute", 0, 59)
+            days = tuple(sorted({bounded(int(d), 1, 7) for d in args.get("days") or []}))
+            if days:
+                intent = ReminderIntent(message, hour, minute, days=days)
+                summary = {"days": list(days), "time": f"{hour:02d}:{minute:02d}"}
+            else:
+                fires_at = self._one_shot_time(args.get("date"), hour, minute, ctx.now)
+                epoch_ms = int(fires_at.timestamp() * 1000)
+                intent = ReminderIntent(message, hour, minute, one_shot_epoch_ms=epoch_ms)
+                summary = {"fires_at": fires_at.isoformat(timespec="minutes")}
+        error_key = await self._schedule(intent, ctx)
+        if error_key:
+            return self.failed(error_key)
+        return SkillResult(True, payload={"ok": True, "message": message, **summary})
+
     # --- 취소 -----------------------------------------------------------------------------
 
     async def _tool_cancel(self, args: dict[str, Any], ctx: TurnContext) -> SkillResult:
@@ -214,7 +264,8 @@ class AlarmSkill(BaseSkill):
             rows = [
                 r
                 for r in await self._store.live_rows(ctx.hub_id)
-                if everything or (r.kind == TIMER_KIND) == intent.is_timer
+                if r.kind != REMINDER_KIND
+                and (everything or (r.kind == TIMER_KIND) == intent.is_timer)
             ]
             targets = (
                 rows

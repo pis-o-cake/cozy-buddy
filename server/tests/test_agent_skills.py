@@ -361,6 +361,7 @@ async def test_registry_routes_intents_tools_and_rejects_unknown() -> None:
         "get_device_state",
         "set_alarm",
         "set_timer",
+        "set_reminder",
         "cancel_alarm",
         "get_weather",
     ]

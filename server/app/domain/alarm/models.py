@@ -22,6 +22,7 @@ class AlarmKindName(StrEnum):
 
     ALARM = "alarm"
     TIMER = "timer"
+    REMINDER = "reminder"
 
 
 class Alarm(Base):
