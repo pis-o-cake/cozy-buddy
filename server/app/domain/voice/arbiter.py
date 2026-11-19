@@ -33,6 +33,8 @@ FUZZY_MIN_CHARS = 10
 RETAIN_SECONDS = 10.0
 
 _NON_WORD = re.compile(r"[\W_]+", re.UNICODE)
+# 숫자 열(아라비아, 단위 앞의 한자어 수사). 하나라도 다르면 다른 명령이다.
+_NUMBERS = re.compile(r"\d+|[영일이삼사오육칠팔구십백천]+(?=퍼센트|프로|도|분|초|시)")
 
 
 def normalize(text: str) -> str:
@@ -64,6 +66,11 @@ def is_same_text(a: str, b: str, threshold: float = DEFAULT_SIMILARITY) -> bool:
     if left == right:
         return True
     if max(len(left), len(right)) < FUZZY_MIN_CHARS:
+        return False
+    # IMPORTANT: "20퍼센트" 와 "80퍼센트" 는 편집 거리상 가깝지만 서로 다른 명령이다.
+    # 한쪽만 숫자를 적었으면("7 시" / "일곱 시") 표기 차이일 수 있어 유사도로 넘긴다.
+    left_numbers, right_numbers = _NUMBERS.findall(left), _NUMBERS.findall(right)
+    if left_numbers and right_numbers and left_numbers != right_numbers:
         return False
     return similarity(left, right) >= threshold
 

@@ -210,3 +210,9 @@ async def test_old_records_are_pruned() -> None:
     arbiter.begin("hub-2", 11.0)
 
     assert len(arbiter._tickets[""]) == 1  # noqa: SLF001
+
+
+def test_utterances_differing_in_numbers_are_not_duplicates() -> None:
+    assert not is_same_text("거실 조명 20퍼센트로 맞춰줘", "거실 조명 80퍼센트로 맞춰줘")
+    assert not is_same_text("거실 조명 이십 퍼센트로 맞춰줘", "거실 조명 팔십 퍼센트로 맞춰줘")
+    assert is_same_text("거실 조명 20퍼센트로 맞춰줘", "거실 조명 20퍼센트로, 맞춰줘.")
