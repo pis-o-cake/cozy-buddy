@@ -46,6 +46,11 @@ timeout = 30
 timeout_method = "thread"
 # live 마커는 실제 OpenAI·HA 를 써서 비용이 들므로 기본 실행에서 뺀다. `pytest -m live` 로 실행한다.
 addopts = "-m 'not live'"
+# 닫힌 루프에 접근하는 스레드·언레이저블 예외가 조용히 지나가지 않게 실패로 올린다.
+filterwarnings = [
+  "error::pytest.PytestUnraisableExceptionWarning",
+  "error::pytest.PytestUnhandledThreadExceptionWarning",
+]
 markers = ["live: real OpenAI and Home Assistant calls (cost, excluded by default)"]
 
 [tool.ruff]
