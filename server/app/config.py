@@ -6,6 +6,8 @@ from typing import Self
 from pydantic import AliasChoices, BaseModel, Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from app.core.client_ip import parse_trusted_proxies
+
 
 class ClientRole(StrEnum):
     """연결 클라이언트 종류."""
@@ -61,6 +63,9 @@ class Settings(BaseSettings):
     static_tokens: SecretStr = SecretStr("")
     # 관리 API(/api/auth 의 코드 발급·폐기) 보호용. 비어 있으면 관리 API 는 503 을 돌려준다.
     admin_token: SecretStr = SecretStr("")
+    # X-Real-IP/X-Forwarded-For 를 믿을 직접 연결 peer(IP/CIDR 쉼표 목록).
+    # 기본은 로컬과 docker bridge 대역.
+    trusted_proxies: str = "127.0.0.1/32,::1/128,172.16.0.0/12"
     hello_timeout_seconds: float = 10.0
     log_level: str = "INFO"
     locale: str = "ko"
@@ -134,6 +139,11 @@ class Settings(BaseSettings):
     @model_validator(mode="after")
     def _validate_tokens(self) -> Self:
         parse_static_tokens(self.static_tokens.get_secret_value())
+        return self
+
+    @model_validator(mode="after")
+    def _validate_trusted_proxies(self) -> Self:
+        parse_trusted_proxies(self.trusted_proxies)
         return self
 
     @model_validator(mode="after")

@@ -206,3 +206,59 @@ def test_store_codes_do_not_collide() -> None:
     store = PairingStore()
     codes = {store.issue(PairingGrant("", "")) for _ in range(200)}
     assert len(codes) == 200
+
+
+def _bad_pair(client: TestClient, headers: dict[str, str] | None = None) -> int:
+    return client.post("/api/auth/pair", json={"code": "000000"}, headers=headers).status_code
+
+
+def _exhaust(client: TestClient, headers: dict[str, str] | None = None) -> None:
+    for _ in range(PAIR_ATTEMPT_LIMIT):
+        assert _bad_pair(client, headers) == 400
+    assert _bad_pair(client, headers) == 429
+
+
+def _client_from(settings: Settings, clock: FakeClock, peer: str) -> Iterator[TestClient]:
+    migrate(settings.database_url)
+    app = create_app(settings)
+    app.state.pairing = PairingStore(clock)
+    with TestClient(app, client=(peer, 50000)) as c:
+        yield c
+
+
+@pytest.fixture
+def proxied_client(settings: Settings, clock: FakeClock) -> Iterator[TestClient]:
+    yield from _client_from(settings, clock, "172.18.0.2")
+
+
+@pytest.fixture
+def spoofing_client(settings: Settings, clock: FakeClock) -> Iterator[TestClient]:
+    yield from _client_from(settings, clock, "203.0.113.9")
+
+
+def test_trusted_proxy_limits_per_real_ip(proxied_client: TestClient) -> None:
+    first = {"X-Real-IP": "198.51.100.1"}
+    second = {"X-Real-IP": "198.51.100.2"}
+    _exhaust(proxied_client, first)
+    assert _bad_pair(proxied_client, second) == 400
+    assert _bad_pair(proxied_client, first) == 429
+
+
+def test_trusted_proxy_uses_last_forwarded_hop(proxied_client: TestClient) -> None:
+    _exhaust(proxied_client, {"X-Forwarded-For": "6.6.6.6, 198.51.100.7"})
+    other = {"X-Forwarded-For": "7.7.7.7, 198.51.100.8"}
+    assert _bad_pair(proxied_client, other) == 400
+
+
+def test_trusted_proxy_without_header_uses_peer(proxied_client: TestClient) -> None:
+    _exhaust(proxied_client)
+    assert _bad_pair(proxied_client, {"X-Real-IP": "198.51.100.3"}) == 400
+
+
+def test_untrusted_peer_header_is_ignored(spoofing_client: TestClient) -> None:
+    _exhaust(spoofing_client, {"X-Real-IP": "198.51.100.1"})
+    assert _bad_pair(spoofing_client, {"X-Real-IP": "198.51.100.2"}) == 429
+
+
+def test_direct_client_limits_by_peer(admin_client: TestClient) -> None:
+    _exhaust(admin_client)
