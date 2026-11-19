@@ -407,11 +407,18 @@ def test_hub_command_set_brightness(ha_client: TestClient, fake_ha: FakeHomeAssi
     [("scene.movie", "activate", "scene"), ("script.goodnight", "run", "script")],
 )
 def test_command_scene_and_script(
-    ha_client: TestClient, fake_ha: FakeHomeAssistant, entity_id: str, action: str, service: str
+    ha_settings: Settings,
+    fake_ha: FakeHomeAssistant,
+    entity_id: str,
+    action: str,
+    service: str,
 ) -> None:
-    with connect_mobile(ha_client) as ws:
-        send(ws, command(entity_id, action))
-        result = recv_until(ws, "command_result").command_result
+    settings = ha_settings.model_copy(update={"allowed_scripts": "script.goodnight"})
+    with running_app(settings) as client:
+        eventually(lambda: home_of(client).ready)
+        with connect_mobile(client) as ws:
+            send(ws, command(entity_id, action))
+            result = recv_until(ws, "command_result").command_result
     assert result.ok
     call = fake_ha.service_calls[-1]
     assert (call["domain"], call["service"]) == (service, "turn_on")

@@ -29,6 +29,7 @@ from app.domain.home.service import HomeService
 
 TOOL_CONTROL = "control_device"
 CONTROL_ACTIONS = ("turn_on", "turn_off", "toggle", "set_brightness", "activate")
+# 도메인 후보. 차고 cover·허용 목록 밖 script 같은 개별 제한은 HomeService 정책이 정한다.
 CONTROLLABLE_DOMAINS = frozenset(
     {"light", "switch", "fan", "cover", "climate", "media_player", "scene", "script"}
 )
@@ -47,7 +48,11 @@ class DeviceSkill(BaseSkill):
         self._home = home
 
     def tool_specs(self, view: HomeView) -> list[dict[str, Any]]:
-        ids, entries = catalog(view, CONTROLLABLE_DOMAINS)
+        ids, entries = catalog(
+            view,
+            CONTROLLABLE_DOMAINS,
+            lambda entity_id: self._home.entity_controllable(entity_id, voice=True),
+        )
         if not ids:
             return []
         return [
@@ -138,7 +143,7 @@ class DeviceSkill(BaseSkill):
                     params=params,
                 )
             )
-        results = await asyncio.gather(*(self._home.execute(c) for c in commands))
+        results = await asyncio.gather(*(self._home.execute(c, voice=True) for c in commands))
         failed = next((r for r in results if not r.ok), None)
         if failed is None:
             return None

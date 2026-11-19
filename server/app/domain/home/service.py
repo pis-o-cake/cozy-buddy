@@ -32,7 +32,8 @@ from app.domain.home.mapping import (
     snapshot_to_proto,
     to_entity,
 )
-from app.domain.home.schemas import HomeCatalog
+from app.domain.home.policy import can_control
+from app.domain.home.schemas import HomeCatalog, HomeEntity
 
 ENTITY_GET_ENTRIES = "config/entity_registry/get_entries"
 ALIAS_BATCH_SIZE = 200
@@ -40,6 +41,7 @@ ALIAS_BATCH_SIZE = 200
 KEY_UNAVAILABLE = "home.unavailable"
 KEY_UNSUPPORTED = "home.unsupported_action"
 KEY_NOT_FOUND = "home.entity_not_found"
+KEY_CONTROL_FORBIDDEN = "home.control_forbidden"
 
 EXPOSE_LIST = "homeassistant/expose_entity/list"
 
@@ -66,7 +68,7 @@ class HomeService:
         self._task: asyncio.Task[None] | None = None
         self._ready = False
         self._buffer: list[dict[str, Any]] | None = None
-        self._expose_fallback_logged = False
+        self._allowed_scripts = settings.allowed_script_ids
         self._exposed: set[str] | None = None
         self._debounce = settings.ha_registry_debounce_seconds
         self._expose_poll = settings.ha_expose_poll_seconds
@@ -115,14 +117,41 @@ class HomeService:
         """현재 캐시의 스냅샷. 비활성이거나 연결 전이면 비어 있다."""
         return snapshot_to_proto(self._catalog)
 
-    async def execute(self, command: EntityCommand) -> CommandResult:
-        """EntityCommand 를 HA 서비스 호출로 실행한다. 예상 가능한 실패는 결과 코드로 돌려준다."""
+    def entity_controllable(self, entity_id: str, *, voice: bool) -> bool:
+        """캐시된 엔티티를 제어해도 되는지. 음성 제어 후보를 거를 때와 실행 직전에 쓴다."""
+        entity = self._catalog.entities.get(entity_id)
+        return entity is not None and self._allowed(entity, voice)
+
+    def _allowed(self, entity: HomeEntity, voice: bool) -> bool:
+        return can_control(
+            entity,
+            exposure_known=self._catalog.exposure_known,
+            allowed_scripts=self._allowed_scripts,
+            voice=voice,
+        )
+
+    async def execute(self, command: EntityCommand, *, voice: bool = False) -> CommandResult:
+        """EntityCommand 를 HA 서비스 호출로 실행한다. 예상 가능한 실패는 결과 코드로 돌려준다.
+
+        Args:
+            command: 실행할 명령.
+            voice: 음성/LLM 에이전트가 보낸 명령이면 True. 더 엄격한 정책이 적용된다.
+        """
         entity = self._catalog.entities.get(command.entity_id)
         client = self._client
         if client is None or not self._ready:
             return _failure(command, ERROR_CODE_UPSTREAM_UNAVAILABLE, KEY_UNAVAILABLE)
         if entity is None:
             return _failure(command, ERROR_CODE_NOT_FOUND, KEY_NOT_FOUND)
+        if not self._allowed(entity, voice):
+            logger.warning(
+                "Entity command denied by policy: entity={} action={} voice={} exposure_known={}",
+                entity.entity_id,
+                command.action,
+                voice,
+                self._catalog.exposure_known,
+            )
+            return _failure(command, ERROR_CODE_BAD_REQUEST, KEY_CONTROL_FORBIDDEN)
         try:
             call = build_service_call(entity.domain, command.action, command.params)
         except UnsupportedCommandError as exc:
@@ -292,15 +321,15 @@ class HomeService:
         return changed_to_proto(updated)
 
     async def _load_exposed(self, client: HomeAssistantClient) -> set[str] | None:
-        """Assist 노출 목록. 명령을 쓸 수 없으면 None(도메인 허용 목록으로 대체)."""
+        """Assist 노출 목록. 명령을 쓸 수 없으면 None(읽기만 도메인 허용 목록, 제어는 제한)."""
         try:
             return parse_exposed(await client.request(EXPOSE_LIST))
         except HaCommandError as exc:
-            if not self._expose_fallback_logged:
-                self._expose_fallback_logged = True
-                logger.warning(
-                    "Exposure list unavailable ({}), falling back to domain allow-list", exc.code
-                )
+            logger.warning(
+                "Exposure list unavailable ({}): entities stay readable but control is limited "
+                "to light/switch/fan until the list can be loaded",
+                exc.code,
+            )
             return None
 
     async def _load_entity_aliases(
