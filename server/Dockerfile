@@ -22,9 +22,9 @@ COPY --from=proto /build/gen ./gen
 
 ENV PYTHONPATH=/app/gen:/app \
     PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
     COZY_DATABASE_URL=sqlite+aiosqlite:////app/data/cozy.db
 
-# IMPORTANT: Gunicorn 컨트롤 서버가 ~/.gunicorn 에 소켓을 만들므로 홈 디렉터리가 쓰기 가능해야 한다.
 RUN useradd --system --uid 10001 --create-home --home-dir /home/cozy cozy && mkdir -p /app/data && chown cozy /app/data
 USER cozy
 VOLUME /app/data
@@ -33,6 +33,8 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s \
   CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"
 
+# IMPORTANT: 컨테이너는 read_only 로 돈다(compose). 쓰는 곳은 /app/data 볼륨과 /tmp(tmpfs)뿐이다.
+# 컨트롤 소켓은 ~/.gunicorn 에 써야 해서 끄고, 워커 heartbeat 는 메모리 /dev/shm 에 둔다.
 # WARNING: 워커는 반드시 1개다. WebSocket 연결 레지스트리가 프로세스 메모리에 있어
 # 워커가 둘 이상이면 허브와 앱이 서로 다른 프로세스에 붙어 메시지가 전달되지 않는다.
-CMD ["sh", "-c", "alembic upgrade head && exec gunicorn 'app.main:create_app()' -k app.core.worker.CozyUvicornWorker -w 1 -b 0.0.0.0:8000"]
+CMD ["sh", "-c", "alembic upgrade head && exec gunicorn 'app.main:create_app()' -k app.core.worker.CozyUvicornWorker -w 1 --no-control-socket --worker-tmp-dir /dev/shm -b 0.0.0.0:8000"]
