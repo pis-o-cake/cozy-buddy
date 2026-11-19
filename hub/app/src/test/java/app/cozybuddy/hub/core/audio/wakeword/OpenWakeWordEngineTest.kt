@@ -130,6 +130,36 @@ class OpenWakeWordEngineTest {
     }
 
     @Test
+    fun `selecting another keyword reloads the classifier without a restart`() = runBlocking {
+        val loaded = mutableListOf<String>()
+        val factory = WakeWordModelFactory { _, _, keyword ->
+            loaded += WakeWordModelFiles.sha256Hex(keyword)
+            FakeWakeWordModels()
+        }
+        val engine = engine(factory = factory)
+
+        assertTrue(engine.selectKeyword(WakeWordKeyword.HEY_JARVIS))
+        assertTrue(engine.selectKeyword(WakeWordKeyword.HEY_JARVIS))
+        assertTrue(engine.selectKeyword(WakeWordKeyword.JARVIS_KO_EXPERIMENTAL))
+
+        assertEquals(listOf(WakeWordModelFiles.KEYWORD_SHA256, WakeWordModelFiles.KEYWORD_KO_SHA256), loaded)
+        assertEquals(WakeWordStatus.Ready, engine.status.value)
+    }
+
+    @Test
+    fun `tampered korean classifier reports MODEL_CORRUPT`() = runBlocking {
+        val engine = engine(
+            store = WakeWordModelStore {
+                BundledModels.read(it).also { bytes -> if (it == WakeWordModelFiles.KEYWORD_KO) bytes[0] = (bytes[0] + 1).toByte() }
+            },
+        )
+
+        assertTrue(engine.selectKeyword(WakeWordKeyword.HEY_JARVIS))
+        assertFalse(engine.selectKeyword(WakeWordKeyword.JARVIS_KO_EXPERIMENTAL))
+        assertEquals(WakeWordStatus.Failed(WakeWordFailure.MODEL_CORRUPT), engine.status.value)
+    }
+
+    @Test
     fun `release closes the models and returns to Idle`() = runBlocking {
         val engine = engine()
         engine.initialize()

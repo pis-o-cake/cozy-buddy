@@ -56,12 +56,27 @@ class OpenWakeWordEngine(
     // 아래 필드는 wakeword-inference 스레드 전용이다.
     private var models: WakeWordModels? = null
     private var pipeline: WakeWordPipeline? = null
+    private var keyword = WakeWordKeyword.HEY_JARVIS
 
     @Volatile
     private var resetRequested = false
 
     override suspend fun initialize(): Boolean = withContext(dispatcher) {
         if (pipeline != null) return@withContext true
+        val failure = load()
+        if (failure != null) {
+            _status.value = WakeWordStatus.Failed(failure)
+            return@withContext false
+        }
+        _status.value = WakeWordStatus.Ready
+        true
+    }
+
+    override suspend fun selectKeyword(keyword: WakeWordKeyword): Boolean = withContext(dispatcher) {
+        if (pipeline != null && this@OpenWakeWordEngine.keyword == keyword) return@withContext true
+        closeModels()
+        this@OpenWakeWordEngine.keyword = keyword
+        Timber.i("Wake word keyword selected: %s", keyword)
         val failure = load()
         if (failure != null) {
             _status.value = WakeWordStatus.Failed(failure)
@@ -113,7 +128,7 @@ class OpenWakeWordEngine(
     }
 
     private fun load(): WakeWordFailure? {
-        val names = listOf(WakeWordModelFiles.MELSPECTROGRAM, WakeWordModelFiles.EMBEDDING, WakeWordModelFiles.KEYWORD)
+        val names = listOf(WakeWordModelFiles.MELSPECTROGRAM, WakeWordModelFiles.EMBEDDING, keyword.assetName)
         val bytes = names.map { store.read(it) ?: return WakeWordFailure.MODEL_MISSING }
         for ((name, content) in names.zip(bytes)) {
             if (WakeWordModelFiles.matches(name, content)) continue

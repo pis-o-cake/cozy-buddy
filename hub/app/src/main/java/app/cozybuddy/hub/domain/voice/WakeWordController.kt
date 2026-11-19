@@ -5,6 +5,7 @@ import app.cozybuddy.hub.core.audio.wakeword.WakeSensitivity
 import app.cozybuddy.hub.core.audio.wakeword.WakeSpeakingPolicy
 import app.cozybuddy.hub.core.audio.wakeword.WakeWordConfig
 import app.cozybuddy.hub.core.audio.wakeword.WakeWordEngine
+import app.cozybuddy.hub.core.audio.wakeword.WakeWordKeyword
 import app.cozybuddy.hub.core.audio.wakeword.WakeWordSettings
 import app.cozybuddy.hub.core.audio.wakeword.WakeWordStatus
 import app.cozybuddy.hub.di.ApplicationScope
@@ -52,7 +53,7 @@ class WakeWordController @Inject constructor(
                 .distinctUntilChanged()
                 .collectLatest { (prefs, active) ->
                     if (!active) return@collectLatest
-                    listen(prefs.sensitivity)
+                    listen(prefs.keyword, prefs.sensitivity)
                 }
         }
         Timber.i("Wake word controller started")
@@ -65,9 +66,9 @@ class WakeWordController @Inject constructor(
         Timber.i("Wake word controller stopped")
     }
 
-    private suspend fun listen(sensitivity: Float) {
-        if (!engine.initialize()) return Timber.w("Wake word disabled: engine unavailable")
-        val baseThreshold = WakeSensitivity.toThreshold(sensitivity)
+    private suspend fun listen(keyword: WakeWordKeyword, sensitivity: Float) {
+        if (!engine.selectKeyword(keyword)) return Timber.w("Wake word disabled: engine unavailable")
+        val baseThreshold = WakeSensitivity.toThreshold(sensitivity, keyword)
         engine.setThreshold(baseThreshold)
         engine.reset()
         val subscription = capture.subscribe(0)

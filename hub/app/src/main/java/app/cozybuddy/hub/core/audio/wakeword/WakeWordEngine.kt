@@ -38,6 +38,12 @@ interface WakeWordEngine {
     suspend fun initialize(): Boolean
 
     /**
+     * 호출어를 바꾼다. 같은 호출어로 이미 준비돼 있으면 아무것도 하지 않고, 다르면 서비스 재시작 없이 모델을 다시 올린다.
+     * 기본 구현은 호출어를 구분하지 않는 엔진용으로 [initialize] 에 맡긴다.
+     */
+    suspend fun selectKeyword(keyword: WakeWordKeyword): Boolean = initialize()
+
+    /**
      * 캡처 프레임([app.cozybuddy.hub.core.audio.CaptureFormat.FRAME_SAMPLES] 샘플)을 넣고 가장 최근 점수를 돌려준다.
      * 새 예측이 만들어지지 않은 프레임은 직전 점수를 그대로 돌려준다. 준비되지 않았으면 0.
      */

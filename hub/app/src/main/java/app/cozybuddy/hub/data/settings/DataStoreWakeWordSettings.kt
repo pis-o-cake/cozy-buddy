@@ -5,7 +5,9 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.floatPreferencesKey
+import androidx.datastore.preferences.core.stringPreferencesKey
 import app.cozybuddy.hub.core.audio.wakeword.WakeSensitivity
+import app.cozybuddy.hub.core.audio.wakeword.WakeWordKeyword
 import app.cozybuddy.hub.core.audio.wakeword.WakeWordPrefs
 import app.cozybuddy.hub.core.audio.wakeword.WakeWordSettings
 import javax.inject.Inject
@@ -23,6 +25,7 @@ class DataStoreWakeWordSettings @Inject constructor(
         WakeWordPrefs(
             enabled = prefs[KEY_ENABLED] ?: true,
             sensitivity = (prefs[KEY_SENSITIVITY] ?: WakeSensitivity.DEFAULT).coerceIn(0f, 1f),
+            keyword = WakeWordKeyword.entries.firstOrNull { it.name == prefs[KEY_KEYWORD] } ?: WakeWordKeyword.HEY_JARVIS,
         )
     }
 
@@ -34,8 +37,16 @@ class DataStoreWakeWordSettings @Inject constructor(
         store.edit { it[KEY_SENSITIVITY] = sensitivity.coerceIn(0f, 1f) }
     }
 
+    override suspend fun setKeyword(keyword: WakeWordKeyword) {
+        store.edit {
+            it[KEY_KEYWORD] = keyword.name
+            it[KEY_SENSITIVITY] = WakeSensitivity.DEFAULT
+        }
+    }
+
     private companion object {
         val KEY_ENABLED = booleanPreferencesKey("wake_word_enabled")
         val KEY_SENSITIVITY = floatPreferencesKey("wake_word_sensitivity")
+        val KEY_KEYWORD = stringPreferencesKey("wake_word_keyword")
     }
 }

@@ -35,19 +35,42 @@ data class WakeWordConfig(
     val speakingThresholdBoost: Float = 0.25f,
 )
 
+/**
+ * 선택할 수 있는 호출어. 분류기만 다르고 멜·임베딩 앞단은 같다.
+ *
+ * @property assetName `assets/wakeword/` 아래 분류기 파일.
+ * @property sha256 분류기 파일의 sha256.
+ * @property defaultThreshold 감도 [WakeSensitivity.DEFAULT] 에 대응하는 문턱. 오프라인 평가(spikes/s1-wakeword)로 고른 값이다.
+ * @property minThreshold 감도 1 에서의 문턱(가장 잘 깨어남).
+ * @property maxThreshold 감도 0 에서의 문턱(가장 둔함).
+ */
+enum class WakeWordKeyword(
+    val assetName: String,
+    val sha256: String,
+    val defaultThreshold: Float,
+    val minThreshold: Float,
+    val maxThreshold: Float,
+) {
+    HEY_JARVIS(WakeWordModelFiles.KEYWORD, WakeWordModelFiles.KEYWORD_SHA256, 0.5f, 0.3f, 0.8f),
+
+    /** 한국어 "자비스". 평가에서 일반 음성 오탐이 시간당 1.4회 이상이라 문턱을 높게 잡은 실험 옵션이다. */
+    JARVIS_KO_EXPERIMENTAL(WakeWordModelFiles.KEYWORD_KO, WakeWordModelFiles.KEYWORD_KO_SHA256, 0.95f, 0.8f, 0.97f),
+}
+
 /** 사용자 감도(0..1)와 분류기 문턱 사이의 변환. 감도가 높을수록 문턱이 낮다. */
 object WakeSensitivity {
-    const val MIN_THRESHOLD = 0.3f
-    const val MAX_THRESHOLD = 0.8f
-
-    /** 오프라인 평가(spikes/s1-wakeword)로 고른 기본 문턱에 대응하는 감도. */
+    /** 감도 슬라이더의 기본 위치. 이 위치에서 문턱이 [WakeWordKeyword.defaultThreshold] 가 된다. */
     const val DEFAULT = 0.6f
 
     /** 문턱이 이 값을 넘으면 점수가 닿지 못하므로 상한을 둔다. */
     const val THRESHOLD_CEILING = 0.97f
 
-    fun toThreshold(sensitivity: Float): Float {
+    /** 기본 위치에서 키워드의 기본 문턱을 지나는 구간별 선형 변환이다. */
+    fun toThreshold(sensitivity: Float, keyword: WakeWordKeyword = WakeWordKeyword.HEY_JARVIS): Float {
         val s = sensitivity.coerceIn(0f, 1f)
-        return MAX_THRESHOLD - (MAX_THRESHOLD - MIN_THRESHOLD) * s
+        if (s <= DEFAULT) {
+            return keyword.maxThreshold + (keyword.defaultThreshold - keyword.maxThreshold) * (s / DEFAULT)
+        }
+        return keyword.defaultThreshold + (keyword.minThreshold - keyword.defaultThreshold) * ((s - DEFAULT) / (1f - DEFAULT))
     }
 }

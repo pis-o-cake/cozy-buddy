@@ -13,6 +13,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -28,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.cozybuddy.hub.R
 import app.cozybuddy.hub.core.audio.wakeword.WakeWordFailure
+import app.cozybuddy.hub.core.audio.wakeword.WakeWordKeyword
 import app.cozybuddy.hub.core.audio.wakeword.WakeWordStatus
 import app.cozybuddy.hub.core.network.ConnectionState
 import app.cozybuddy.hub.core.network.UrlError
@@ -45,6 +47,7 @@ fun SettingsRoute(viewModel: SettingsViewModel, onClose: () -> Unit, modifier: M
         onTokenChange = viewModel::onTokenChange,
         onSave = viewModel::onSave,
         onWakeWordEnabledChange = viewModel::onWakeWordEnabledChange,
+        onWakeWordKeywordChange = viewModel::onWakeWordKeywordChange,
         onWakeWordSensitivityChange = viewModel::onWakeWordSensitivityChange,
         onWakeWordSensitivityCommit = viewModel::onWakeWordSensitivityCommit,
         modifier = modifier,
@@ -60,6 +63,7 @@ fun SettingsScreen(
     onTokenChange: (String) -> Unit,
     onSave: () -> Unit,
     onWakeWordEnabledChange: (Boolean) -> Unit,
+    onWakeWordKeywordChange: (WakeWordKeyword) -> Unit,
     onWakeWordSensitivityChange: (Float) -> Unit,
     onWakeWordSensitivityCommit: () -> Unit,
     modifier: Modifier = Modifier,
@@ -133,6 +137,7 @@ fun SettingsScreen(
         WakeWordSection(
             state = state,
             onEnabledChange = onWakeWordEnabledChange,
+            onKeywordChange = onWakeWordKeywordChange,
             onSensitivityChange = onWakeWordSensitivityChange,
             onSensitivityCommit = onWakeWordSensitivityCommit,
         )
@@ -143,6 +148,7 @@ fun SettingsScreen(
 private fun WakeWordSection(
     state: SettingsUiState,
     onEnabledChange: (Boolean) -> Unit,
+    onKeywordChange: (WakeWordKeyword) -> Unit,
     onSensitivityChange: (Float) -> Unit,
     onSensitivityCommit: () -> Unit,
 ) {
@@ -160,6 +166,16 @@ private fun WakeWordSection(
         )
         Switch(checked = state.wakeWordEnabled, onCheckedChange = onEnabledChange)
     }
+    WakeWordKeyword.entries.forEach { keyword ->
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            RadioButton(
+                selected = state.wakeWordKeyword == keyword,
+                onClick = { onKeywordChange(keyword) },
+                enabled = state.wakeWordEnabled,
+            )
+            Text(stringResource(keyword.labelRes()), color = MaterialTheme.colorScheme.onBackground)
+        }
+    }
     Text(stringResource(R.string.settings_wake_word_sensitivity), color = MaterialTheme.colorScheme.onSurfaceVariant)
     Slider(
         value = state.wakeWordSensitivity,
@@ -176,6 +192,11 @@ private fun WakeWordSection(
     if (state.wakeWordEnabled && failure != null) {
         Text(stringResource(failure.messageRes()), color = MaterialTheme.colorScheme.error)
     }
+}
+
+private fun WakeWordKeyword.labelRes(): Int = when (this) {
+    WakeWordKeyword.HEY_JARVIS -> R.string.settings_wake_word_keyword_hey_jarvis
+    WakeWordKeyword.JARVIS_KO_EXPERIMENTAL -> R.string.settings_wake_word_keyword_jarvis_ko
 }
 
 private fun WakeWordFailure.messageRes(): Int = when (this) {

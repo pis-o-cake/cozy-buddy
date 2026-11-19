@@ -21,15 +21,17 @@ class OnnxPipelineParityTest {
 
     @BeforeEach
     fun setUp() {
-        models = OnnxWakeWordModelFactory().create(
-            BundledModels.read(WakeWordModelFiles.MELSPECTROGRAM),
-            BundledModels.read(WakeWordModelFiles.EMBEDDING),
-            BundledModels.read(WakeWordModelFiles.KEYWORD),
-        )
+        models = openModels(WakeWordKeyword.HEY_JARVIS)
     }
 
     @AfterEach
     fun tearDown() = models.close()
+
+    private fun openModels(keyword: WakeWordKeyword): WakeWordModels = OnnxWakeWordModelFactory().create(
+        BundledModels.read(WakeWordModelFiles.MELSPECTROGRAM),
+        BundledModels.read(WakeWordModelFiles.EMBEDDING),
+        BundledModels.read(keyword.assetName),
+    )
 
     private fun resource(name: String): ByteArray = File("src/test/resources/wakeword/$name").readBytes()
 
@@ -38,18 +40,18 @@ class OnnxPipelineParityTest {
         return ShortArray(buffer.remaining()).also { buffer.get(it) }
     }
 
-    private fun referenceScores(name: String): List<Float> {
-        val json = String(resource("reference_scores.json"))
+    private fun referenceScores(name: String, file: String = "reference_scores.json"): List<Float> {
+        val json = String(resource(file))
         val block = json.substringAfter("\"$name\"").substringAfter("\"scores\": [").substringBefore("]")
         return block.split(",").map { it.trim().toFloat() }
     }
 
     /** 캡처와 같은 512 샘플 프레임으로 잘라 넣고, 참조 구현처럼 마지막 청크는 0 으로 채운다. */
-    private fun score(name: String): List<Float> {
+    private fun score(name: String, scorer: WakeWordModels = models): List<Float> {
         val samples = pcm(name)
         val chunk = OpenWakeWordFormat.CHUNK_SAMPLES
         val padded = samples.copyOf((samples.size + chunk - 1) / chunk * chunk)
-        val pipeline = WakeWordPipeline(models, WakeWordDetector(consecutiveHits = 2, refractoryMs = 2_000, threshold = 0.5f))
+        val pipeline = WakeWordPipeline(scorer, WakeWordDetector(consecutiveHits = 2, refractoryMs = 2_000, threshold = 0.5f))
         val scores = mutableListOf<Float>()
         var offset = 0
         while (offset < padded.size) {
@@ -78,6 +80,23 @@ class OnnxPipelineParityTest {
         assertEquals(expected.size, actual.size)
         expected.indices.forEach { assertEquals(expected[it], actual[it], TOLERANCE, "chunk $it") }
         assertTrue(actual.max() < 0.5f)
+    }
+
+    @Test
+    fun `korean classifier separates the synthetic jarvis clip from a korean sentence at its default threshold`() {
+        val threshold = WakeWordKeyword.JARVIS_KO_EXPERIMENTAL.defaultThreshold
+        openModels(WakeWordKeyword.JARVIS_KO_EXPERIMENTAL).use { ko ->
+            val positive = score("positive_ko", ko)
+            val negative = score("negative", ko)
+
+            val expectedPositive = referenceScores("positive", "reference_scores_ko.json")
+            val expectedNegative = referenceScores("negative", "reference_scores_ko.json")
+            assertEquals(expectedPositive.size, positive.size)
+            expectedPositive.indices.forEach { assertEquals(expectedPositive[it], positive[it], TOLERANCE, "positive chunk $it") }
+            expectedNegative.indices.forEach { assertEquals(expectedNegative[it], negative[it], TOLERANCE, "negative chunk $it") }
+            assertTrue(positive.max() > threshold, "positive peak ${positive.max()}")
+            assertTrue(negative.max() < threshold, "negative peak ${negative.max()}")
+        }
     }
 
     private companion object {
