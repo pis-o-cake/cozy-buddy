@@ -91,6 +91,9 @@ class Settings(BaseSettings):
     llm_timeout_seconds: float = 10.0
     max_utterance_seconds: float = 15.0
     clarify_ttl_seconds: float = 30.0
+    # 직전 턴 대상에 대한 후속 지시를 받는 시간과 LLM 에 넘기는 최근 대화 보존 시간.
+    followup_ttl_seconds: float = 60.0
+    history_ttl_seconds: float = 300.0
     timezone: str = "Asia/Seoul"
     # 턴 로그(발화별 경로·지연 기록) 보존 기간. 시작할 때와 하루마다 이보다 오래된 행을 지운다.
     turn_log_days: int = Field(default=30, ge=1)

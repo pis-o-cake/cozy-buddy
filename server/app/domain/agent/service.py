@@ -19,7 +19,8 @@ from app.core.openai_gateway import OpenAIGateway
 from app.domain.agent.clarify import ClarifyStore
 from app.domain.agent.context import TurnContext
 from app.domain.agent.home_view import build_home_view, home_names
-from app.domain.agent.model import Clarify
+from app.domain.agent.memory import ConversationMemory, target_from_intent
+from app.domain.agent.model import Clarify, Intent
 from app.domain.agent.skills.alarm import AlarmSkill
 from app.domain.agent.skills.alarm_select import AlarmSelector
 from app.domain.agent.skills.alarm_store import AlarmStore
@@ -30,6 +31,7 @@ from app.domain.agent.skills.registry import SkillRegistry
 from app.domain.agent.skills.state import StateSkill
 from app.domain.agent.skills.weather import WeatherSkill
 from app.domain.agent.understand.context import ClarifyAnswerResolver, ContextAttempt
+from app.domain.agent.understand.followup import FollowupResolver
 from app.domain.agent.understand.llm import LlmStep
 from app.domain.agent.understand.steps import MatcherAttempt, WeatherAttempt
 from app.domain.agent.understand.understander import Understander
@@ -41,7 +43,7 @@ from app.domain.weather.service import WeatherService
 class AgentService:
     """발화 텍스트를 이해하고 실행해 응답 텍스트를 만든다. 앱 수명 동안 하나만 존재한다.
 
-    확인 질문의 보류 상태를 허브별로 메모리에 잡고 있으므로 인스턴스를 공유해야 한다.
+    확인 질문의 보류 상태와 직전 대화를 허브별로 메모리에 잡고 있으므로 인스턴스를 공유해야 한다.
     """
 
     def __init__(
@@ -62,6 +64,11 @@ class AgentService:
         self._tz = ZoneInfo(settings.timezone)
         self._monotonic: Callable[[], float] = time.monotonic
         clarify = ClarifyStore(settings.clarify_ttl_seconds, lambda: self._monotonic())
+        self._memory = ConversationMemory(
+            settings.followup_ttl_seconds,
+            settings.history_ttl_seconds,
+            lambda: self._monotonic(),
+        )
         alarms = AlarmStore(database, connections)
         selector = AlarmSelector(alarms, self._tz)
         self._skills = SkillRegistry(
@@ -76,12 +83,17 @@ class AgentService:
         )
         self._understander = Understander(
             [
-                ContextAttempt([ClarifyAnswerResolver(clarify, alarms, selector)]),
+                ContextAttempt(
+                    [
+                        ClarifyAnswerResolver(clarify, alarms, selector),
+                        FollowupResolver(self._memory),
+                    ]
+                ),
                 MatcherAttempt(),
                 WeatherAttempt(),
             ]
         )
-        self._llm = LlmStep(settings, translate, openai, self._skills)
+        self._llm = LlmStep(settings, translate, openai, self._skills, self._memory)
 
     def now(self) -> datetime:
         """시간대가 있는 현재 시각."""
@@ -113,9 +125,12 @@ class AgentService:
         turn = turn or Turn(hub_id, TurnSource.TEXT, time.monotonic())
         view = build_home_view(self._home.snapshot())
         ctx = TurnContext(view, hub_id, area_id, self.now(), turn)
+        reply = ""
         async for delta in self._run(text, ctx):
             turn.append_response(delta)
+            reply += delta
             yield delta
+        self._memory.add_turn(hub_id, text, reply.strip())
 
     async def _run(self, text: str, ctx: TurnContext) -> AsyncIterator[str]:
         turn = ctx.turn
@@ -133,6 +148,7 @@ class AgentService:
                 with turn.timed(Stage.ACT):
                     result = await self._skills.execute(intent, ctx)
                 turn.record_skill(result.ok)
+                self._remember_target(intent, result.ok, ctx)
                 yield result.text
                 return
         except Exception:
@@ -144,3 +160,11 @@ class AgentService:
         turn.path = TurnPath.LLM
         async for delta in self._llm.stream(text, ctx):
             yield delta
+
+    def _remember_target(self, intent: Intent, ok: bool, ctx: TurnContext) -> None:
+        """성공한 기기·장면·상태 턴의 대상을 후속 지시용으로 기억한다."""
+        if not ok:
+            return
+        target = target_from_intent(intent, ctx.view)
+        if target is not None:
+            self._memory.remember_target(ctx.hub_id, target)
