@@ -24,7 +24,8 @@ class AlarmSelector:
         """행이 의도의 라벨·길이·날짜·시각 조건을 모두 만족하는지."""
         if intent.label:
             wanted, have = compact_form(intent.label), compact_form(row.label)
-            if wanted not in have and have not in wanted:
+            # IMPORTANT: 빈 문자열은 모든 문자열의 부분 문자열이라 라벨 없는 행이 걸러지지 않는다.
+            if not have or not wanted or (wanted not in have and have not in wanted):
                 return False
         if intent.duration_seconds is not None and not self._timer_matches(
             row, intent.duration_seconds, now
