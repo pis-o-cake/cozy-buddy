@@ -2,6 +2,7 @@ package app.cozybuddy.hub.domain.voice
 
 import app.cozybuddy.hub.core.audio.wakeword.WakeEvent
 import app.cozybuddy.hub.core.audio.wakeword.WakeSensitivity
+import app.cozybuddy.hub.core.audio.wakeword.WakeWordKeyword
 import app.cozybuddy.hub.core.audio.wakeword.WakeSpeakingPolicy
 import app.cozybuddy.hub.core.audio.wakeword.WakeWordConfig
 import app.cozybuddy.hub.core.audio.wakeword.WakeWordEngine
@@ -28,6 +29,12 @@ private class FakeWakeWordEngine(var ready: Boolean = true) : WakeWordEngine {
     var resets = 0
     var released = false
     val thresholds = mutableListOf<Float>()
+    val keywords = mutableListOf<WakeWordKeyword>()
+
+    override suspend fun selectKeyword(keyword: WakeWordKeyword): Boolean {
+        keywords += keyword
+        return initialize()
+    }
 
     override suspend fun initialize(): Boolean {
         status.value = if (ready) WakeWordStatus.Ready else WakeWordStatus.Failed(WakeWordFailure.MODEL_MISSING)
@@ -58,6 +65,10 @@ private class FakeWakeWordSettings(initial: WakeWordPrefs = WakeWordPrefs()) : W
 
     override suspend fun setSensitivity(sensitivity: Float) {
         prefs.value = prefs.value.copy(sensitivity = sensitivity)
+    }
+
+    override suspend fun setKeyword(keyword: WakeWordKeyword) {
+        prefs.value = prefs.value.copy(keyword = keyword, sensitivity = WakeSensitivity.DEFAULT)
     }
 }
 
@@ -96,6 +107,19 @@ class WakeWordControllerTest {
 
         assertEquals(3, engine.processed)
         assertEquals(WakeSensitivity.toThreshold(WakeSensitivity.DEFAULT), engine.thresholds.first(), 1e-6f)
+    }
+
+    @Test
+    fun `switching keyword reloads the engine and uses that keyword's threshold`() = runTest {
+        controller()
+        frames(1)
+
+        settings.setKeyword(WakeWordKeyword.JARVIS_KO_EXPERIMENTAL)
+        runCurrent()
+        frames(1)
+
+        assertEquals(listOf(WakeWordKeyword.HEY_JARVIS, WakeWordKeyword.JARVIS_KO_EXPERIMENTAL), engine.keywords)
+        assertEquals(0.95f, engine.thresholds.last(), 1e-6f)
     }
 
     @Test

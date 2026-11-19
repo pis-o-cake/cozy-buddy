@@ -102,7 +102,9 @@
     <string name="conversation_notice_mic_unavailable">마이크를 쓸 수 없어요. 권한을 확인해 주세요</string>
     <string name="conversation_notice_error">문제가 생겼어요. 다시 말씀해 주세요</string>
     <string name="settings_wake_word_title">호출어</string>
-    <string name="settings_wake_word_toggle">호출어로 깨우기 (Hey Jarvis)</string>
+    <string name="settings_wake_word_toggle">호출어로 깨우기</string>
+    <string name="settings_wake_word_keyword_hey_jarvis">Hey Jarvis</string>
+    <string name="settings_wake_word_keyword_jarvis_ko">자비스 (실험)</string>
     <string name="settings_wake_word_sensitivity">감도</string>
     <string name="settings_wake_word_sensitivity_hint">높이면 더 잘 깨어나지만 엉뚱할 때 깨어날 수 있어요. 호출어 인식은 이 기기 안에서만 처리하고, 부른 뒤에야 음성이 서버로 가요.</string>
     <string name="settings_wake_word_error_missing">호출어 모델 파일이 없어요. 앱을 다시 설치해 주세요</string>

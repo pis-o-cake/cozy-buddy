@@ -2,6 +2,7 @@ package app.cozybuddy.hub.feature.settings
 
 import app.cozybuddy.hub.core.audio.wakeword.WakeEvent
 import app.cozybuddy.hub.core.audio.wakeword.WakeSensitivity
+import app.cozybuddy.hub.core.audio.wakeword.WakeWordKeyword
 import app.cozybuddy.hub.core.audio.wakeword.WakeWordEngine
 import app.cozybuddy.hub.core.audio.wakeword.WakeWordFailure
 import app.cozybuddy.hub.core.audio.wakeword.WakeWordPrefs
@@ -45,6 +46,9 @@ class SettingsViewModelTest {
         }
         override suspend fun setSensitivity(sensitivity: Float) {
             prefs.value = prefs.value.copy(sensitivity = sensitivity)
+        }
+        override suspend fun setKeyword(keyword: WakeWordKeyword) {
+            prefs.value = prefs.value.copy(keyword = keyword, sensitivity = WakeSensitivity.DEFAULT)
         }
     }
 
@@ -144,6 +148,22 @@ class SettingsViewModelTest {
         vm.onWakeWordSensitivityCommit()
         runCurrent()
         assertEquals(0.8f, wakeSettings.prefs.value.sensitivity)
+    }
+
+    @Test
+    fun `keyword change is saved and resets sensitivity to the default`() = runTest {
+        val stored = FakeWakeSettings(WakeWordPrefs(sensitivity = 0.9f))
+        val vm = SettingsViewModel(FakeSettings(), stored, wakeEngine, link)
+        backgroundScope.launch { vm.uiState.collect {} }
+        runCurrent()
+
+        vm.onWakeWordKeywordChange(WakeWordKeyword.JARVIS_KO_EXPERIMENTAL)
+        runCurrent()
+
+        assertEquals(WakeWordKeyword.JARVIS_KO_EXPERIMENTAL, vm.uiState.value.wakeWordKeyword)
+        assertEquals(WakeWordKeyword.JARVIS_KO_EXPERIMENTAL, stored.prefs.value.keyword)
+        assertEquals(WakeSensitivity.DEFAULT, vm.uiState.value.wakeWordSensitivity)
+        assertEquals(WakeSensitivity.DEFAULT, stored.prefs.value.sensitivity)
     }
 
     @Test

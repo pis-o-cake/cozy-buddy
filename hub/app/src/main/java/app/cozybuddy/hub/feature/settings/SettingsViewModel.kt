@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.cozybuddy.hub.core.audio.wakeword.WakeSensitivity
 import app.cozybuddy.hub.core.audio.wakeword.WakeWordEngine
+import app.cozybuddy.hub.core.audio.wakeword.WakeWordKeyword
 import app.cozybuddy.hub.core.audio.wakeword.WakeWordSettings
 import app.cozybuddy.hub.core.audio.wakeword.WakeWordStatus
 import app.cozybuddy.hub.core.network.ConnectionState
@@ -43,6 +44,7 @@ data class SettingsUiState(
     val saved: Boolean = false,
     val wakeWordEnabled: Boolean = true,
     val wakeWordSensitivity: Float = WakeSensitivity.DEFAULT,
+    val wakeWordKeyword: WakeWordKeyword = WakeWordKeyword.HEY_JARVIS,
     val wakeWordStatus: WakeWordStatus = WakeWordStatus.Idle,
 )
 
@@ -67,13 +69,18 @@ class SettingsViewModel @Inject constructor(
         }
         viewModelScope.launch {
             val prefs = wakeWordSettings.prefs.first()
-            form.update { it.copy(wakeWordEnabled = prefs.enabled, wakeWordSensitivity = prefs.sensitivity) }
+            form.update { it.copy(wakeWordEnabled = prefs.enabled, wakeWordSensitivity = prefs.sensitivity, wakeWordKeyword = prefs.keyword) }
         }
     }
 
     fun onWakeWordEnabledChange(enabled: Boolean) {
         form.update { it.copy(wakeWordEnabled = enabled) }
         persist("wake word enabled") { wakeWordSettings.setEnabled(enabled) }
+    }
+
+    fun onWakeWordKeywordChange(keyword: WakeWordKeyword) {
+        form.update { it.copy(wakeWordKeyword = keyword, wakeWordSensitivity = WakeSensitivity.DEFAULT) }
+        persist("wake word keyword") { wakeWordSettings.setKeyword(keyword) }
     }
 
     /** 슬라이더를 끄는 동안의 값. 저장은 [onWakeWordSensitivityCommit] 에서 한 번만 한다. */

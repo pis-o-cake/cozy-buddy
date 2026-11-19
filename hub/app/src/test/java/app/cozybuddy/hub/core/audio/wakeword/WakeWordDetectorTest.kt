@@ -95,4 +95,14 @@ class WakeWordDetectorTest {
         assertEquals(0.3f, WakeSensitivity.toThreshold(1f), 1e-6f)
         assertEquals(0.3f, WakeSensitivity.toThreshold(5f), 1e-6f)
     }
+
+    @Test
+    fun `korean keyword maps around its own default threshold`() {
+        val ko = WakeWordKeyword.JARVIS_KO_EXPERIMENTAL
+        assertEquals(0.95f, WakeSensitivity.toThreshold(WakeSensitivity.DEFAULT, ko), 1e-6f)
+        assertEquals(0.97f, WakeSensitivity.toThreshold(0f, ko), 1e-6f)
+        assertEquals(0.8f, WakeSensitivity.toThreshold(1f, ko), 1e-6f)
+        assertTrue(WakeSensitivity.toThreshold(0.8f, ko) < 0.95f)
+        assertTrue(WakeSensitivity.toThreshold(0.3f, ko) > 0.95f)
+    }
 }
