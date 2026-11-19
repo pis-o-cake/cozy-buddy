@@ -17,6 +17,7 @@ RUN uv pip install --system --no-cache -r pyproject.toml
 COPY alembic.ini ./
 COPY migrations ./migrations
 COPY app ./app
+COPY scripts/restore_backup.py ./scripts/restore_backup.py
 COPY --from=proto /build/gen ./gen
 
 ENV PYTHONPATH=/app/gen:/app \
