@@ -20,12 +20,14 @@ from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import ClientRole, Settings
+from app.core.client_ip import resolve_client_ip
 from app.core.connections import ClientConnection, ConnectionManager
 from app.core.database import Database
 from app.core.exceptions import BadRequestError, CozyError, NotFoundError
 from app.core.protocol import PROTOCOL_VERSION, error_envelope
 from app.core.security import authenticate
 from app.core.version import get_server_version
+from app.core.ws_guard import Admission, WsGuard
 from app.domain.alarm.service import AlarmService
 from app.domain.auth.pairing import PairingStore
 from app.domain.auth.service import AuthService
@@ -35,7 +37,10 @@ from app.domain.voice.service import VoiceService
 from app.domain.weather.service import WeatherService
 
 CLOSE_POLICY_VIOLATION = 1008
+CLOSE_TRY_AGAIN_LATER = 1013
 CANCEL_GRACE_SECONDS = 5.0
+# ClientHello 는 수십 바이트다. 인증 전에는 이보다 큰 첫 프레임을 파싱하지 않는다.
+MAX_HELLO_BYTES = 4096
 
 KEY_UNAUTHENTICATED = "error.unauthenticated"
 KEY_VERSION = "error.protocol_version_unsupported"
@@ -62,6 +67,7 @@ class GatewayService:
         home: HomeService,
         voice: VoiceService,
         weather: WeatherService,
+        guard: WsGuard,
     ) -> None:
         self._settings = settings
         self._database = database
@@ -69,6 +75,7 @@ class GatewayService:
         self._home = home
         self._voice = voice
         self._weather = weather
+        self._guard = guard
 
     async def serve(self, websocket: WebSocket) -> None:
         """연결을 받아 hello 검증 후 메시지 루프를 돌린다.
@@ -91,14 +98,29 @@ class GatewayService:
     async def _serve(self, websocket: WebSocket) -> None:
         await websocket.accept()
         conn = ClientConnection(websocket)
+        ip = resolve_client_ip(websocket, self._settings.trusted_proxies)
+        verdict = self._guard.admit(ip)
+        if verdict is not Admission.OK:
+            logger.warning("Connection refused: ip={} reason={}", ip, verdict)
+            await conn.close(
+                CLOSE_TRY_AGAIN_LATER if verdict is Admission.FULL else CLOSE_POLICY_VIOLATION
+            )
+            return
+        authenticated = False
         try:
+            conn.client_ip = ip
             if not await self._handshake(conn):
                 return
+            authenticated = True
+            self._guard.authenticated(ip)
             await self._message_loop(conn)
         except _TextFrameError:
             logger.warning("Text frame rejected: {}", conn.client_id or "unauthenticated")
+            if not authenticated:
+                self._guard.record_failure(ip)
             await conn.close(CLOSE_POLICY_VIOLATION)
         finally:
+            self._guard.release(ip, authenticated)
             await self._cleanup(conn)
 
     async def _read(self, conn: ClientConnection, limit: float | None = None) -> bytes | None:
@@ -112,8 +134,17 @@ class GatewayService:
         data: bytes | None = message.get("bytes")
         return data if data is not None else b""
 
-    async def _reject(self, conn: ClientConnection, code: ErrorCode, key: str, reason: str) -> bool:
-        logger.warning("Hello rejected: {}", reason)
+    async def _reject(
+        self,
+        conn: ClientConnection,
+        code: ErrorCode,
+        key: str,
+        reason: str,
+        count_failure: bool = True,
+    ) -> bool:
+        logger.warning("Hello rejected: {} ip={}", reason, conn.client_ip)
+        if count_failure:
+            self._guard.record_failure(conn.client_ip)
         await self._send_quietly(conn, error_envelope(code, key))
         await conn.close(CLOSE_POLICY_VIOLATION)
         return False
@@ -127,6 +158,10 @@ class GatewayService:
             )
         if data is None:
             return False
+        if len(data) > MAX_HELLO_BYTES:
+            return await self._reject(
+                conn, ERROR_CODE_UNAUTHENTICATED, KEY_UNAUTHENTICATED, "oversized first frame"
+            )
 
         envelope = Envelope()
         try:
@@ -147,6 +182,7 @@ class GatewayService:
                 ERROR_CODE_PROTOCOL_VERSION_UNSUPPORTED,
                 KEY_VERSION,
                 f"unsupported protocol version {hello.protocol_version}",
+                count_failure=False,
             )
         role = {CLIENT_KIND_HUB: ClientRole.HUB, CLIENT_KIND_MOBILE: ClientRole.MOBILE}.get(
             hello.kind

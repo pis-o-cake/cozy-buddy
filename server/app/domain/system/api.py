@@ -2,12 +2,13 @@
 
 from datetime import datetime
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel
 
 from app.core.maintenance import BackupScheduler
+from app.core.rest_auth import require_admin_only
 
-root_router = APIRouter(prefix="/api/system")
+root_router = APIRouter(prefix="/api/system", dependencies=[Depends(require_admin_only)])
 
 
 class BackupStatus(BaseModel):

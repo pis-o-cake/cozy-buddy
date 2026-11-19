@@ -48,6 +48,15 @@ def parse_static_tokens(raw: str) -> tuple[TokenEntry, ...]:
     return tuple(entries)
 
 
+PLACEHOLDER_MARKER = "change-me"
+MIN_TOKEN_LENGTH = 24
+
+
+def weak_token_ids(entries: tuple[TokenEntry, ...]) -> list[str]:
+    """`MIN_TOKEN_LENGTH` 보다 짧은 토큰을 가진 항목의 client_id 목록."""
+    return [e.client_id for e in entries if len(e.token.get_secret_value()) < MIN_TOKEN_LENGTH]
+
+
 class Settings(BaseSettings):
     """서버 설정."""
 
@@ -67,6 +76,12 @@ class Settings(BaseSettings):
     # 기본은 로컬과 docker bridge 대역.
     trusted_proxies: str = "127.0.0.1/32,::1/128,172.16.0.0/12"
     hello_timeout_seconds: float = 10.0
+    # 보안 한도(REST 기본 거부·WebSocket 제한). 문서 UI(/docs, /openapi.json)는 기본 꺼 둔다.
+    api_docs: bool = False
+    ws_max_connections: int = Field(default=64, ge=1)
+    ws_max_unauthenticated_per_ip: int = Field(default=8, ge=1)
+    ws_hello_failure_limit: int = Field(default=10, ge=1)
+    ws_hello_failure_window_seconds: float = Field(default=60.0, gt=0)
     log_level: str = "INFO"
     locale: str = "ko"
     # 둘 중 하나라도 비어 있으면 HA 브리지는 꺼진다.
@@ -144,6 +159,14 @@ class Settings(BaseSettings):
     @model_validator(mode="after")
     def _validate_tokens(self) -> Self:
         parse_static_tokens(self.static_tokens.get_secret_value())
+        return self
+
+    @model_validator(mode="after")
+    def _reject_placeholder_secrets(self) -> Self:
+        secrets = [e.token.get_secret_value() for e in self.token_entries]
+        secrets.append(self.admin_token.get_secret_value())
+        if any(PLACEHOLDER_MARKER in secret.lower() for secret in secrets):
+            raise ValueError("Placeholder token from .env.example must be replaced")
         return self
 
     @model_validator(mode="after")

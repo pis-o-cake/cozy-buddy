@@ -75,5 +75,5 @@ module = ["cozy.*"]
 ignore_errors = true
 
 [[tool.mypy.overrides]]
-module = ["gunicorn.*"]
+module = ["gunicorn.*", "uvicorn_worker.*"]
 ignore_missing_imports = true

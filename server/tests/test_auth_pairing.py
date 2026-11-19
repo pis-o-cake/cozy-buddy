@@ -20,6 +20,8 @@ from app.domain.auth.pairing import (
 )
 from app.main import create_app
 from tests.conftest import (
+    ADMIN_HEADERS,
+    ADMIN_TOKEN,
     HUB_ID,
     HUB_TOKEN,
     connect_hub,
@@ -29,8 +31,7 @@ from tests.conftest import (
     send,
 )
 
-ADMIN_TOKEN = "admin-secret"
-ADMIN = {"Authorization": f"Bearer {ADMIN_TOKEN}"}
+ADMIN = ADMIN_HEADERS
 
 
 class FakeClock:
@@ -185,13 +186,21 @@ def test_revoke_unknown_client_is_404(admin_client: TestClient) -> None:
 def test_admin_endpoints_require_admin_token(
     admin_client: TestClient, method: str, path: str
 ) -> None:
+    del admin_client.headers["authorization"]
     missing = admin_client.request(method, path)
     wrong = admin_client.request(method, path, headers={"Authorization": "Bearer nope"})
     assert missing.status_code == 401
     assert wrong.status_code == 401
 
 
-def test_admin_endpoints_503_when_admin_token_unset(client: TestClient) -> None:
+def test_admin_endpoints_503_when_admin_token_unset(settings: Settings) -> None:
+    migrate(settings.database_url)
+    unset = settings.model_copy(update={"admin_token": SecretStr("")})
+    with TestClient(create_app(unset)) as client:
+        _assert_admin_unconfigured(client)
+
+
+def _assert_admin_unconfigured(client: TestClient) -> None:
     created = client.post("/api/auth/pairing-codes", json={}, headers=ADMIN)
     revoked = client.delete("/api/auth/clients/hub-x", headers=ADMIN)
     assert created.status_code == 503

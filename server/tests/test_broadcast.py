@@ -255,6 +255,7 @@ def test_service_without_tts_sends_notice_only(client: TestClient) -> None:
 
 
 def test_rest_requires_a_token(client: TestClient) -> None:
+    del client.headers["authorization"]
     assert client.post("/api/broadcast", json={"text": "밥"}).status_code == 401
     wrong = client.post(
         "/api/broadcast", json={"text": "밥"}, headers={"Authorization": "Bearer nope"}

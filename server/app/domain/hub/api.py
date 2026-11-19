@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.connections import ConnectionManager, get_connections
 from app.core.database import get_session
+from app.core.rest_auth import require_admin_or_mobile
 from app.domain.hub.schemas import HubRead, HubUpdate
 from app.domain.hub.service import HubService
 
@@ -30,7 +31,7 @@ async def list_hubs(service: HubServiceDep) -> list[HubRead]:
     return await service.list_hubs()
 
 
-@router.patch("/{hub_id}")
+@router.patch("/{hub_id}", dependencies=[Depends(require_admin_or_mobile)])
 async def update_hub(hub_id: str, body: HubUpdate, service: HubServiceDep) -> HubRead:
     """허브 이름·방(area_id) 수정."""
     return await service.update(hub_id, body)

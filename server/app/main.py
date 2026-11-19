@@ -5,10 +5,10 @@ from contextlib import asynccontextmanager
 from datetime import datetime
 from pathlib import Path
 
-from fastapi import APIRouter, FastAPI
+from fastapi import APIRouter, Depends, FastAPI
 from loguru import logger
 
-from app.config import Settings
+from app.config import Settings, weak_token_ids
 from app.core.connections import SERVING_DRAIN_SECONDS, ConnectionManager
 from app.core.database import Database
 from app.core.discovery import discover_domain_modules
@@ -17,7 +17,9 @@ from app.core.i18n import Translator
 from app.core.logging import configure_logging
 from app.core.maintenance import BackupScheduler
 from app.core.openai_gateway import TTS_SAMPLE_RATE_HZ, OpenAIGateway
+from app.core.rest_auth import get_principal
 from app.core.version import get_server_version
+from app.core.ws_guard import WsGuard
 from app.domain.agent.service import AgentService
 from app.domain.broadcast.service import BroadcastService
 from app.domain.home.service import HomeService
@@ -29,19 +31,35 @@ from app.domain.weather.client import OpenMeteoClient
 from app.domain.weather.service import WeatherService
 from app.middleware.request_log import RequestLogMiddleware
 
+# IMPORTANT: 기본 거부 예외 목록. 여기 없는 라우터는 모두 Bearer 인증을 거친다.
+# auth 는 등록 코드 교환(/pair)이 공개이고 관리 엔드포인트가 스스로 관리자 토큰을 검사한다.
+# gateway 의 root_router 는 /health 와 /ws 이며 WebSocket 은 ClientHello 로 인증한다.
+PUBLIC_ROUTERS = frozenset({("auth", "router"), ("gateway", "root_router")})
+
 
 def _include_domain_routers(app: FastAPI) -> None:
     """app/domain/*/api.py 를 스캔해 등록한다.
 
     `router` 는 /api/<domain> 에, `root_router` 는 접두사 없이(/ws, /health 등) 붙는다.
+    `PUBLIC_ROUTERS` 를 제외한 모든 라우터에 인증 의존성을 건다.
     """
+    guard = [Depends(get_principal)]
     for name, module in discover_domain_modules("api"):
         router = getattr(module, "router", None)
         if isinstance(router, APIRouter):
-            app.include_router(router, prefix=f"/api/{name}", tags=[name])
+            app.include_router(
+                router,
+                prefix=f"/api/{name}",
+                tags=[name],
+                dependencies=None if (name, "router") in PUBLIC_ROUTERS else guard,
+            )
         root_router = getattr(module, "root_router", None)
         if isinstance(root_router, APIRouter):
-            app.include_router(root_router, tags=[name])
+            app.include_router(
+                root_router,
+                tags=[name],
+                dependencies=None if (name, "root_router") in PUBLIC_ROUTERS else guard,
+            )
 
 
 def _build_tts_cache(settings: Settings, gateway: OpenAIGateway | None) -> TtsCache | None:
@@ -79,6 +97,9 @@ def create_app(
         configure_logging(settings.log_level)
         app.state.db = Database(settings.database_url)
         logger.info("Server started: version={}", get_server_version())
+        weak = weak_token_ids(settings.token_entries)
+        if weak:
+            logger.warning("Static tokens shorter than 24 chars: {}", ", ".join(weak))
         await app.state.turns.start()
         app.state.backups.start()
         await app.state.home.start()
@@ -102,8 +123,22 @@ def create_app(
             await app.state.db.dispose()
             logger.info("Server stopped")
 
-    app = FastAPI(title="Cozy Server", version=get_server_version(), lifespan=lifespan)
+    docs = settings.api_docs
+    app = FastAPI(
+        title="Cozy Server",
+        version=get_server_version(),
+        lifespan=lifespan,
+        docs_url="/docs" if docs else None,
+        redoc_url=None,
+        openapi_url="/openapi.json" if docs else None,
+    )
     app.state.settings = settings
+    app.state.ws_guard = WsGuard(
+        settings.ws_max_connections,
+        settings.ws_max_unauthenticated_per_ip,
+        settings.ws_hello_failure_limit,
+        settings.ws_hello_failure_window_seconds,
+    )
     app.state.translator = Translator(settings.locale)
     app.state.backups = BackupScheduler(settings)
     # WARNING: 연결 레지스트리는 프로세스 메모리에 있으므로 워커는 1개만 쓴다.

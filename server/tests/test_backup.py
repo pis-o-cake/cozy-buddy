@@ -12,6 +12,7 @@ from zoneinfo import ZoneInfo
 
 import pytest
 from fastapi.testclient import TestClient
+from pydantic import SecretStr
 
 from app.config import Settings
 from app.core.maintenance import (
@@ -24,7 +25,7 @@ from app.core.maintenance import (
     resolve_db_path,
 )
 from app.main import create_app
-from tests.conftest import SERVER_DIR, migrate
+from tests.conftest import ADMIN_TOKEN, SERVER_DIR, migrate
 
 NOW = datetime(2026, 5, 1, 12, 0, tzinfo=UTC)
 SEOUL = ZoneInfo("Asia/Seoul")
@@ -278,7 +279,8 @@ def backup_client(tmp_path: Path) -> Iterator[TestClient]:
         tts_warmup=False,
     )
     migrate(settings.database_url)
-    with TestClient(create_app(settings)) as c:
+    secured = settings.model_copy(update={"admin_token": SecretStr(ADMIN_TOKEN)})
+    with TestClient(create_app(secured)) as c:
         yield c
 
 
