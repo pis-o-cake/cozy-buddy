@@ -38,6 +38,7 @@ message Envelope {
     ResponseAudioEnd response_audio_end = 27;
     AssistantState assistant_state = 28;
     TextQuery text_query = 29;
+    BroadcastNotice broadcast_notice = 30;
     UtteranceDeclined utterance_declined = 31;
 
     // alarm

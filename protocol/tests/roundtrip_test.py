@@ -16,7 +16,7 @@ CATALOG: dict[str, int] = {
     "utterance_start": 20, "utterance_end": 21, "utterance_cancel": 22,
     "audio_chunk": 23, "transcript": 24, "response_text": 25,
     "response_audio_start": 26, "response_audio_end": 27, "assistant_state": 28,
-    "text_query": 29, "utterance_declined": 31,
+    "text_query": 29, "broadcast_notice": 30, "utterance_declined": 31,
     "alarm_upsert": 40, "alarm_delete": 41, "alarm_ack": 42,
     "alarm_snapshot": 43, "alarm_sync_request": 44,
     "alarm_control": 45, "alarm_control_result": 46, "reminder_fired": 47,
@@ -81,6 +81,8 @@ def build_bodies(gen_dir: Path) -> dict:
         "text_query": voice.TextQuery(request_id="r1", text="lights", area_id="ar1"),
         "utterance_declined": voice.UtteranceDeclined(
             stream_id="s1", reason=voice.DECLINE_REASON_DUPLICATE, winner_hub_id="hub-2"),
+        "broadcast_notice": voice.BroadcastNotice(from_hub_id="hub-1", from_area="ar1",
+                                                  text="dinner", stream_id="b1"),
         "alarm_upsert": alarm.AlarmUpsert(request_id="r1", alarm=alarm_msg),
         "alarm_delete": alarm.AlarmDelete(request_id="r2", alarm_id="a1", hub_id="hub-1"),
         "alarm_ack": alarm.AlarmAck(request_id="r1", alarm_id="a1", revision=4, ok=False,
