@@ -25,7 +25,10 @@ services:
     expose:
       - "8000"
     # 비root 로 도는 앱이라 권한 상승과 리눅스 capability 가 필요 없다.
-    # TODO: read_only 루트 파일시스템. 컨테이너 안에서 쓰기 경로(홈의 gunicorn 소켓, /tmp)를 확인한 뒤 켠다.
+    # 루트 파일시스템은 읽기 전용이다. 쓰는 경로는 cozy-data 볼륨(DB·WAL·TTS 캐시·백업)과 /tmp 뿐이다.
+    read_only: true
+    tmpfs:
+      - /tmp
     security_opt:
       - no-new-privileges:true
     cap_drop:
