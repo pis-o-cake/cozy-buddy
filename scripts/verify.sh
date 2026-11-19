@@ -16,6 +16,12 @@ sh scripts/tests/test-check-secrets.sh || failed=1
 sh scripts/tests/test-verify-deps.sh || failed=1
 sh scripts/check-secrets.sh --tree || failed=1
 
+# 셸 스크립트 문법 검사는 변경 여부와 무관하게 항상 돈다.
+for f in $(git ls-files -- 'scripts/*.sh' 'infra/*.sh' '.githooks/*' '*/scripts/*.sh'); do
+  [ -f "$f" ] || continue
+  sh -n "$f" || { echo "FAIL   sh -n $f" >&2; failed=1; }
+done
+
 # origin/main 이 없거나 HEAD 가 같은 커밋이면 비교 기준이 없으므로 전부 변경으로 본다.
 base=
 if git rev-parse --verify --quiet origin/main >/dev/null; then
@@ -36,6 +42,20 @@ is_changed() {
   return 1
 }
 
+# docs(.md)를 뺀 변경 여부. 공용 스크립트·CI 설정은 모든 컴포넌트에 영향을 준다.
+is_changed_nondoc() {
+  [ -n "$base" ] || return 0
+  {
+    git diff --name-only "$base" HEAD -- "$1/"
+    git diff --name-only HEAD -- "$1/"
+    git ls-files --others --exclude-standard -- "$1/"
+  } | grep -v -E '\.md$' | grep -q .
+}
+
+# CI paths-filter 와 같게, .github/ 또는 scripts/ 가 바뀌면 모든 컴포넌트를 검사한다.
+shared_changed=0
+if is_changed_nondoc .github || is_changed_nondoc scripts; then shared_changed=1; fi
+
 # server·hub·mobile 은 protocol 에서 코드를 생성하므로 protocol 변경 시 함께 검사한다(CI paths-filter 와 동일).
 protocol_changed=0
 if is_changed protocol; then protocol_changed=1; fi
@@ -51,11 +71,14 @@ for dir in protocol server hub mobile; do
   fi
   reason=
   if [ "${VERIFY_ALL:-0}" != 1 ] && ! is_changed "$dir"; then
-    if [ "$dir" = protocol ] || [ "$protocol_changed" != 1 ]; then
+    if [ "$shared_changed" = 1 ]; then
+      reason=" (shared scripts/CI changed)"
+    elif [ "$dir" = protocol ] || [ "$protocol_changed" != 1 ]; then
       echo "skip   $dir: unchanged"
       continue
+    else
+      reason=" (protocol changed)"
     fi
-    reason=" (protocol changed)"
   fi
   echo "run    $dir$reason"
   sh "$dir/scripts/check.sh" || { echo "FAIL   $dir" >&2; failed=1; }

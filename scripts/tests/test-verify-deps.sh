@@ -74,6 +74,33 @@ setup_repo
 assert_runs "no change skips all" "$(run_verify)" ""
 
 setup_repo
+mkdir -p .github/workflows
+echo x > .github/workflows/ci.yml
+assert_runs ".github change runs all" "$(run_verify)" "protocol server hub mobile"
+
+setup_repo
+echo 'exit 0' > scripts/extra.sh
+out=$(run_verify)
+assert_runs "scripts change runs all" "$out" "protocol server hub mobile"
+if ! printf '%s\n' "$out" | grep -q '^run    server (shared scripts/CI changed)$'; then
+  echo "FAIL missing '(shared scripts/CI changed)' label" >&2
+  fails=$((fails + 1))
+fi
+
+setup_repo
+echo doc > scripts/NOTES.md
+assert_runs "scripts docs-only change skips all" "$(run_verify)" ""
+
+setup_repo
+echo 'if then' > scripts/bad.sh
+git add scripts/bad.sh
+out=$(run_verify)
+case "$out" in
+  *"FAIL   sh -n scripts/bad.sh"*) echo "ok   sh -n catches syntax error" ;;
+  *) echo "FAIL sh -n did not flag bad.sh" >&2; printf '%s\n' "$out" >&2; fails=$((fails + 1)) ;;
+esac
+
+setup_repo
 out=$(VERIFY_ALL=1 run_verify)
 assert_runs "VERIFY_ALL runs all" "$out" "protocol server hub mobile"
 
