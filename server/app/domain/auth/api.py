@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import Settings
+from app.core.client_ip import resolve_client_ip
 from app.core.connections import ConnectionManager, get_connections
 from app.core.database import get_session
 from app.core.exceptions import AuthenticationError
@@ -66,7 +67,8 @@ async def create_pairing_code(body: PairingCodeCreate, service: AuthServiceDep) 
 @router.post("/pair")
 async def pair(body: PairRequest, request: Request, service: AuthServiceDep) -> PairResponse:
     """코드로 client_id 와 토큰을 받는다. IP 별 분당 5회로 제한한다."""
-    ip = request.client.host if request.client else "unknown"
+    settings: Settings = request.app.state.settings
+    ip = resolve_client_ip(request, settings.trusted_proxies)
     return await service.pair(ip, body.code, body.client_kind)
 
 
