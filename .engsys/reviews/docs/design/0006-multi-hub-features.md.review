@@ -1,11 +1,12 @@
 engsys-document-review: 1
 document: docs/design/0006-multi-hub-features.md
-blob: f4c7b4fdacc69d7214d8dcbff22c696c65d390b1
+blob: bd0b3a5a9a0af3bd321bc675402c854ef211d351
 decision: pass
 reviewer: claude-opus-5-5
-audience: 서버·허브 구현 담당자와 검토자
-purpose: 다중 허브 대비 기능을 어떤 범위·프로토콜·소유 파일로 나눠 구현하는가
+audience: 검토자와 구현 담당자
+purpose: 다중 허브 기능을 이 범위와 방법으로 구현해도 되는가
 
-- W3-4 절에 구현에서 정한 규칙 3가지를 반영: 10자 미만 문장은 완전 일치만 중복(오판 사례 수치 포함), 이른 발화 무대기·늦은 발화 최대 0.3초 보류와 초과 시 순서 역전, declined 턴의 결정론 비율 분모 제외
-- 구현(arbiter.py 상수, summary.py)과 대조, 다른 절은 변경 없음
+- 한국어 호출어 오탐 수치 뒤에 측정 조건 추가: ko_eval.json jarvis_ko_C test, 임계값 0.95, 일반 음성·소음 약 3.5시간, 오탐 5건
+- 푸아송 95% 구간(약 0.5~3.3회/시간)과 합성 음성 양성 표본 한계, #43 재측정 연결
+- 소유자 결정과 기본값 미채택 결론은 그대로 유지
 

@@ -1,13 +1,11 @@
 engsys-document-review: 1
 document: docs/design/0002-server-architecture.md
-blob: b5c11a4491f6a829562eba306385ac42dad41277
+blob: 6fd1b3174c3b4c69ea9ffa0d803f7fbba47b3595
 decision: pass
 reviewer: claude-opus-5-5
-audience: 서버 구현 담당자
-purpose: 이 책임과 구조로 서버를 만들어도 되는가
+audience: 검토자와 구현 담당자
+purpose: 서버를 이 범위와 방법으로 구현해도 되는가
 
-- 음성 세션 책임에 클라우드 API 처리와 ADR 0001 링크를 추가, 구성도의 AI 노드 이름을 '클라우드 AI'로 변경
-- 실패 정책에 클라우드 AI 연결 실패 행 추가(자막 안내 + 터치 제어 유도)해 0001 장애 표와 일치
-- 배포 표와 미결 사항에서 GPU 없는 서버, 클라우드 공급자 선택으로 표현 정리
-- 한계: 공급자별 실패 코드 처리 상세는 S2 이후
+- 본문 제안은 보존하고 머리말에 구현 차이 세 가지(HA WebSocket 단일 연동, agent understand/skills 분리와 추가 도메인, 미결 인증·대화 로그 결정)를 정리
+- 각 차이를 코드 경로(home/ha_client.py, agent/skills/device.py)와 설계안 0005·0006으로 확인
 

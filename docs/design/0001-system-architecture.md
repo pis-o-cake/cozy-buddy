@@ -13,6 +13,9 @@ UI, 휴대폰 앱이다. 이 문서는 [이전 설계 검토](../review/2026-11-
 [휴대폰 앱](0004-mobile-architecture.md) 설계안에 있다. 네 설계안의 구조를 한 장씩 그린 그림은
 [`docs/diagrams/architecture.html`](../diagrams/architecture.html)에 있다.
 
+구현된 현재 구조는 [현행 아키텍처](../architecture/README.md)가 정본이다. 구현은 이 제안과 한 군데가 다르다.
+서버와 HA 사이는 MCP 없이 HA WebSocket API 하나로 기기 제어와 상태 구독을 모두 한다. 아래 MCP 서술은 제안 당시의 것이다.
+
 ## 제안 요약
 
 목표는 가족이 매일 쓰는 짧은 작업 몇 가지를 확실하게 처리하는 것이다. Nest Hub의 기능 목록을 모두
@@ -76,7 +79,7 @@ flowchart TB
 
     FAM -->|음성 · 터치| HUB
     OUT --> PHONE
-    HUB <-->|"WebSocket<br/>제어 JSON + 오디오"| CS
+    HUB <-->|"WebSocket<br/>protobuf 바이너리 (제어 + 오디오)"| CS
     PHONE <-->|"Tailscale<br/>REST + WebSocket"| CS
     CS -->|"발화 · 응답"| AI
     HA -->|공식 통합| THINQ
@@ -178,13 +181,13 @@ sequenceDiagram
 
 | 경계 | 방식 | 정본 |
 |---|---|---|
-| Hub ↔ Server | WebSocket 1개. 텍스트 프레임은 제어 JSON, 바이너리 프레임은 오디오. 오디오 프레임에 스트림 종류·세션·순번을 담는다(검토 M3) | `protocol/` |
+| Hub ↔ Server | WebSocket 1개. 제어와 오디오 모두 Protocol Buffers `Envelope` 바이너리 프레임([ADR 0002](../adr/0002-protocol-buffers-over-websocket.md)). 오디오 프레임에 스트림 종류·세션·순번을 담는다(검토 M3) | `protocol/` |
 | Mobile ↔ Server | REST + 상태 push용 WebSocket | `protocol/` |
 | Server ↔ HA | MCP(기기 제어 툴) + HA WebSocket API(상태 구독·서비스 호출) | HA 문서. 결합 지점을 이 두 곳으로 제한 |
 | Server ↔ 클라우드 AI | 공급자 SDK | S2 이후 ADR |
 
-`protocol/`의 스키마 형식(JSON Schema 기반 코드 생성 또는 Protocol Buffers)은 첫 구현 전에 ADR로 정한다.
-Kotlin(허브·앱)과 Python(서버) 양쪽 모델을 같은 정의에서 생성할 수 있어야 한다.
+`protocol/`의 스키마 형식은 [ADR 0002](../adr/0002-protocol-buffers-over-websocket.md)로 Protocol Buffers로 정했다.
+Kotlin(허브·앱)과 Python(서버) 양쪽 모델을 같은 정의에서 생성한다.
 
 ### 배치
 
@@ -207,4 +210,3 @@ Kotlin(허브·앱)과 Python(서버) 양쪽 모델을 같은 정의에서 생�
 | 웨이크워드 엔진과 호출어 | S1 | microWakeWord 또는 LiveKit wakeword |
 | 키오스크 수준 | S5 | HOME 앱 + 상시 Activity, Device Owner 없음 |
 | 휴대폰 앱 스택 | 구현 착수 시 ADR | iOS·Android 하이브리드, 모든 단계의 마지막에 구현(0004) |
-| `protocol/` 스키마 형식 | 없음(설계 결정) | 첫 구현 전 ADR |

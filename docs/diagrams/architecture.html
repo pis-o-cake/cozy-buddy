@@ -91,7 +91,7 @@
 <main>
   <section id="system">
     <h2>전체 시스템</h2>
-    <p>허브와 휴대폰 앱은 Cozy Server만 상대한다. 서버는 Home Assistant를 MCP와 WebSocket API 두 지점으로만 쓰고, 음성 처리는 클라우드 AI에 맡긴다. 알람은 허브가 직접 울린다.</p>
+    <p>허브와 휴대폰 앱은 Cozy Server만 상대한다. 서버는 Home Assistant를 WebSocket API 한 지점으로만 쓰고, 음성 처리는 클라우드 AI에 맡긴다. 알람은 허브가 직접 울린다.</p>
     <div class="panel"><div class="scroll" data-diagram="system"></div></div>
     <div class="src">상세: <a href="../design/0001-system-architecture.md">0001 전체 시스템 아키텍처</a></div>
   </section>
@@ -141,7 +141,7 @@ const DIAGRAMS = {
       { id: "hub2", x: 320, y: 205, w: 220, h: 70, kind: "ours", title: "Cozy Hub · 침실", sub: ["앰비언트 · 웨이크워드 · 로컬 알람"] },
       { id: "hub3", x: 560, y: 205, w: 220, h: 70, kind: "ours", title: "Cozy Hub · 주방", sub: ["앰비언트 · 웨이크워드 · 로컬 알람"] },
       { id: "cs", x: 80, y: 372, w: 290, h: 168, kind: "ours", title: "Cozy Server", sub: ["허브·앱 API (WebSocket · REST)", "음성 세션", "결정론 명령 + LLM 에이전트", "HA 상태 중계 · 알람 동기화"] },
-      { id: "ha", x: 420, y: 372, w: 360, h: 90, kind: "ha", title: "Home Assistant", sub: ["기기 · area(방) · 장면 · 자동화", "MCP 서버 · WebSocket API"] },
+      { id: "ha", x: 420, y: 372, w: 360, h: 90, kind: "ha", title: "Home Assistant", sub: ["기기 · area(방) · 장면 · 자동화", "WebSocket API"] },
       { id: "ms", x: 600, y: 488, w: 180, h: 64, kind: "ha", title: "Matter Server", sub: ["matter.js"] },
       { id: "tapo", x: 400, y: 660, w: 180, h: 64, kind: "device", title: "Tapo / Kasa", sub: ["플러그 · 조명"] },
       { id: "matter", x: 600, y: 660, w: 180, h: 64, kind: "device", title: "Matter 기기", sub: ["Wi-Fi Matter"] },
@@ -153,10 +153,10 @@ const DIAGRAMS = {
     ],
     edges: [
       { from: "famIn:b", to: "hub2:t", label: "음성 · 터치" },
-      { from: "hub1:b", to: "cs:t:0.3793", both: true, label: "WebSocket · 제어 JSON + 오디오", lp: [190, 318] },
+      { from: "hub1:b", to: "cs:t:0.3793", both: true, label: "WebSocket · protobuf (제어 + 오디오)", lp: [190, 318] },
       { from: "hub2:b", to: "cs:t:0.75", via: [[430, 298], [297.5, 298]], both: true },
       { from: "hub3:b", to: "cs:t:0.75", via: [[670, 298], [297.5, 298]], both: true },
-      { from: "cs:r:0.32", to: "ha:l:0.6", both: true, label: "MCP · WS API" },
+      { from: "cs:r:0.32", to: "ha:l:0.6", both: true, label: "WS API" },
       { from: "cs:t:0.95", to: "ai:l:0.5", via: [[355.5, 316], [860, 316], [860, 226]], both: true, label: "발화 · 응답", lp: [790, 316] },
       { from: "ha:b:0.2", to: "tapo:t", label: "tplink 통합" },
       { from: "ha:b:0.75", to: "ms:t" },
@@ -182,12 +182,12 @@ const DIAGRAMS = {
       { id: "gw", x: 60, y: 276, w: 1120, h: 58, kind: "ours", title: "gateway", sub: ["WebSocket 연결 관리 · 토큰 인증 · 메시지 라우팅 · protocol 모델"] },
       { id: "voice", x: 60, y: 374, w: 170, h: 150, kind: "ours", title: "voice", sub: ["발화 세션", "STT · TTS 호출", "오디오 스트림", "숫자·단위 낭독 정규화"] },
       { id: "agent", x: 250, y: 374, w: 170, h: 150, kind: "ours", title: "agent", sub: ["결정론 매처", "LLM 툴 루프", "확인 질문 정책", "템플릿 응답"] },
-      { id: "home", x: 440, y: 374, w: 170, h: 150, kind: "ours", title: "home", sub: ["HA MCP 클라이언트", "상태 구독", "엔티티 · area 캐시"] },
+      { id: "home", x: 440, y: 374, w: 170, h: 150, kind: "ours", title: "home", sub: ["HA WS 클라이언트", "상태 구독", "엔티티 · area 캐시"] },
       { id: "alarm", x: 630, y: 374, w: 170, h: 150, kind: "ours", title: "alarm", sub: ["허브 알람 사본", "허브로 전달", "전달 대기 관리"] },
       { id: "hubd", x: 820, y: 374, w: 170, h: 150, kind: "ours", title: "hub", sub: ["허브 등록", "방(area) 지정", "연결 · 볼륨 상태"] },
       { id: "bc", x: 1010, y: 374, w: 170, h: 150, kind: "ours", title: "broadcast", sub: ["텍스트 → TTS", "대상 허브 송신"] },
       { id: "ai", x: 60, y: 624, w: 360, h: 64, kind: "cloud", title: "클라우드 AI", sub: ["STT · LLM · TTS (S2 결정)"] },
-      { id: "ha", x: 440, y: 624, w: 170, h: 64, kind: "ha", title: "Home Assistant", sub: ["/api/mcp · WS API"] },
+      { id: "ha", x: 440, y: 624, w: 170, h: 64, kind: "ha", title: "Home Assistant", sub: ["WS API"] },
       { id: "db", x: 630, y: 624, w: 360, h: 64, kind: "ext", title: "SQLite (WAL)", sub: ["hub · alarm · client_token"] },
     ],
     edges: [
@@ -220,7 +220,7 @@ const DIAGRAMS = {
       { id: "exec", x: 650, y: 20, w: 180, h: 64, kind: "ha", title: "HA 실행", sub: ["서비스 호출 · 알람 명령"] },
       { id: "tpl", x: 860, y: 20, w: 160, h: 64, kind: "ours", title: "템플릿 응답", sub: ["locales/ko.json"] },
       { id: "ask", x: 650, y: 116, w: 180, h: 64, kind: "ours", title: "확인 질문", sub: ["대상이 여럿일 때"] },
-      { id: "llm", x: 650, y: 212, w: 370, h: 64, kind: "cloud", title: "LLM 툴 루프", sub: ["HA MCP 툴 + Cozy 툴 · role:tool · 마지막 턴 스트리밍"] },
+      { id: "llm", x: 650, y: 212, w: 370, h: 64, kind: "cloud", title: "LLM 툴 루프", sub: ["기기 툴 + Cozy 툴 · role:tool · 마지막 턴 스트리밍"] },
       { id: "out", x: 1060, y: 116, w: 160, h: 64, kind: "ours", title: "응답 스트림", sub: ["자막 + TTS 오디오"] },
     ],
     edges: [
