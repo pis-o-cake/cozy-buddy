@@ -8,7 +8,7 @@ from fastapi import APIRouter, FastAPI
 from loguru import logger
 
 from app.config import Settings
-from app.core.connections import ConnectionManager
+from app.core.connections import SERVING_DRAIN_SECONDS, ConnectionManager
 from app.core.database import Database
 from app.core.discovery import discover_domain_modules
 from app.core.exceptions import register_exception_handlers
@@ -69,6 +69,7 @@ def create_app(
         try:
             yield
         finally:
+            await app.state.connections.drain_serving(SERVING_DRAIN_SECONDS)
             await app.state.weather.stop()
             await app.state.home.stop()
             await app.state.turns.stop()
