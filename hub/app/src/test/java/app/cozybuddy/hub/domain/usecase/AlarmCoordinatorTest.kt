@@ -180,6 +180,15 @@ class AlarmCoordinatorTest {
         assertTrue(repository.get("t")!!.enabled)
     }
 
+    @Test
+    fun `snooze honors the requested minutes`() = runBlocking {
+        repository.upsert(oneShot("t", now.plusMinutes(1)))
+
+        coordinator.onRingFinished("t", snoozed = true, snoozeMinutes = 5)
+
+        verify { scheduler.scheduleSnooze("t", now.plusMinutes(5).toInstant()) }
+    }
+
     private fun snoozeAt(minutes: Long): Instant = now.plusMinutes(minutes).toInstant()
 
     @Test

@@ -26,7 +26,7 @@ class AlarmRingViewModel @Inject constructor(
 
     fun onStop() = control.stop()
 
-    fun onSnooze() = control.snooze()
+    fun onSnooze() = control.snooze(SnoozePolicy.DEFAULT_MINUTES)
 
     private fun RingingState.toUi(): AlarmRingUiState = when (this) {
         RingingState.Idle -> AlarmRingUiState()
@@ -35,7 +35,7 @@ class AlarmRingViewModel @Inject constructor(
             kind = kind,
             label = label,
             timeText = formatEpoch(startedAtEpochMs, timeSource.now().zone, displayConfig.is24Hour(), displayConfig.locale()),
-            snoozeMinutes = SnoozePolicy.DURATION.toMinutes().toInt(),
+            snoozeMinutes = SnoozePolicy.DEFAULT_MINUTES,
         )
     }
 
