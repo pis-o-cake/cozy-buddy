@@ -105,12 +105,13 @@ class LlmStep:
         self._remember_target(remembered, ctx)
 
     def _remember_target(self, intent: Intent | None, ctx: TurnContext) -> None:
-        """오류 없이 끝난 턴의 마지막 성공 기기·상태 툴 대상을 후속 지시용으로 기억한다."""
-        if intent is None:
+        """오류 없이 끝난 턴의 마지막 성공 기기·상태 툴 대상을 후속 지시용으로 기억한다. 없으면 지운다."""
+        target = target_from_intent(intent, ctx.view) if intent is not None else None
+        if target is None:
+            # 기기와 무관한 대화(잡담·날씨 등)가 끼면 옛 대상을 후속 지시에 쓰지 않는다.
+            self._memory.forget_target(ctx.conversation_key)
             return
-        target = target_from_intent(intent, ctx.view)
-        if target is not None:
-            self._memory.remember_target(ctx.conversation_key, target)
+        self._memory.remember_target(ctx.conversation_key, target)
 
     def _history_messages(self, ctx: TurnContext) -> list[dict[str, Any]]:
         """최근 대화를 사용자·어시스턴트 메시지 쌍으로 만든다. 지난 턴의 툴 메시지는 싣지 않는다."""

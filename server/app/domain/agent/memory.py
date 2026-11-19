@@ -72,6 +72,10 @@ class ConversationMemory:
             return
         self._targets[hub_id] = _Stamped(target, self._monotonic() + self._target_ttl)
 
+    def forget_target(self, hub_id: str) -> None:
+        """허브의 직전 대상을 지운다. 무관한 턴이 끼면 "다시"·"또"가 옛 기기를 되풀이하지 않게 한다."""
+        self._targets.pop(hub_id, None)
+
     def target(self, hub_id: str) -> TargetMemory | None:
         """유효 시간 안의 직전 대상. 없거나 만료됐으면 None."""
         stamped = self._targets.get(hub_id)
