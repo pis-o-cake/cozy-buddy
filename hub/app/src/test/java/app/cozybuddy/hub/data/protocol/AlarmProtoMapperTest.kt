@@ -50,6 +50,25 @@ class AlarmProtoMapperTest {
     }
 
     @Test
+    fun `reminder keeps its kind and spoken label across the round trip`() {
+        val reminder = Alarm(
+            id = "m-1",
+            kind = AlarmKind.REMINDER,
+            label = "병원 가기",
+            schedule = AlarmSchedule.OneShot(1_700_000_900_000),
+            enabled = true,
+            revision = 3,
+            updatedAtEpochMs = 3_000,
+        )
+
+        val proto = reminder.toProto("hub-1")
+        val parsed = AlarmProto.parseFrom(proto.toByteArray())
+
+        assertEquals(3, proto.kind.number)
+        assertEquals(reminder, parsed.toDomain(updatedAtEpochMs = 3_000))
+    }
+
+    @Test
     fun `proto day numbers follow ISO order`() {
         val proto = repeating.toProto("hub-1")
 

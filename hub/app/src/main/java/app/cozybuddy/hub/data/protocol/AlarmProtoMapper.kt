@@ -62,11 +62,13 @@ fun AlarmProto.toDomain(updatedAtEpochMs: Long): Alarm = Alarm(
 private fun AlarmKind.toProto(): AlarmKindProto = when (this) {
     AlarmKind.ALARM -> AlarmKindProto.ALARM_KIND_ALARM
     AlarmKind.TIMER -> AlarmKindProto.ALARM_KIND_TIMER
+    AlarmKind.REMINDER -> AlarmKindProto.ALARM_KIND_REMINDER
 }
 
 private fun AlarmKindProto.toDomain(): AlarmKind = when (this) {
     AlarmKindProto.ALARM_KIND_ALARM -> AlarmKind.ALARM
     AlarmKindProto.ALARM_KIND_TIMER -> AlarmKind.TIMER
+    AlarmKindProto.ALARM_KIND_REMINDER -> AlarmKind.REMINDER
     else -> throw IllegalArgumentException("Unsupported alarm kind: $this")
 }
 

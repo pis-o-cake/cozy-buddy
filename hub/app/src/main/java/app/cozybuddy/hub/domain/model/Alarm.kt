@@ -2,7 +2,11 @@ package app.cozybuddy.hub.domain.model
 
 import java.time.DayOfWeek
 
-enum class AlarmKind { ALARM, TIMER }
+/**
+ * 알람 종류. [REMINDER] 는 말로 설정한 리마인더로, label 이 알릴 내용이다.
+ * 울릴 때 긴 알람 반복음 대신 짧은 알림음과 문구를 쓴다.
+ */
+enum class AlarmKind { ALARM, TIMER, REMINDER }
 
 sealed interface AlarmSchedule {
     /** 절대 시각에 한 번만 울린다. 타이머도 이 형태다. */

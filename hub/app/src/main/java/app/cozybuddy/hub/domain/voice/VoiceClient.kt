@@ -42,6 +42,17 @@ data class ConversationText(
     val responseFinal: Boolean = false,
 )
 
+/** 리마인더 음성 안내의 진행. 알림음을 멈추거나 화면을 정리하는 쪽이 듣는다. */
+sealed interface ReminderSpeech {
+    val alarmId: String
+
+    /** 안내 음성이 재생되기 시작했다. 알림음은 이때 멈춘다. */
+    data class Started(override val alarmId: String) : ReminderSpeech
+
+    /** 안내 음성 재생이 소진됐다. */
+    data class Drained(override val alarmId: String) : ReminderSpeech
+}
+
 /** 울림 상태를 도메인이 아는 만큼만 노출한다. */
 interface AlarmRingingSource {
     val ringing: StateFlow<Boolean>
@@ -102,17 +113,29 @@ class VoiceClient @Inject constructor(
         data object WakeWord : Command
         data class Inbound(val envelope: Envelope) : Command
         data object LinkLost : Command
+        data class ReminderFired(val alarmId: String, val label: String) : Command
         data class Ringing(val ringing: Boolean) : Command
         data class UplinkFinished(val utteranceId: String, val result: UplinkResult) : Command
         data class Drained(val event: PlaybackDrained) : Command
         data class ThinkingTimeout(val utteranceId: String) : Command
     }
 
+    private val _reminderSpeech = MutableSharedFlow<ReminderSpeech>(extraBufferCapacity = NOTICE_BUFFER)
+
+    /** 리마인더 안내 음성의 시작·종료. [onReminderFired] 로 요청한 알람에 대해서만 나온다. */
+    val reminderSpeech: SharedFlow<ReminderSpeech> = _reminderSpeech.asSharedFlow()
+
     private val commands = Channel<Command>(Channel.UNLIMITED)
     private var runner: Job? = null
     private var uplinkJob: Job? = null
     private var timeoutJob: Job? = null
     private var broadcastId: String? = null
+
+    // 서버에 ReminderFired 를 보냈고 안내 음성을 기다리는 알람. 음성이 시작되면 reminderStreamId 가 이어받는다.
+    private var awaitingReminderId: String? = null
+    private var reminderStream: ReminderStream? = null
+
+    private data class ReminderStream(val streamId: String, val alarmId: String)
     private val staleStreams = ArrayDeque<String>()
 
     private val uplink = UtteranceUplink(link, capture, vad, config.uplink, config.vad)
@@ -138,6 +161,7 @@ class VoiceClient @Inject constructor(
         runner = null
         releaseActivity()
         broadcastId = null
+        clearReminder()
         machine.onDisconnected()
         Timber.i("Voice client stopped")
     }
@@ -152,8 +176,18 @@ class VoiceClient @Inject constructor(
         commands.trySend(Command.WakeWord)
     }
 
+    /**
+     * 리마인더가 울렸다. 연결돼 있으면 서버에 [app.cozybuddy.protocol.v1.ReminderFired] 를 보내 안내 음성을 요청한다.
+     * 오프라인이면 아무것도 보내지 않으며 알림음과 문구만 남는다.
+     */
+    fun onReminderFired(alarmId: String, label: String) {
+        if (runner?.isActive != true) return Timber.d("Reminder announce skipped: voice client not running")
+        commands.trySend(Command.ReminderFired(alarmId, label))
+    }
+
     private fun handle(command: Command) {
         when (command) {
+            is Command.ReminderFired -> handleReminderFired(command.alarmId, command.label)
             Command.Tap -> handleTap()
             Command.WakeWord -> handleWakeWord()
             is Command.Inbound -> handleInbound(command.envelope)
@@ -163,6 +197,12 @@ class VoiceClient @Inject constructor(
             is Command.Drained -> handleDrained(command.event)
             is Command.ThinkingTimeout -> handleThinkingTimeout(command.utteranceId)
         }
+    }
+
+    private fun handleReminderFired(alarmId: String, label: String) {
+        if (link.state.value !is ConnectionState.Connected) return Timber.d("Reminder announce skipped: offline")
+        if (!link.send(VoiceMessages.reminderFired(alarmId, label))) return Timber.w("Reminder announce not sent")
+        awaitingReminderId = alarmId
     }
 
     private fun handleTap() {
@@ -290,6 +330,7 @@ class VoiceClient @Inject constructor(
         when (message.kind) {
             StreamKind.STREAM_KIND_RESPONSE_DOWN -> {
                 if (message.streamId in staleStreams) return
+                if (acceptReminderSpeech(message.streamId, rate)) return
                 if (!machine.onResponseAudioStart(message.streamId)) {
                     return Timber.d("Response audio ignored in phase %s", machine.state.value.phase)
                 }
@@ -306,9 +347,21 @@ class VoiceClient @Inject constructor(
         }
     }
 
+    /** 요청해 둔 리마인더의 안내 음성이면 대화 상태와 무관하게 재생한다. 아니면 false. */
+    private fun acceptReminderSpeech(streamId: String, rate: Int): Boolean {
+        val alarmId = awaitingReminderId ?: return false
+        if (!streamId.startsWith(REMINDER_STREAM_PREFIX) || !machine.state.value.alarmRinging) return false
+        awaitingReminderId = null
+        reminderStream = ReminderStream(streamId, alarmId)
+        player.start(streamId, StreamKind.STREAM_KIND_RESPONSE_DOWN, rate)
+        _reminderSpeech.tryEmit(ReminderSpeech.Started(alarmId))
+        return true
+    }
+
     private fun handleAudioChunk(chunk: AudioChunk) {
         val owned = when (chunk.kind) {
-            StreamKind.STREAM_KIND_RESPONSE_DOWN -> chunk.streamId == machine.state.value.responseId
+            StreamKind.STREAM_KIND_RESPONSE_DOWN ->
+                chunk.streamId == machine.state.value.responseId || chunk.streamId == reminderStream?.streamId
             StreamKind.STREAM_KIND_BROADCAST_DOWN -> chunk.streamId == broadcastId
             else -> false
         }
@@ -318,7 +371,7 @@ class VoiceClient @Inject constructor(
     }
 
     private fun handleAudioEnd(streamId: String) {
-        val known = streamId == machine.state.value.responseId || streamId == broadcastId
+        val known = streamId == machine.state.value.responseId || streamId == broadcastId || streamId == reminderStream?.streamId
         if (known) player.finish(streamId)
     }
 
@@ -341,6 +394,12 @@ class VoiceClient @Inject constructor(
     }
 
     private fun handleDrained(event: PlaybackDrained) {
+        val reminder = reminderStream
+        if (reminder != null && event.streamId == reminder.streamId) {
+            reminderStream = null
+            _reminderSpeech.tryEmit(ReminderSpeech.Drained(reminder.alarmId))
+            return
+        }
         if (event.kind == StreamKind.STREAM_KIND_BROADCAST_DOWN) {
             if (event.streamId == broadcastId) broadcastId = null
             return
@@ -364,14 +423,19 @@ class VoiceClient @Inject constructor(
     private fun handleLinkLost() {
         val wasActive = machine.state.value.phase != AssistantPhase.IDLE
         // 연결 상태는 Connecting 과 Disconnected 사이를 오가므로, 멈출 것이 있을 때만 정리한다.
-        if (wasActive || broadcastId != null) releaseActivity()
+        if (wasActive || broadcastId != null || reminderStream != null) releaseActivity()
         broadcastId = null
+        clearReminder()
         machine.onDisconnected()
         if (wasActive) notify(VoiceNotice.OFFLINE)
     }
 
     private fun handleRinging(ringing: Boolean) {
-        if (!ringing) return machine.onAlarmRinging(false)
+        if (!ringing) {
+            stopBroadcast()
+            clearReminder()
+            return machine.onAlarmRinging(false)
+        }
         val before = machine.state.value
         releaseActivity()
         broadcastId = null
@@ -413,9 +477,15 @@ class VoiceClient @Inject constructor(
     }
 
     private fun stopBroadcast() {
-        if (broadcastId == null) return
+        if (broadcastId == null && reminderStream == null) return
         player.stop()
         broadcastId = null
+        reminderStream = null
+    }
+
+    private fun clearReminder() {
+        awaitingReminderId = null
+        reminderStream = null
     }
 
     private fun markStale(streamId: String) {
@@ -431,5 +501,8 @@ class VoiceClient @Inject constructor(
     private companion object {
         const val NOTICE_BUFFER = 4
         const val STALE_LIMIT = 16
+
+        /** 서버가 리마인더 안내 음성 스트림 ID 앞에 붙이는 접두어. 대화 응답과 구분한다. */
+        const val REMINDER_STREAM_PREFIX = "reminder-"
     }
 }

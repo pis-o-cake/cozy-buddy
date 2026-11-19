@@ -20,6 +20,7 @@
 
     <string name="alarm_default_label">알람</string>
     <string name="alarm_default_label_timer">타이머</string>
+    <string name="alarm_default_label_reminder">리마인더</string>
     <string name="alarm_ring_stop">정지</string>
     <string name="alarm_ring_snooze">스누즈 (%1$d분)</string>
     <string name="alarm_notification_channel_name">알람 울림</string>

@@ -9,6 +9,7 @@ import app.cozybuddy.protocol.v1.WakeSource
 import app.cozybuddy.protocol.v1.audioChunk
 import app.cozybuddy.protocol.v1.audioFormat
 import app.cozybuddy.protocol.v1.envelope
+import app.cozybuddy.protocol.v1.reminderFired
 import app.cozybuddy.protocol.v1.utteranceCancel
 import app.cozybuddy.protocol.v1.utteranceEnd
 import app.cozybuddy.protocol.v1.utteranceStart
@@ -51,6 +52,13 @@ internal object VoiceMessages {
         utteranceCancel = utteranceCancel {
             this.streamId = streamId
             this.reason = reason
+        }
+    }
+
+    fun reminderFired(alarmId: String, label: String): Envelope = envelope {
+        reminderFired = reminderFired {
+            this.alarmId = alarmId
+            this.label = label
         }
     }
 
