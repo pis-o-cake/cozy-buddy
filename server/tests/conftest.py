@@ -1,5 +1,6 @@
 """테스트 공용 픽스처. 테스트마다 임시 SQLite 파일에 실제 Alembic 마이그레이션을 적용한다."""
 
+import threading
 import time
 from collections.abc import Callable, Iterator
 from pathlib import Path
@@ -163,3 +164,28 @@ def eventually[T](check: Callable[[], T | None], timeout: float = 3.0) -> T:
             return value
         time.sleep(0.02)
     raise AssertionError("Condition not met in time")
+
+
+def _live_db_threads() -> list[threading.Thread]:
+    return [
+        t
+        for t in threading.enumerate()
+        if getattr(t, "_target", None) is not None
+        and t._target.__name__ == "_connection_worker_thread"  # type: ignore[attr-defined]
+    ]
+
+
+@pytest.fixture(autouse=True)
+def _no_leaked_db_connections() -> Iterator[None]:
+    """테스트가 aiosqlite 커넥션을 닫지 않고 남기면 실패시킨다.
+
+    남은 워커 스레드는 나중에 닫힌 이벤트 루프에 결과를 돌려주려다 `Event loop is closed` 를 낸다.
+    """
+    before = set(_live_db_threads())
+    yield
+    deadline = time.monotonic() + 1.0
+    leaked = [t for t in _live_db_threads() if t not in before]
+    while leaked and time.monotonic() < deadline:
+        time.sleep(0.02)
+        leaked = [t for t in leaked if t.is_alive()]
+    assert not leaked, f"Leaked {len(leaked)} aiosqlite connection thread(s)"
