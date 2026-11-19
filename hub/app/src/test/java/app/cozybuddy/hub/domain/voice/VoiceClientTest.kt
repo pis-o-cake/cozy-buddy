@@ -10,6 +10,7 @@ import app.cozybuddy.protocol.v1.StreamKind
 import app.cozybuddy.protocol.v1.WakeSource
 import app.cozybuddy.protocol.v1.audioChunk
 import app.cozybuddy.protocol.v1.audioFormat
+import app.cozybuddy.protocol.v1.broadcastNotice
 import app.cozybuddy.protocol.v1.envelope
 import app.cozybuddy.protocol.v1.responseAudioEnd
 import app.cozybuddy.protocol.v1.responseAudioStart
@@ -42,15 +43,30 @@ class VoiceClientTest {
 
     private val phase get() = machine.state.value.phase
 
-    private class Harness(val client: VoiceClient, val notices: List<VoiceNotice>)
+    private class Harness(
+        val client: VoiceClient,
+        val notices: List<VoiceNotice>,
+        val subtitles: List<BroadcastSubtitle>,
+    )
 
     private fun TestScope.harness(): Harness {
         val client = VoiceClient(link, capture, vad, player, machine, alarm, SequentialIds(), VoiceClientConfig(), backgroundScope)
         val notices = mutableListOf<VoiceNotice>()
+        val subtitles = mutableListOf<BroadcastSubtitle>()
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { client.notices.toList(notices) }
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { client.broadcasts.toList(subtitles) }
         client.start()
         runCurrent()
-        return Harness(client, notices)
+        return Harness(client, notices, subtitles)
+    }
+
+    private fun broadcastNotice(id: String, text: String, area: String = "거실") = envelope {
+        broadcastNotice = broadcastNotice {
+            fromHubId = "hub-a"
+            fromArea = area
+            this.text = text
+            streamId = id
+        }
     }
 
     private fun TestScope.feed(frames: Int, probability: Float) {
@@ -405,6 +421,69 @@ class VoiceClientTest {
         receive(audioStart("b1", StreamKind.STREAM_KIND_BROADCAST_DOWN))
 
         assertTrue(player.calls.isEmpty())
+    }
+
+    @Test
+    fun `idle hub shows the broadcast subtitle and plays its audio`() = runTest {
+        val h = harness()
+        link.connect()
+        runCurrent()
+
+        receive(broadcastNotice("b1", "밥 먹으세요"))
+        receive(audioStart("b1", StreamKind.STREAM_KIND_BROADCAST_DOWN))
+        receive(audioData("b1", 0, StreamKind.STREAM_KIND_BROADCAST_DOWN))
+        receive(audioEnd("b1"))
+
+        assertEquals(listOf(BroadcastSubtitle("b1", "거실", "밥 먹으세요")), h.subtitles)
+        assertEquals(
+            listOf("start:b1:STREAM_KIND_BROADCAST_DOWN:24000", "write:b1:0", "finish:b1"),
+            player.calls,
+        )
+        assertEquals(AssistantPhase.IDLE, phase)
+    }
+
+    @Test
+    fun `broadcast during a conversation keeps the subtitle but plays no audio`() = runTest {
+        val h = harness()
+        link.connect()
+        h.client.onTap()
+        runCurrent()
+
+        receive(broadcastNotice("b1", "밥 먹으세요"))
+        receive(audioStart("b1", StreamKind.STREAM_KIND_BROADCAST_DOWN))
+        receive(audioData("b1", 0, StreamKind.STREAM_KIND_BROADCAST_DOWN))
+        receive(audioEnd("b1"))
+
+        assertEquals(listOf("밥 먹으세요"), h.subtitles.map { it.text })
+        assertTrue(player.calls.isEmpty())
+        assertEquals(AssistantPhase.LISTENING, phase)
+    }
+
+    @Test
+    fun `broadcast while an alarm rings keeps the subtitle but plays no audio`() = runTest {
+        val h = harness()
+        link.connect()
+        alarm.ringing.value = true
+        runCurrent()
+
+        receive(broadcastNotice("b1", "밥 먹으세요"))
+        receive(audioStart("b1", StreamKind.STREAM_KIND_BROADCAST_DOWN))
+        receive(audioData("b1", 0, StreamKind.STREAM_KIND_BROADCAST_DOWN))
+
+        assertEquals(listOf("밥 먹으세요"), h.subtitles.map { it.text })
+        // 울림이 시작될 때 재생기를 멈추는 stop 은 있어도, 방송 재생은 시작되지 않는다.
+        assertTrue(player.calls.none { it.startsWith("start") || it.startsWith("write") })
+    }
+
+    @Test
+    fun `broadcast notice with blank text is ignored`() = runTest {
+        val h = harness()
+        link.connect()
+        runCurrent()
+
+        receive(broadcastNotice("b1", "  "))
+
+        assertTrue(h.subtitles.isEmpty())
     }
 
     @Test

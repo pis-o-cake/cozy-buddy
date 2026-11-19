@@ -116,6 +116,8 @@
     <string name="conversation_notice_offline">서버에 연결할 수 없어요</string>
     <string name="conversation_notice_mic_unavailable">마이크를 쓸 수 없어요. 권한을 확인해 주세요</string>
     <string name="conversation_notice_error">문제가 생겼어요. 다시 말씀해 주세요</string>
+    <string name="broadcast_title">방송</string>
+    <string name="broadcast_title_from_area">%1$s에서 온 방송</string>
     <string name="settings_wake_word_title">호출어</string>
     <string name="settings_wake_word_toggle">호출어로 깨우기</string>
     <string name="settings_wake_word_keyword_hey_jarvis">Hey Jarvis</string>

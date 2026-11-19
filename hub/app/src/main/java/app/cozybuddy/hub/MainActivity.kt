@@ -32,6 +32,7 @@ import app.cozybuddy.hub.feature.ambient.ui.AmbientRoute
 import app.cozybuddy.hub.feature.dashboard.DashboardViewModel
 import app.cozybuddy.hub.feature.dashboard.ui.DashboardRoute
 import app.cozybuddy.hub.feature.conversation.ConversationViewModel
+import app.cozybuddy.hub.feature.conversation.ui.BroadcastBannerRoute
 import app.cozybuddy.hub.feature.conversation.ui.ConversationOverlayRoute
 import app.cozybuddy.hub.feature.settings.PairingViewModel
 import app.cozybuddy.hub.feature.settings.SettingsViewModel
@@ -93,6 +94,8 @@ class MainActivity : ComponentActivity() {
             ConversationOverlayRoute(conversationViewModel, showMicButton = screen == HubScreen.AMBIENT)
             // 울림 오버레이는 어떤 화면 위에서도 보여야 하므로 마지막에 그린다.
             AlarmRingOverlayRoute(alarmRingViewModel, Modifier)
+            // 방송 자막은 대화·알람 위에서도 보여야 하므로 울림 오버레이보다 나중에 그린다.
+            BroadcastBannerRoute(conversationViewModel)
         }
     }
 

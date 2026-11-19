@@ -2,6 +2,7 @@ package app.cozybuddy.hub.feature.conversation
 
 import app.cozybuddy.hub.domain.voice.AssistantPhase
 import app.cozybuddy.hub.domain.voice.AssistantSnapshot
+import app.cozybuddy.hub.domain.voice.BroadcastSubtitle
 import app.cozybuddy.hub.domain.voice.ConversationText
 import app.cozybuddy.hub.domain.voice.VoiceClient
 import app.cozybuddy.hub.domain.voice.VoiceNotice
@@ -21,6 +22,7 @@ import kotlinx.coroutines.test.setMain
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -32,7 +34,9 @@ class ConversationViewModelTest {
     private val text = MutableStateFlow(ConversationText())
     private val level = MutableStateFlow(0f)
     private val notices = MutableSharedFlow<VoiceNotice>(extraBufferCapacity = 4)
+    private val broadcasts = MutableSharedFlow<BroadcastSubtitle>(extraBufferCapacity = 4)
     private val client = mockk<VoiceClient>(relaxed = true) {
+        every { this@mockk.broadcasts } returns this@ConversationViewModelTest.broadcasts
         every { this@mockk.state } returns this@ConversationViewModelTest.state
         every { conversation } returns text
         every { micLevel } returns level
@@ -129,6 +133,52 @@ class ConversationViewModelTest {
         phase(AssistantPhase.THINKING)
         runCurrent()
         assertTrue(viewModel.uiState.value.levels.isEmpty())
+    }
+
+    @Test
+    fun `broadcast subtitle shows for the configured time then clears`() = runTest {
+        val viewModel = ConversationViewModel(client)
+        runCurrent()
+        assertNull(viewModel.broadcast.value)
+
+        broadcasts.tryEmit(BroadcastSubtitle("b1", "거실", "밥 먹으세요"))
+        runCurrent()
+        assertEquals("밥 먹으세요", viewModel.broadcast.value?.text)
+
+        advanceTimeBy(ConversationConfig.BROADCAST_DISMISS_MS - 100)
+        runCurrent()
+        assertEquals("밥 먹으세요", viewModel.broadcast.value?.text)
+
+        advanceTimeBy(200)
+        runCurrent()
+        assertNull(viewModel.broadcast.value)
+    }
+
+    @Test
+    fun `a newer broadcast replaces the subtitle and restarts the timer`() = runTest {
+        val viewModel = ConversationViewModel(client)
+        runCurrent()
+        broadcasts.tryEmit(BroadcastSubtitle("b1", "거실", "첫째"))
+        runCurrent()
+        advanceTimeBy(ConversationConfig.BROADCAST_DISMISS_MS - 1_000)
+
+        broadcasts.tryEmit(BroadcastSubtitle("b2", "주방", "둘째"))
+        runCurrent()
+        advanceTimeBy(ConversationConfig.BROADCAST_DISMISS_MS - 1_000)
+        runCurrent()
+
+        assertEquals("둘째", viewModel.broadcast.value?.text)
+    }
+
+    @Test
+    fun `broadcast subtitle does not touch the conversation overlay`() = runTest {
+        val viewModel = ConversationViewModel(client)
+        runCurrent()
+
+        broadcasts.tryEmit(BroadcastSubtitle("b1", "거실", "밥 먹으세요"))
+        runCurrent()
+
+        assertFalse(viewModel.uiState.value.visible)
     }
 
     @Test

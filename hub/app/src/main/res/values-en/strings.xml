@@ -114,6 +114,8 @@
     <string name="conversation_notice_offline">Cannot reach the server</string>
     <string name="conversation_notice_mic_unavailable">Microphone unavailable. Check the permission</string>
     <string name="conversation_notice_error">Something went wrong. Please try again</string>
+    <string name="broadcast_title">Announcement</string>
+    <string name="broadcast_title_from_area">Announcement from %1$s</string>
     <string name="settings_wake_word_title">Wake word</string>
     <string name="settings_wake_word_toggle">Wake with the wake word</string>
     <string name="settings_wake_word_keyword_hey_jarvis">Hey Jarvis</string>

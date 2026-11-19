@@ -11,6 +11,7 @@ import app.cozybuddy.hub.core.network.HubLink
 import app.cozybuddy.hub.di.ApplicationScope
 import app.cozybuddy.protocol.v1.AudioChunk
 import app.cozybuddy.protocol.v1.AudioEncoding
+import app.cozybuddy.protocol.v1.BroadcastNotice
 import app.cozybuddy.protocol.v1.CancelReason
 import app.cozybuddy.protocol.v1.Envelope
 import app.cozybuddy.protocol.v1.ResponseAudioStart
@@ -52,6 +53,13 @@ sealed interface ReminderSpeech {
     /** 안내 음성 재생이 소진됐다. */
     data class Drained(override val alarmId: String) : ReminderSpeech
 }
+
+/**
+ * 다른 허브가 보낸 방송의 자막. 오디오 재생 여부와 무관하게 알림이 오면 낸다.
+ *
+ * @property fromArea 방송한 허브가 놓인 방 이름. 모르면 빈 문자열.
+ */
+data class BroadcastSubtitle(val streamId: String, val fromArea: String, val text: String)
 
 /** 울림 상태를 도메인이 아는 만큼만 노출한다. */
 interface AlarmRingingSource {
@@ -107,6 +115,14 @@ class VoiceClient @Inject constructor(
 
     private val _notices = MutableSharedFlow<VoiceNotice>(extraBufferCapacity = NOTICE_BUFFER)
     val notices: SharedFlow<VoiceNotice> = _notices.asSharedFlow()
+
+    private val _broadcasts = MutableSharedFlow<BroadcastSubtitle>(extraBufferCapacity = NOTICE_BUFFER)
+
+    /**
+     * 방송 알림. 대화 중이거나 알람이 울려 오디오를 재생하지 않는 방송도 자막은 남기므로,
+     * 재생 가능 여부와 상관없이 낸다.
+     */
+    val broadcasts: SharedFlow<BroadcastSubtitle> = _broadcasts.asSharedFlow()
 
     private sealed interface Command {
         data object Tap : Command
@@ -301,12 +317,18 @@ class VoiceClient @Inject constructor(
             Envelope.BodyCase.RESPONSE_AUDIO_START -> handleAudioStart(envelope.responseAudioStart)
             Envelope.BodyCase.AUDIO_CHUNK -> handleAudioChunk(envelope.audioChunk)
             Envelope.BodyCase.RESPONSE_AUDIO_END -> handleAudioEnd(envelope.responseAudioEnd.streamId)
+            Envelope.BodyCase.BROADCAST_NOTICE -> handleBroadcastNotice(envelope.broadcastNotice)
             Envelope.BodyCase.ASSISTANT_STATE ->
                 Timber.d("Server assistant state: %s", envelope.assistantState.state)
             Envelope.BodyCase.ERROR -> handleServerError(envelope.error.streamId)
             Envelope.BodyCase.UTTERANCE_DECLINED -> handleDeclined(envelope.utteranceDeclined.streamId)
             else -> Unit
         }
+    }
+
+    private fun handleBroadcastNotice(notice: BroadcastNotice) {
+        if (notice.text.isBlank()) return Timber.d("Broadcast notice ignored: empty text")
+        _broadcasts.tryEmit(BroadcastSubtitle(notice.streamId, notice.fromArea, notice.text))
     }
 
     private fun handleResponseText(streamId: String, delta: String, final: Boolean) {
