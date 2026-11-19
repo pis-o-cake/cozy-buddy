@@ -113,7 +113,10 @@ def test_reminder_fired_with_empty_label_is_rejected(client: TestClient) -> None
         send(hub, Envelope(reminder_fired=ReminderFired(alarm_id="m4", label="  ")))
         frames = recv_until(hub, lambda e: e.WhichOneof("body") == "error")
 
-    assert frames[-1].error.code == ERROR_CODE_BAD_REQUEST
+    error = frames[-1].error
+    assert error.code == ERROR_CODE_BAD_REQUEST
+    # 스트림 없는 오류가 빈 ID 로 나가면 허브가 진행 중인 발화의 실패로 읽는다.
+    assert error.request_id == "m4" and not error.stream_id
 
 
 def test_mobile_cannot_trigger_reminder_speech(client: TestClient) -> None:

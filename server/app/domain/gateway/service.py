@@ -345,4 +345,7 @@ def _request_id(envelope: Envelope) -> str:
         return str(envelope.entity_command.request_id)
     if body == "text_query":
         return str(envelope.text_query.request_id)
-    return ""
+    if body == "reminder_fired":
+        return str(envelope.reminder_fired.alarm_id) or body
+    # 발화 스트림과 무관한 메시지의 오류가 빈 ID 로 나가면 허브가 진행 중인 발화의 실패로 읽는다.
+    return body if body is not None and body not in _HUB_VOICE_BODIES else ""
