@@ -3,7 +3,9 @@
 from collections.abc import Iterator
 
 import pytest
+from cozy.v1.alarm_pb2 import ALARM_CONTROL_ACTION_STOP, AlarmControlResult
 from cozy.v1.envelope_pb2 import Envelope
+from cozy.v1.home_pb2 import HubStatus
 from cozy.v1.voice_pb2 import TextQuery
 from fastapi.testclient import TestClient
 from starlette.testclient import WebSocketTestSession
@@ -188,3 +190,39 @@ def test_stt_failure_records_error_turn(
 
     turn = captured.one()
     assert (turn.path, turn.error_code) == (TurnPath.ERROR, "stt_failed")
+
+
+def _alarm_control_of(frame: Envelope) -> bool:
+    return frame.WhichOneof("body") == "alarm_control"
+
+
+def test_ringing_hub_stop_command_goes_to_hub_then_replies(
+    turn_client: TestClient, gateway: FakeOpenAI, captured: Captured
+) -> None:
+    gateway.stt_text = "알람 꺼줘"
+    hub_control = turn_client.app.state.connections.hub_control  # type: ignore[attr-defined]
+    with connect_hub(turn_client) as hub:
+        send(hub, Envelope(hub_status=HubStatus(ringing_alarm_id="a1")))
+        eventually(lambda: hub_control.ringing_alarm_id("hub-1"))
+        send_utterance(hub)
+        control = recv_until(hub, _alarm_control_of)[-1].alarm_control
+        assert (control.alarm_id, control.action) == ("a1", ALARM_CONTROL_ACTION_STOP)
+        result = AlarmControlResult(request_id=control.request_id, ok=True)
+        send(hub, Envelope(alarm_control_result=result))
+        frames = recv_until(hub, is_idle)
+
+    assert any(f.WhichOneof("body") == "response_audio_start" for f in frames)
+    turn = captured.one()
+    assert (turn.path, turn.intent) == (TurnPath.MATCHER, "AlarmControlIntent")
+    assert turn.skill_result is SkillOutcome.OK and turn.response_text == "알람을 껐어요"
+
+
+def test_not_ringing_hub_keeps_cancel_alarm_meaning(
+    turn_client: TestClient, gateway: FakeOpenAI, captured: Captured
+) -> None:
+    gateway.stt_text = "알람 꺼줘"
+    with connect_hub(turn_client) as hub:
+        send_utterance(hub)
+        recv_until(hub, is_idle)
+
+    assert captured.one().intent == "CancelAlarmIntent"

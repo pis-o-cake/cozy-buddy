@@ -8,6 +8,7 @@ from loguru import logger
 from starlette.requests import HTTPConnection
 
 from app.config import ClientRole
+from app.core.hub_control import HubControl
 
 CLOSE_REPLACED = 4000
 
@@ -51,6 +52,7 @@ class ConnectionManager:
     def __init__(self) -> None:
         self._hubs: dict[str, ClientConnection] = {}
         self._mobiles: dict[str, ClientConnection] = {}
+        self.hub_control = HubControl(self)
 
     def _pool(self, role: ClientRole) -> dict[str, ClientConnection]:
         return self._hubs if role == ClientRole.HUB else self._mobiles
@@ -62,6 +64,8 @@ class ConnectionManager:
         pool = self._pool(conn.role)
         old = pool.get(conn.client_id)
         pool[conn.client_id] = conn
+        if conn.role == ClientRole.HUB:
+            self.hub_control.forget(conn.client_id)
         if old is not None and old is not conn:
             logger.info("Replacing connection: {} {}", conn.role, conn.client_id)
             await old.close(CLOSE_REPLACED)
@@ -78,6 +82,8 @@ class ConnectionManager:
         if pool.get(conn.client_id) is not conn:
             return False
         del pool[conn.client_id]
+        if conn.role == ClientRole.HUB:
+            self.hub_control.forget(conn.client_id)
         return True
 
     def is_hub_online(self, hub_id: str) -> bool:

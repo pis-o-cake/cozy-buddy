@@ -16,12 +16,14 @@ from app.core.connections import ConnectionManager
 from app.core.database import Database
 from app.core.i18n import Translator
 from app.core.openai_gateway import OpenAIGateway
+from app.domain.agent.alarm_control_attempt import AlarmControlAttempt
 from app.domain.agent.clarify import ClarifyStore
 from app.domain.agent.context import TurnContext
 from app.domain.agent.home_view import build_home_view, home_names
 from app.domain.agent.memory import ConversationMemory, target_from_intent
 from app.domain.agent.model import Clarify, Intent
 from app.domain.agent.skills.alarm import AlarmSkill
+from app.domain.agent.skills.alarm_control import AlarmControlSkill
 from app.domain.agent.skills.alarm_select import AlarmSelector
 from app.domain.agent.skills.alarm_store import AlarmStore
 from app.domain.agent.skills.base import KEY_INTERNAL
@@ -76,6 +78,7 @@ class AgentService:
                 DeviceSkill(translate, home),
                 StateSkill(translate),
                 AlarmSkill(translate, alarms, selector, clarify, self._tz),
+                AlarmControlSkill(translate, connections.hub_control),
                 WeatherSkill(translate, weather),
                 ClarifySkill(translate, clarify),
             ],
@@ -83,6 +86,7 @@ class AgentService:
         )
         self._understander = Understander(
             [
+                AlarmControlAttempt(connections.hub_control.ringing_alarm_id),
                 ContextAttempt(
                     [
                         ClarifyAnswerResolver(clarify, alarms, selector),

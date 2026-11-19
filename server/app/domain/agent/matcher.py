@@ -10,6 +10,7 @@ from dataclasses import dataclass
 
 from loguru import logger
 
+from app.domain.agent.alarm_control_intent import match_alarm_control
 from app.domain.agent.lexicon import QUERY_KINDS, VERB_KINDS, Kind, Lex, Vocab, build_vocab, scan
 from app.domain.agent.model import (
     RELATIVE_BRIGHTNESS_STEP,
@@ -67,6 +68,8 @@ def match(
     norm = normalize(context.text)
     if not norm.compact:
         return NoMatch()
+    if context.ringing and (control := match_alarm_control(norm)) is not None:
+        return control
     scheduled = (
         match_cancel(norm, context.now) or match_timer(norm) or match_alarm(norm, context.now)
     )

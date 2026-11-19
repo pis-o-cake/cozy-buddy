@@ -46,11 +46,13 @@ class UtteranceContext:
         text: STT 결과 원문.
         hub_area_id: 발화한 허브가 놓인 방. 모르면 None.
         now: 시간대가 있는 현재 시각. 알람 시각 해석의 기준이다.
+        ringing: 발화한 허브가 지금 알람을 울리는 중인지. True 일 때만 정지·스누즈를 해석한다.
     """
 
     text: str
     hub_area_id: str | None
     now: datetime
+    ringing: bool = False
 
     def __post_init__(self) -> None:
         if self.now.tzinfo is None:
@@ -143,6 +145,21 @@ class CancelAlarmIntent:
     day_offset: int | None = None
 
 
+class AlarmControlKind(StrEnum):
+    """울리는 알람에 대한 제어 동작."""
+
+    STOP = "stop"
+    SNOOZE = "snooze"
+
+
+@dataclass(frozen=True, slots=True)
+class AlarmControlIntent:
+    """울리는 알람 정지·스누즈. snooze_minutes 가 None 이면 실행 쪽 기본값을 쓴다."""
+
+    kind: AlarmControlKind
+    snooze_minutes: int | None = None
+
+
 @dataclass(frozen=True, slots=True)
 class WeatherIntent:
     """바깥 날씨 질문. when 은 지금·오늘·내일 중 하나다."""
@@ -191,6 +208,7 @@ MatchResult = (
     | AlarmIntent
     | TimerIntent
     | CancelAlarmIntent
+    | AlarmControlIntent
     | WeatherIntent
     | Clarify
     | NoMatch
@@ -203,6 +221,7 @@ Intent = (
     | AlarmIntent
     | TimerIntent
     | CancelAlarmIntent
+    | AlarmControlIntent
     | WeatherIntent
     | Clarify
     | Dismiss
