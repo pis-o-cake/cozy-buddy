@@ -1,13 +1,12 @@
 engsys-document-review: 1
 document: docs/design/0005-backend-pipeline.md
-blob: 5f1f00bac126facff26334e7d8dfbebaaf9d8d5f
+blob: 191ea0faa2fabe4978e75212280b7d1cfdcd3b5b
 decision: pass
 reviewer: claude-opus-5-5
 audience: 서버 구현 담당자와 검토자
 purpose: 서버 발화 처리를 어떤 단계와 작업 묶음으로 구현하는가
 
-- 현재 구조 문제 3가지(800줄 agent 서비스와 이중 구현, 측정 부재, 후속 지시·알람 음성 제어 부재)를 코드 구조(메서드 목록) 확인 후 서술
-- 5단계 표에 소유 모듈과 시간 제한, 이해 단계의 시도 순서, 스킬과 의도 대응, 턴 기록 스키마·보존·조회 API를 정의
-- 실패 처리 표가 기존 서버 설계안 실패 정책과 모순 없는지 대조, 성능 예산 수치는 가상 허브 실측(약 1.5초)과 S2b 측정값에서 인용하고 스트리밍 전사는 가설로 표기
-- 작업 묶음 W1/W2의 선행·소유 파일과 공통 진행 6단계를 명시해 병렬 충돌 범위를 드러냄
+- STT 단계 시간 제한을 10초에서 6초(헤지 1.8초)로, 실패 처리 표의 오류 코드를 stt_failed·stt_timeout 으로 구체화한 변경을 확인
+- 성능 예산 절에 헤지 동작·과금 영향·관측 지표(stt_hedged, stt_hedge_ratio)·재시도 규칙 문단 추가, 구현(openai_gateway, 설정 기본값)과 일치함을 대조
+- 나머지 절은 변경 없음
 
