@@ -1,11 +1,10 @@
 engsys-document-review: 1
 document: docs/plan/development-plan.md
-blob: 462f15ccc1cb26bc4bcc608847cf48303e546d85
+blob: 2c34077e1a4fc988844d0511e98b7cb78e245f8a
 decision: pass
 reviewer: claude-opus-5-5
 audience: 프로젝트 소유자와 이후 작업 담당자
 purpose: 각 작업의 진행 상태와 막힌 이유를 한눈에 확인한다
 
-- 작업표에 W3 행 추가(설계안 0006 링크, 병합 PR, 실기기 대기 이슈), T21 상태를 실제 상태로 수정
-- PR 번호는 gh pr list --state merged 와 대조
+- 작업표에 W4 행 추가, 보안 검토 보고서 링크, 병합 PR 번호를 gh 와 대조
 
