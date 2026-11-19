@@ -38,8 +38,19 @@ def allowed(
     voice: bool = True,
     known: bool = True,
     scripts: frozenset[str] = frozenset(),
+    scenes: frozenset[str] = frozenset(),
+    blocked: frozenset[str] = frozenset(),
+    action: str | None = None,
 ) -> bool:
-    return can_control(e, exposure_known=known, allowed_scripts=scripts, voice=voice)
+    return can_control(
+        e,
+        exposure_known=known,
+        allowed_scripts=scripts,
+        voice=voice,
+        allowed_scenes=scenes,
+        voice_blocked_entities=blocked,
+        action=action,
+    )
 
 
 # --- 정책 단위 ----------------------------------------------------------------------------
@@ -50,6 +61,27 @@ def test_risky_cover_is_blocked_for_voice_but_allowed_by_touch(device_class: str
     cover = entity("cover.x", device_class=device_class)
     assert not allowed(cover, voice=True)
     assert allowed(cover, voice=False)
+
+
+@pytest.mark.parametrize("attributes", [{}, {"device_class": ""}])
+@pytest.mark.parametrize("action", ["turn_on", "toggle"])
+def test_cover_without_device_class_cannot_be_opened_by_voice(
+    attributes: dict[str, str], action: str
+) -> None:
+    cover = entity("cover.unknown", **attributes)
+    assert not allowed(cover, voice=True, action=action)
+    assert allowed(cover, voice=False, action=action)
+
+
+def test_cover_without_device_class_can_still_close_or_be_listed_by_voice() -> None:
+    cover = entity("cover.unknown")
+    assert allowed(cover, voice=True, action="turn_off")
+    assert allowed(cover, voice=True)
+
+
+@pytest.mark.parametrize("action", ["turn_on", "toggle"])
+def test_classified_cover_opens_by_voice(action: str) -> None:
+    assert allowed(entity("cover.blind", device_class="blind"), voice=True, action=action)
 
 
 @pytest.mark.parametrize("attributes", [{}, {"device_class": "curtain"}, {"device_class": "blind"}])
@@ -64,6 +96,24 @@ def test_script_requires_allow_list_for_every_path() -> None:
     listed = frozenset({"script.goodnight"})
     assert allowed(script, voice=True, scripts=listed)
     assert not allowed(entity("script.other"), voice=True, scripts=listed)
+
+
+def test_scene_requires_allow_list_for_voice_only() -> None:
+    scene = entity("scene.movie")
+    assert not allowed(scene, voice=True)
+    assert allowed(scene, voice=False)
+    listed = frozenset({"scene.movie"})
+    assert allowed(scene, voice=True, scenes=listed)
+    assert not allowed(entity("scene.other"), voice=True, scenes=listed)
+
+
+@pytest.mark.parametrize("entity_id", ["switch.front_door", "light.hall", "cover.shade"])
+def test_voice_blocked_entities_apply_to_any_domain_on_voice_only(entity_id: str) -> None:
+    blocked = frozenset({entity_id})
+    target = entity(entity_id)
+    assert not allowed(target, voice=True, blocked=blocked)
+    assert allowed(target, voice=False, blocked=blocked)
+    assert allowed(entity("switch.other"), voice=True, blocked=blocked)
 
 
 @pytest.mark.parametrize("domain", ["lock", "alarm_control_panel"])

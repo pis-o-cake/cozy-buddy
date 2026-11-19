@@ -1,6 +1,7 @@
 """클라이언트 목록 API 와 운영자 CLI."""
 
 import argparse
+import json
 import sqlite3
 from collections.abc import Iterator
 from contextlib import closing
@@ -151,6 +152,19 @@ def test_cli_pairing_code_success(capsys: pytest.CaptureFixture[str]) -> None:
     assert request.headers["authorization"] == f"Bearer {ADMIN_TOKEN}"
     assert request.url.path == "/api/auth/pairing-codes"
     assert b'"kitchen"' in request.content
+    assert json.loads(request.content)["client_kind"] == "hub"
+
+
+def test_cli_pairing_code_kind_option() -> None:
+    seen: list[httpx.Request] = []
+
+    def handle(request: httpx.Request) -> httpx.Response:
+        seen.append(request)
+        return httpx.Response(200, json={"code": "123456", "expires_in_seconds": 300})
+
+    argv = ["pairing-code", "--name", "폰", "--kind", "mobile"]
+    assert run_cli(argv, httpx.MockTransport(handle)) == 0
+    assert json.loads(seen[0].content)["client_kind"] == "mobile"
 
 
 def test_cli_clients_output(capsys: pytest.CaptureFixture[str]) -> None:

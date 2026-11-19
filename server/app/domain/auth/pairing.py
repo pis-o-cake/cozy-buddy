@@ -6,6 +6,8 @@ from collections import defaultdict, deque
 from collections.abc import Callable
 from dataclasses import dataclass
 
+from app.config import ClientRole
+
 PAIRING_CODE_DIGITS = 6
 PAIRING_CODE_TTL_SECONDS = 300
 PAIR_ATTEMPT_LIMIT = 5
@@ -18,6 +20,7 @@ class PairingGrant:
 
     name: str
     area_id: str
+    kind: ClientRole = ClientRole.HUB
 
 
 class PairingStore:

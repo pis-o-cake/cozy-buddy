@@ -69,6 +69,8 @@ class HomeService:
         self._ready = False
         self._buffer: list[dict[str, Any]] | None = None
         self._allowed_scripts = settings.allowed_script_ids
+        self._allowed_scenes = settings.allowed_scene_ids
+        self._voice_blocked = settings.voice_blocked_entity_ids
         self._exposed: set[str] | None = None
         self._debounce = settings.ha_registry_debounce_seconds
         self._expose_poll = settings.ha_expose_poll_seconds
@@ -122,12 +124,15 @@ class HomeService:
         entity = self._catalog.entities.get(entity_id)
         return entity is not None and self._allowed(entity, voice)
 
-    def _allowed(self, entity: HomeEntity, voice: bool) -> bool:
+    def _allowed(self, entity: HomeEntity, voice: bool, action: str | None = None) -> bool:
         return can_control(
             entity,
             exposure_known=self._catalog.exposure_known,
             allowed_scripts=self._allowed_scripts,
             voice=voice,
+            allowed_scenes=self._allowed_scenes,
+            voice_blocked_entities=self._voice_blocked,
+            action=action,
         )
 
     async def execute(self, command: EntityCommand, *, voice: bool = False) -> CommandResult:
@@ -143,7 +148,7 @@ class HomeService:
             return _failure(command, ERROR_CODE_UPSTREAM_UNAVAILABLE, KEY_UNAVAILABLE)
         if entity is None:
             return _failure(command, ERROR_CODE_NOT_FOUND, KEY_NOT_FOUND)
-        if not self._allowed(entity, voice):
+        if not self._allowed(entity, voice, command.action):
             logger.warning(
                 "Entity command denied by policy: entity={} action={} voice={} exposure_known={}",
                 entity.entity_id,

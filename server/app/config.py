@@ -163,6 +163,10 @@ class Settings(BaseSettings):
     # --- Home Assistant 제어 안전(S2) ---
     # 제어를 허용할 script 엔티티 ID 쉼표 목록. 비어 있으면 script 는 어떤 경로로도 실행하지 않는다.
     allowed_scripts: str = ""
+    # 음성/LLM 으로 활성화를 허용할 scene 엔티티 ID 쉼표 목록. 비어 있으면 scene 은 터치로만 쓴다.
+    allowed_scenes: str = ""
+    # 음성/LLM 으로 제어하지 않을 엔티티 ID 쉼표 목록(도메인 무관). 문을 여는 switch 등을 둔다.
+    voice_blocked_entities: str = ""
 
     @field_validator("home_latitude", "home_longitude", mode="before")
     @classmethod
@@ -219,6 +223,16 @@ class Settings(BaseSettings):
     def allowed_script_ids(self) -> frozenset[str]:
         """제어를 허용한 script 엔티티 ID 집합."""
         return frozenset(s.strip() for s in self.allowed_scripts.split(",") if s.strip())
+
+    @property
+    def allowed_scene_ids(self) -> frozenset[str]:
+        """음성으로 활성화를 허용한 scene 엔티티 ID 집합."""
+        return frozenset(s.strip() for s in self.allowed_scenes.split(",") if s.strip())
+
+    @property
+    def voice_blocked_entity_ids(self) -> frozenset[str]:
+        """음성 경로에서 막을 엔티티 ID 집합."""
+        return frozenset(s.strip() for s in self.voice_blocked_entities.split(",") if s.strip())
 
     @property
     def weather_enabled(self) -> bool:

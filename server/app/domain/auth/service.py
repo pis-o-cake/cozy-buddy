@@ -39,11 +39,16 @@ class AuthService:
     def issue_code(self, grant: PairingGrant) -> PairingCodeRead:
         """등록 코드를 발급한다."""
         code = self._store.issue(grant)
-        logger.info("Pairing code issued: name={}", grant.name)
+        logger.info("Pairing code issued: name={} kind={}", grant.name, grant.kind)
         return PairingCodeRead(code=code, expires_in_seconds=PAIRING_CODE_TTL_SECONDS)
 
-    async def pair(self, ip: str, code: str, kind: ClientRole) -> PairResponse:
-        """코드를 소비하고 client_id 와 토큰을 발급한다.
+    async def pair(self, ip: str, code: str, kind: ClientRole | None = None) -> PairResponse:
+        """코드를 소비하고 client_id 와 토큰을 발급한다. 종류는 코드에 묶인 값만 쓴다.
+
+        Args:
+            ip: 요청 IP(시도 제한 키).
+            code: 등록 코드.
+            kind: 호출자가 주장하는 종류. 코드의 종류와 다르면 잘못된 코드처럼 거절한다.
 
         Raises:
             RateLimitedError: IP 별 시도 한도를 넘었을 때.
@@ -56,6 +61,10 @@ class AuthService:
         if grant is None:
             logger.warning("Pair rejected: invalid or expired code, ip={}", ip)
             raise PairingCodeInvalidError("Invalid or expired pairing code")
+        if kind is not None and kind != grant.kind:
+            logger.warning("Pair rejected: client kind mismatch, ip={}", ip)
+            raise PairingCodeInvalidError("Invalid or expired pairing code")
+        kind = grant.kind
 
         client_id = f"{kind.value}-{secrets.token_hex(4)}"
         token = secrets.token_urlsafe(TOKEN_BYTES)
