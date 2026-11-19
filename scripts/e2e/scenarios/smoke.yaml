@@ -1,0 +1,6 @@
+# 배포 직후 확인용 빠른 시나리오(발화 2개). dev-deploy.sh --smoke 가 쓴다.
+# 조명은 종료 시 voice_smoke 가 시작 상태로 되돌린다. 날씨는 기기 상태를 바꾸지 않는다.
+utterances:
+  - text: "거실 불 꺼줘"
+    expect_area_light: "거실=off"
+  - text: "오늘 날씨 어때?"
