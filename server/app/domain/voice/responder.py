@@ -36,6 +36,7 @@ class _AudioSender:
         self._chunker = PcmChunker(TTS_SAMPLE_RATE_HZ, RESPONSE_CHUNK_MS)
         self._index = 0
         self.started = False
+        self.ended = False
         self.first_audio_at: float | None = None
 
     async def write(self, pcm: bytes) -> None:
@@ -48,6 +49,16 @@ class _AudioSender:
         if not self.started:
             return
         await self._send_chunk(self._chunker.flush(), last=True)
+        await self._send_end()
+
+    async def abort(self) -> None:
+        """중간에 끊긴 오디오 스트림을 ResponseAudioEnd 로 닫는다. 이미 닫혔거나 시작 전이면 아무것도 안 한다."""
+        if not self.started or self.ended:
+            return
+        await self._send_end()
+
+    async def _send_end(self) -> None:
+        self.ended = True
         await self._send(
             Envelope(response_audio_end=ResponseAudioEnd(stream_id=self._audio_stream_id))
         )
@@ -111,6 +122,7 @@ class ResponseStreamer:
         self._cache = cache
         self._cacheable = cacheable
         self._first_hit: bool | None = None
+        self._final_sent = False
         self._audio = _AudioSender(send, stream_id, stream_id, announce_speaking)
 
     @property
@@ -138,6 +150,19 @@ class ResponseStreamer:
             if speaker is not None and not speaker.done():
                 speaker.cancel()
                 await asyncio.gather(speaker, return_exceptions=True)
+            await self._close_streams()
+
+    async def _close_streams(self) -> None:
+        """취소·예외로 끊겼을 때도 수신 쪽이 기다리지 않게 오디오 종료와 마지막 자막을 보낸다.
+
+        연결이 이미 끊겼을 수 있어 전송 오류는 삼킨다.
+        """
+        try:
+            await self._audio.abort()
+            if not self._final_sent:
+                await self._send_text("", final=True)
+        except Exception:
+            logger.debug("Terminal frames not sent, connection probably closed")
 
     async def _pump(self, deltas: AsyncIterator[str], queue: asyncio.Queue[str | None]) -> None:
         buffer = ""
@@ -155,6 +180,7 @@ class ResponseStreamer:
 
     async def _send_text(self, delta: str, *, final: bool) -> None:
         text = ResponseText(stream_id=self._stream_id, delta=delta, final=final)
+        self._final_sent = self._final_sent or final
         await self._send(Envelope(response_text=text))
 
     async def _speak(self, queue: asyncio.Queue[str | None]) -> None:
