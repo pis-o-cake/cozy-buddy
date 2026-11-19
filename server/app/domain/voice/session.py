@@ -19,6 +19,7 @@ from cozy.v1.voice_pb2 import (
     STREAM_KIND_UTTERANCE_UP,
     AssistantState,
     AudioChunk,
+    ResponseText,
     TextQuery,
     Transcript,
     UtteranceCancel,
@@ -36,8 +37,10 @@ from app.core.openai_gateway import (
     OpenAIGateway,
     OpenAIGatewayError,
     OpenAIGatewayTimeout,
+    UsageLimitExceeded,
 )
 from app.core.protocol import error_envelope
+from app.core.usage_guard import BucketRegistry
 from app.domain.agent.reminder_text import fired_text
 from app.domain.agent.service import AgentService
 from app.domain.telemetry.recorder import TurnRecorder
@@ -52,8 +55,12 @@ KEY_NOT_HEARD = "voice.not_heard"
 KEY_STREAM_INVALID = "voice.stream_invalid"
 KEY_TOO_LONG = "voice.utterance_too_long"
 KEY_INTERNAL = "error.internal"
+KEY_RATE_LIMITED = "voice.rate_limited"
+KEY_BUDGET_EXCEEDED = "voice.budget_exceeded"
+KEY_TEXT_TOO_LONG = "voice.text_too_long"
 # 허브가 대화 응답과 구분하려고 보는 접두어다. 허브와의 계약이므로 바꾸지 않는다.
 REMINDER_STREAM_PREFIX = "reminder-"
+ERR_STT_BUDGET = "stt_budget"
 MAX_REMINDER_LABEL_CHARS = 100
 MIN_SAMPLE_RATE_HZ = 8000
 MAX_SAMPLE_RATE_HZ = 48000
@@ -76,6 +83,9 @@ class VoiceDeps:
     resolve_hub: Callable[[ClientConnection], str]
     tts_cache: TtsCache | None = None
     arbiter: UtteranceArbiter | None = None
+    # 클라이언트(허브·앱) ID 별 속도 제한. 연결을 다시 맺어도 버킷이 유지되도록 서비스가 소유한다.
+    turn_limiter: BucketRegistry | None = None
+    reminder_limiter: BucketRegistry | None = None
 
 
 @dataclass(slots=True)
@@ -107,6 +117,8 @@ class VoiceSession:
         self._task: asyncio.Task[None] | None = None
         self._task_stream = ""
         self._text_tasks: set[asyncio.Task[None]] = set()
+        self._query_task: asyncio.Task[None] | None = None
+        self._query_id = ""
 
     # --- 수신 -----------------------------------------------------------------------------
 
@@ -127,9 +139,18 @@ class VoiceSession:
             await self._on_cancel(envelope.utterance_cancel)
 
     async def handle_text_query(self, query: TextQuery) -> None:
-        """TextQuery 를 백그라운드로 처리한다. 응답은 자막(ResponseText)만 보낸다."""
+        """TextQuery 를 백그라운드로 처리한다. 응답은 자막(ResponseText)만 보낸다.
+
+        연결당 처리 중인 질의는 하나다. 새 질의는 진행 중인 질의를 취소하고(새 발화가 이전
+        발화를 끊는 것과 같다) 취소된 질의에는 빈 final 자막을 보내 화면이 멈추지 않게 한다.
+
+        Raises:
+            BadRequestError: 본문이 비었거나 `max_text_query_chars` 를 넘을 때.
+        """
         if not query.text.strip():
             raise BadRequestError("Empty text query")
+        if len(query.text) > self._deps.settings.max_text_query_chars:
+            raise BadRequestError("Text query too long", KEY_TEXT_TOO_LONG)
         if self._deps.openai is None:
             await self._send_quiet(
                 error_envelope(
@@ -137,7 +158,13 @@ class VoiceSession:
                 )
             )
             return
+        if not self._take_turn_token():
+            logger.warning("Text query rate limited: client={}", self._conn.client_id)
+            await self._reply_subtitle(query.request_id, KEY_RATE_LIMITED)
+            return
+        await self._cancel_text_query()
         task = asyncio.create_task(self._run_text(query), name="voice-text-query")
+        self._query_task, self._query_id = task, query.request_id
         self._text_tasks.add(task)
         task.add_done_callback(self._text_tasks.discard)
 
@@ -153,6 +180,15 @@ class VoiceSession:
         label = fired.label.strip()[:MAX_REMINDER_LABEL_CHARS]
         if not fired.alarm_id or not label:
             raise BadRequestError("Invalid reminder")
+        limiter = self._deps.reminder_limiter
+        if limiter is not None and not limiter.try_take(self._conn.client_id):
+            # 허브가 보낸 것이라 사용자에게 보일 응답이 없다. 합성하지 않고 버린다.
+            logger.warning(
+                "Reminder rate limited, dropped: hub={} alarm={}",
+                self._conn.client_id,
+                fired.alarm_id,
+            )
+            return
         task = asyncio.create_task(self._run_reminder(fired.alarm_id, label), name="voice-reminder")
         self._text_tasks.add(task)
         task.add_done_callback(self._text_tasks.discard)
@@ -180,6 +216,7 @@ class VoiceSession:
         """연결이 끊겼을 때 진행 중인 작업을 모두 취소한다."""
         self._utterance = None
         await self._cancel_task()
+        self._query_task = None
         tasks = list(self._text_tasks)
         for task in tasks:
             task.cancel()
@@ -239,6 +276,11 @@ class VoiceSession:
                 return
             raise BadRequestError(f"Utterance end for unknown stream: {end.stream_id}")
         self._utterance = None
+        if not self._take_turn_token():
+            logger.warning("Utterance rate limited: stream={}", utt.stream_id)
+            await self._reply_subtitle(utt.stream_id, KEY_RATE_LIMITED)
+            await self._send_state(State.STATE_IDLE, utt.stream_id)
+            return
         utt.ended_at = time.monotonic()
         await self._send_state(State.STATE_THINKING, utt.stream_id)
         self._task_stream = utt.stream_id
@@ -265,6 +307,31 @@ class VoiceSession:
             return
         logger.info("Utterance cancelled: stream={} reason={}", cancel.stream_id, cancel.reason)
         await self._send_state(State.STATE_IDLE, cancel.stream_id)
+
+    def _take_turn_token(self) -> bool:
+        limiter = self._deps.turn_limiter
+        return limiter is None or limiter.try_take(self._conn.client_id)
+
+    async def _reply_subtitle(self, stream_id: str, key: str) -> None:
+        """음성 합성 없이 자막으로만 고정 문구를 보낸다. 한도에 걸린 요청은 비용을 쓰지 않는다."""
+        try:
+            await ResponseStreamer(self._send, stream_id, None).run(
+                _single(self._deps.translate(key))
+            )
+        except Exception:
+            logger.debug("Subtitle reply failed, connection probably closed")
+
+    async def _cancel_text_query(self) -> None:
+        task, request_id = self._query_task, self._query_id
+        self._query_task = None
+        if task is None or task.done():
+            return
+        task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await task
+        await self._send_quiet(
+            Envelope(response_text=ResponseText(stream_id=request_id, delta="", final=True))
+        )
 
     async def _reject(self, stream_id: str, code: int, key: str) -> None:
         self._ignored_stream = stream_id
@@ -316,7 +383,8 @@ class VoiceSession:
             # 클라우드 연결 실패: 자막으로만 알리고 터치 제어를 안내한다.
             turn.path = TurnPath.ERROR
             turn.fail("stt_failed")
-            reply, speech = self._canned(turn, KEY_UNAVAILABLE), None
+            key = KEY_BUDGET_EXCEEDED if turn.error_code == ERR_STT_BUDGET else KEY_UNAVAILABLE
+            reply, speech = self._canned(turn, key), None
         elif not transcript.strip():
             turn.path = TurnPath.CLARIFY
             reply = self._canned(turn, KEY_NOT_HEARD)
@@ -404,6 +472,9 @@ class VoiceSession:
                 self._deps.agent.stt_prompt(),
                 on_hedge=lambda: setattr(turn, "stt_hedged", True),
             )
+        except UsageLimitExceeded:
+            turn.fail(ERR_STT_BUDGET)
+            return None
         except OpenAIGatewayTimeout as exc:
             logger.warning("STT timed out: {}", exc)
             turn.fail("stt_timeout")
