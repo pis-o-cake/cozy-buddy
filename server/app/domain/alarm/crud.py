@@ -2,7 +2,7 @@
 
 from collections.abc import Sequence
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.alarm.models import Alarm, SyncState
@@ -19,6 +19,12 @@ async def list_alarms(session: AsyncSession, hub_id: str | None = None) -> Seque
     if hub_id is not None:
         stmt = stmt.where(Alarm.hub_id == hub_id)
     return (await session.scalars(stmt)).all()
+
+
+async def count(session: AsyncSession, hub_id: str) -> int:
+    """허브의 알람 수(삭제 대기 포함)."""
+    stmt = select(func.count()).select_from(Alarm).where(Alarm.hub_id == hub_id)
+    return int(await session.scalar(stmt) or 0)
 
 
 async def list_pending(session: AsyncSession, hub_id: str) -> Sequence[Alarm]:

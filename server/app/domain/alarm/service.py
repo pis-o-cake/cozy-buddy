@@ -19,6 +19,9 @@ from app.domain.alarm.models import Alarm, AlarmKindName, SyncState
 from app.domain.alarm.schemas import AlarmRead
 from app.domain.hub.service import HubService
 
+MAX_ALARM_LABEL_CHARS = 100
+MAX_ALARMS_PER_HUB = 200
+
 _KIND_NAMES: dict[int, AlarmKindName] = {
     alarm_pb2.ALARM_KIND_TIMER: AlarmKindName.TIMER,
     alarm_pb2.ALARM_KIND_REMINDER: AlarmKindName.REMINDER,
@@ -32,7 +35,8 @@ _KIND_PROTOS: dict[str, Any] = {
 def apply_proto(row: Alarm, alarm: alarm_pb2.Alarm) -> None:
     """cozy.v1.Alarm 의 내용을 모델 컬럼으로 옮긴다. revision 은 건드리지 않는다."""
     row.kind = _KIND_NAMES.get(alarm.kind, AlarmKindName.ALARM)
-    row.label = alarm.label
+    # 허브가 정본이라 스냅샷 전체를 거절하지 않고 자른다. 앱 요청은 service 에서 먼저 거절한다.
+    row.label = alarm.label[:MAX_ALARM_LABEL_CHARS]
     row.enabled = alarm.enabled
     row.sunrise = alarm.sunrise
     row.fires_at_epoch_ms = None
@@ -87,7 +91,14 @@ class AlarmService:
         """허브의 전체 목록으로 synced 사본을 교체한다. pending 행은 유지한다."""
         pending_ids = {row.alarm_id for row in await crud.list_pending(self._session, hub_id)}
         await crud.delete_synced(self._session, hub_id)
-        for alarm in snapshot.alarms:
+        if len(snapshot.alarms) > MAX_ALARMS_PER_HUB:
+            logger.warning(
+                "Alarm snapshot truncated: hub={} received={} kept={}",
+                hub_id,
+                len(snapshot.alarms),
+                MAX_ALARMS_PER_HUB,
+            )
+        for alarm in snapshot.alarms[:MAX_ALARMS_PER_HUB]:
             if not alarm.alarm_id or alarm.alarm_id in pending_ids:
                 continue
             row = Alarm(
@@ -125,14 +136,20 @@ class AlarmService:
         """앱의 생성·수정 요청을 저장하고, 허브가 온라인이면 즉시 전달한다.
 
         Raises:
-            BadRequestError: 대상 허브가 지정되지 않았을 때.
+            BadRequestError: 대상 허브가 지정되지 않았거나, 이름이 너무 길거나, 허브의 알람이
+                `MAX_ALARMS_PER_HUB` 개에 도달했을 때.
             NotFoundError: 등록되지 않은 허브일 때.
         """
         hub_id = upsert.alarm.hub_id
         await self._require_hub(hub_id)
+        if len(upsert.alarm.label) > MAX_ALARM_LABEL_CHARS:
+            raise BadRequestError("Alarm label too long", "alarm.label_too_long")
         alarm_id = upsert.alarm.alarm_id or uuid.uuid4().hex
         row = await crud.get(self._session, hub_id, alarm_id)
         if row is None:
+            if await crud.count(self._session, hub_id) >= MAX_ALARMS_PER_HUB:
+                logger.warning("Alarm limit reached: hub={}", hub_id)
+                raise BadRequestError("Alarm limit reached", "alarm.limit_reached")
             row = Alarm(hub_id=hub_id, alarm_id=alarm_id)
             self._session.add(row)
         apply_proto(row, upsert.alarm)
