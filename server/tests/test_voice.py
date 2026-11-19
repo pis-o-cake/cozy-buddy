@@ -98,6 +98,15 @@ def _text_query(ws: WebSocketTestSession, text: str, request_id: str = "q1") -> 
     return recv_until(ws, is_final_text)
 
 
+def _ack_next_upsert(hub: WebSocketTestSession, *, ok: bool = True) -> list[Envelope]:
+    """다음 AlarmUpsert 까지 읽고 ack 를 보낸다. 음성 응답은 이 ack 뒤에 나온다."""
+    frames = recv_until(hub, lambda e: e.WhichOneof("body") == "alarm_upsert")
+    upsert = frames[-1].alarm_upsert
+    ack = AlarmAck(request_id=upsert.request_id, alarm_id=upsert.alarm.alarm_id, revision=1, ok=ok)
+    send(hub, Envelope(alarm_ack=ack))
+    return frames
+
+
 def test_matched_command_runs_full_voice_flow(
     voice_client: TestClient, gateway: FakeOpenAI, fake_ha: FakeHomeAssistant
 ) -> None:
@@ -271,12 +280,10 @@ def test_alarm_intent_is_forwarded_to_hub_and_acked(
     gateway.stt_text = "내일 오전 7시에 알람 맞춰줘"
     with connect_hub(voice_client) as hub:
         send_utterance(hub)
-        frames = recv_until(hub, is_idle)
+        frames = _ack_next_upsert(hub)
+        frames += recv_until(hub, is_idle)
         upsert = of_body(frames, "alarm_upsert")
-        if not upsert:
-            upsert = [recv_until(hub, lambda e: e.WhichOneof("body") == "alarm_upsert")[-1]]
         alarm = upsert[0].alarm_upsert.alarm
-        request_id = upsert[0].alarm_upsert.request_id
 
         assert alarm.kind == ALARM_KIND_ALARM
         assert alarm.hub_id == HUB_ID
@@ -285,14 +292,6 @@ def test_alarm_intent_is_forwarded_to_hub_and_acked(
         assert alarm.one_shot.fires_at_epoch_ms == 1_794_607_200_000
         assert "알람을 맞췄어요" in spoken_text(frames)
 
-        send(
-            hub,
-            Envelope(
-                alarm_ack=AlarmAck(
-                    request_id=request_id, alarm_id=alarm.alarm_id, revision=1, ok=True
-                )
-            ),
-        )
         rows = eventually(
             lambda: [
                 r
@@ -308,10 +307,9 @@ def test_timer_intent_creates_timer_on_hub(voice_client: TestClient, gateway: Fa
     gateway.stt_text = "10분 타이머 맞춰줘"
     with connect_hub(voice_client) as hub:
         send_utterance(hub)
-        frames = recv_until(hub, is_idle)
-        upsert = of_body(frames, "alarm_upsert") or [
-            recv_until(hub, lambda e: e.WhichOneof("body") == "alarm_upsert")[-1]
-        ]
+        frames = _ack_next_upsert(hub)
+        frames += recv_until(hub, is_idle)
+        upsert = of_body(frames, "alarm_upsert")
     alarm = upsert[0].alarm_upsert.alarm
     assert alarm.kind == ALARM_KIND_TIMER
     assert alarm.one_shot.fires_at_epoch_ms == int(NOW.timestamp() * 1000) + 600_000
@@ -558,10 +556,9 @@ def test_timer_cancel_uses_original_duration_after_time_passed(
     voice_client: TestClient, gateway: FakeOpenAI
 ) -> None:
     with connect_hub(voice_client) as hub:
-        created = _text_query(hub, "5분 타이머 맞춰줘")
-        upserts = of_body(created, "alarm_upsert") or [
-            recv_until(hub, lambda e: e.WhichOneof("body") == "alarm_upsert")[-1]
-        ]
+        send(hub, Envelope(text_query=TextQuery(request_id="q1", text="5분 타이머 맞춰줘")))
+        upserts = of_body(_ack_next_upsert(hub), "alarm_upsert")
+        recv_until(hub, is_final_text)
         timer_id = upserts[0].alarm_upsert.alarm.alarm_id
         agent = voice_client.app.state.agent  # type: ignore[attr-defined]
         agent._clock = lambda: NOW + timedelta(minutes=3)
@@ -615,3 +612,25 @@ def test_ambiguous_cancel_follow_up_by_clock_word(
         frames = _text_query(hub, "저녁 7시 꺼", "q2")
         assert _deleted_ids(hub, frames) == ["pm"]
     assert gateway.chat_calls == []
+
+
+def test_alarm_response_is_pending_until_the_hub_acks(
+    voice_client: TestClient, gateway: FakeOpenAI
+) -> None:
+    voice_client.app.state.connections.alarm_acks.timeout_seconds = 0.2  # type: ignore[attr-defined]
+    with connect_hub(voice_client) as hub:
+        frames = _text_query(hub, "10분 타이머 맞춰줘")
+
+    assert "허브에 전달 중" in spoken_text(frames)
+    assert "시작할게요" not in spoken_text(frames)
+
+
+def test_alarm_response_reports_hub_rejection(
+    voice_client: TestClient, gateway: FakeOpenAI
+) -> None:
+    with connect_hub(voice_client) as hub:
+        send(hub, Envelope(text_query=TextQuery(request_id="q1", text="10분 타이머 맞춰줘")))
+        _ack_next_upsert(hub, ok=False)
+        frames = recv_until(hub, is_final_text)
+
+    assert "받아들이지 않았어요" in spoken_text(frames)

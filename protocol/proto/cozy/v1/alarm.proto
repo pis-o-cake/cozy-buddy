@@ -85,6 +85,8 @@ message AlarmAck {
   bool ok = 4;
   // ok가 false일 때만 의미가 있다.
   ErrorCode code = 5;
+  // 처리한 허브. 허브는 비워 보내고, 서버가 앱에 전달할 때 채운다.
+  string hub_id = 6;
 }
 
 // 허브→서버(→앱). 허브의 알람 전체 목록. 서버 사본은 이 내용으로 교체된다.

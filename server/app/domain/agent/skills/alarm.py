@@ -29,10 +29,12 @@ from app.domain.agent.model import (
 from app.domain.agent.responses import which_alarm_response
 from app.domain.agent.skills.alarm_select import AlarmSelector
 from app.domain.agent.skills.alarm_store import (
+    KEY_HUB_PENDING,
     KEY_HUB_REQUIRED,
     REMINDER_KIND,
     TIMER_KIND,
     AlarmStore,
+    UpsertOutcome,
     new_alarm,
 )
 from app.domain.agent.skills.alarm_tools import (
@@ -105,8 +107,10 @@ class AlarmSkill(BaseSkill):
 
     async def execute(self, intent: Intent, ctx: TurnContext) -> SkillResult:
         if isinstance(intent, AlarmIntent | TimerIntent | ReminderIntent):
-            error_key = await self._schedule(intent, ctx)
-            return self.failed(error_key) if error_key else self.templated(intent, ctx)
+            upsert = await self._schedule(intent, ctx)
+            if upsert.error_key:
+                return self.failed(upsert.error_key)
+            return self._pending_result() if upsert.pending else self.templated(intent, ctx)
         if isinstance(intent, CancelAlarmIntent):
             outcome = await self._cancel_matching(ctx, intent)
             return self._cancel_result(outcome, intent, ctx)
@@ -129,8 +133,8 @@ class AlarmSkill(BaseSkill):
 
     async def _schedule(
         self, intent: AlarmIntent | TimerIntent | ReminderIntent, ctx: TurnContext
-    ) -> str | None:
-        """알람·타이머를 허브에 만든다. 실패하면 사용자 메시지 키를, 성공하면 None 을 돌려준다."""
+    ) -> UpsertOutcome:
+        """알람·타이머를 허브에 만들고 ack 결과를 돌려준다. 실패면 error_key, 미확정이면 pending."""
         kind = (
             alarm_pb2.ALARM_KIND_REMINDER
             if isinstance(intent, ReminderIntent)
@@ -150,12 +154,28 @@ class AlarmSkill(BaseSkill):
         else:
             fires_at = datetime.fromtimestamp((intent.one_shot_epoch_ms or 0) / 1000, tz=self._tz)
             alarm = new_alarm(kind, intent.label, fires_at=fires_at)
-        error_key = await self._store.upsert(ctx.hub_id, alarm)
-        if error_key:
-            return error_key
+        outcome = await self._store.upsert(ctx.hub_id, alarm)
+        if outcome.error_key:
+            return outcome
         if isinstance(intent, TimerIntent):
             self._store.remember_timer(ctx.hub_id, alarm.alarm_id, intent.duration_seconds)
-        return None
+        return outcome
+
+    def _pending_result(self) -> SkillResult:
+        """허브가 아직 확인하지 않았을 때의 응답. 맞췄다고 단정하지 않는다."""
+        return SkillResult(True, KEY_HUB_PENDING, text=self._t(KEY_HUB_PENDING))
+
+    def _tool_result(self, outcome: UpsertOutcome, summary: dict[str, Any]) -> SkillResult:
+        if outcome.error_key:
+            return self.failed(outcome.error_key)
+        if outcome.pending:
+            return SkillResult(
+                True,
+                KEY_HUB_PENDING,
+                text=self._t(KEY_HUB_PENDING),
+                payload={"ok": True, "pending": True, **summary},
+            )
+        return SkillResult(True, payload={"ok": True, **summary})
 
     async def _tool_set_alarm(self, args: dict[str, Any], ctx: TurnContext) -> SkillResult:
         hour = required_int(args, "hour", 0, 23)
@@ -170,10 +190,7 @@ class AlarmSkill(BaseSkill):
             epoch_ms = int(fires_at.timestamp() * 1000)
             intent = AlarmIntent(hour, minute, one_shot_epoch_ms=epoch_ms, label=label)
             summary = {"fires_at": fires_at.isoformat(timespec="minutes")}
-        error_key = await self._schedule(intent, ctx)
-        if error_key:
-            return self.failed(error_key)
-        return SkillResult(True, payload={"ok": True, **summary})
+        return self._tool_result(await self._schedule(intent, ctx), summary)
 
     def _one_shot_time(self, raw_date: object, hour: int, minute: int, now: datetime) -> datetime:
         if raw_date:
@@ -189,10 +206,8 @@ class AlarmSkill(BaseSkill):
     async def _tool_set_timer(self, args: dict[str, Any], ctx: TurnContext) -> SkillResult:
         seconds = required_int(args, "duration_seconds", 1, MAX_TIMER_SECONDS)
         label = str(args.get("label") or "") or None
-        error_key = await self._schedule(TimerIntent(seconds, label), ctx)
-        if error_key:
-            return self.failed(error_key)
-        return SkillResult(True, payload={"ok": True, "duration_seconds": seconds})
+        outcome = await self._schedule(TimerIntent(seconds, label), ctx)
+        return self._tool_result(outcome, {"duration_seconds": seconds})
 
     async def _tool_set_reminder(self, args: dict[str, Any], ctx: TurnContext) -> SkillResult:
         message = str(args["message"]).strip()
@@ -220,10 +235,8 @@ class AlarmSkill(BaseSkill):
                 epoch_ms = int(fires_at.timestamp() * 1000)
                 intent = ReminderIntent(message, hour, minute, one_shot_epoch_ms=epoch_ms)
                 summary = {"fires_at": fires_at.isoformat(timespec="minutes")}
-        error_key = await self._schedule(intent, ctx)
-        if error_key:
-            return self.failed(error_key)
-        return SkillResult(True, payload={"ok": True, "message": message, **summary})
+        outcome = await self._schedule(intent, ctx)
+        return self._tool_result(outcome, {"message": message, **summary})
 
     # --- 취소 -----------------------------------------------------------------------------
 

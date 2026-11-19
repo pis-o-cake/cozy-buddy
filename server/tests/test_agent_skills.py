@@ -188,6 +188,31 @@ async def test_timer_intent_and_tool_create_same_alarm_and_remember_length() -> 
         assert store.original_timer_seconds(HUB, alarm.alarm_id) == 300
 
 
+async def test_alarm_without_hub_ack_answers_pending_not_done() -> None:
+    skill, store, _ = alarm_skill()
+    store.pending = True
+    ctx = make_ctx()
+
+    via_intent = await skill.execute(TimerIntent(300, "라면"), ctx)
+    via_tool = await skill.run_tool("set_timer", {"duration_seconds": 300}, ctx)
+
+    assert via_intent.ok and via_intent.response_key == "agent.alarm.hub_pending"
+    assert "맞췄" not in via_intent.text and via_intent.text
+    assert via_tool.payload["pending"] is True
+
+
+@pytest.mark.parametrize("key", ["agent.alarm.hub_unreachable", "agent.alarm.hub_rejected"])
+async def test_alarm_hub_failure_is_reported_honestly(key: str) -> None:
+    skill, store, _ = alarm_skill()
+    store.reject_key = key
+
+    via_intent = await skill.execute(TimerIntent(300, "라면"), make_ctx())
+    via_tool = await skill.run_tool("set_timer", {"duration_seconds": 300}, make_ctx())
+
+    assert not via_intent.ok and via_intent.response_key == key
+    assert not via_tool.ok and via_tool.payload["ok"] is False
+
+
 async def test_repeating_alarm_intent_and_tool_create_same_alarm() -> None:
     skill, store, _ = alarm_skill()
     ctx = make_ctx()

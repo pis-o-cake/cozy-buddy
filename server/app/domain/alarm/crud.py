@@ -28,19 +28,25 @@ async def count(session: AsyncSession, hub_id: str) -> int:
 
 
 async def list_pending(session: AsyncSession, hub_id: str) -> Sequence[Alarm]:
-    """허브에 아직 전달·확인되지 않은 알람."""
+    """허브에 아직 전달·확인되지 않은 알람. 허브가 거절한 변경은 다시 보내지 않으므로 뺀다."""
     stmt = (
         select(Alarm)
-        .where(Alarm.hub_id == hub_id, Alarm.sync_state != SyncState.SYNCED)
+        .where(
+            Alarm.hub_id == hub_id,
+            Alarm.sync_state.in_((SyncState.PENDING_TO_HUB, SyncState.PENDING_DELETE)),
+        )
         .order_by(Alarm.alarm_id)
     )
     return (await session.scalars(stmt)).all()
 
 
 async def delete_synced(session: AsyncSession, hub_id: str) -> None:
-    """허브의 synced 사본을 모두 지운다. pending 행은 남긴다."""
+    """허브의 synced·rejected 사본을 모두 지운다. pending 행은 남긴다."""
     await session.execute(
-        delete(Alarm).where(Alarm.hub_id == hub_id, Alarm.sync_state == SyncState.SYNCED)
+        delete(Alarm).where(
+            Alarm.hub_id == hub_id,
+            Alarm.sync_state.in_((SyncState.SYNCED, SyncState.REJECTED)),
+        )
     )
 
 

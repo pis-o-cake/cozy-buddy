@@ -9,7 +9,7 @@ from cozy.v1.home_pb2 import CommandResult, EntityCommand
 from app.core.i18n import Translator
 from app.domain.agent.context import TurnContext
 from app.domain.agent.home_view import EntityStatus, HomeView
-from app.domain.agent.skills.alarm_store import PENDING_DELETE, AlarmStore
+from app.domain.agent.skills.alarm_store import PENDING_DELETE, AlarmStore, UpsertOutcome
 from app.domain.alarm.schemas import AlarmRead
 from app.domain.telemetry.turn import Turn, TurnSource
 from tests.agent_fixtures import BEDROOM, HOME, LIVING, NOW
@@ -55,15 +55,16 @@ class FakeAlarmStore(AlarmStore):
         self.deleted: list[str] = []
         self.rows: list[AlarmRead] = []
         self.reject_key = ""
+        self.pending = False
 
-    async def upsert(self, hub_id: str, alarm: alarm_pb2.Alarm) -> str | None:
+    async def upsert(self, hub_id: str, alarm: alarm_pb2.Alarm) -> UpsertOutcome:
         if not hub_id:
-            return "agent.hub_required"
+            return UpsertOutcome("agent.hub_required")
         if self.reject_key:
-            return self.reject_key
+            return UpsertOutcome(self.reject_key)
         alarm.hub_id = hub_id
         self.created.append(alarm)
-        return None
+        return UpsertOutcome(pending=self.pending)
 
     async def live_rows(self, hub_id: str) -> list[AlarmRead]:
         return [r for r in self.rows if r.hub_id == hub_id and r.sync_state != PENDING_DELETE]
