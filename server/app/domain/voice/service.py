@@ -9,6 +9,7 @@ from app.core.i18n import Translator
 from app.core.openai_gateway import OpenAIGateway
 from app.domain.agent.service import AgentService
 from app.domain.hub import crud as hub_crud
+from app.domain.telemetry.recorder import TurnRecorder
 from app.domain.voice.session import VoiceDeps, VoiceSession
 
 
@@ -20,6 +21,7 @@ class VoiceService:
         settings: Settings,
         translate: Translator,
         agent: AgentService,
+        turns: TurnRecorder,
         openai: OpenAIGateway | None,
         connections: ConnectionManager,
         database: Callable[[], Database],
@@ -31,6 +33,7 @@ class VoiceService:
             settings=settings,
             translate=translate,
             agent=agent,
+            turns=turns,
             openai=openai,
             hub_area=self._hub_area,
             resolve_hub=self._resolve_hub,

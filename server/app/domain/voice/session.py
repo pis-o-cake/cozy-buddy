@@ -32,6 +32,8 @@ from app.core.i18n import Translator
 from app.core.openai_gateway import OpenAIGateway, OpenAIGatewayError
 from app.core.protocol import error_envelope
 from app.domain.agent.service import AgentService
+from app.domain.telemetry.recorder import TurnRecorder
+from app.domain.telemetry.turn import Stage, Turn, TurnPath, TurnSource
 from app.domain.voice.audio import PCM_CHANNELS, PCM_SAMPLE_WIDTH_BYTES, max_pcm_bytes, pcm_to_wav
 from app.domain.voice.responder import ResponseStreamer
 
@@ -53,6 +55,7 @@ class VoiceDeps:
     settings: Settings
     translate: Translator
     agent: AgentService
+    turns: TurnRecorder
     openai: OpenAIGateway | None
     hub_area: Callable[[str], Awaitable[str]]
     resolve_hub: Callable[[ClientConnection], str]
@@ -223,46 +226,66 @@ class VoiceSession:
     # --- 처리 -----------------------------------------------------------------------------
 
     async def _process(self, utt: _Utterance) -> None:
+        turn = self._deps.turns.begin(
+            self._deps.resolve_hub(self._conn), TurnSource.VOICE, started_at=utt.ended_at
+        )
         try:
-            await self._pipeline(utt)
+            await self._pipeline(utt, turn)
         except asyncio.CancelledError:
+            turn.fail("cancelled")
             raise
         except Exception:
             logger.exception("Voice pipeline failed: stream={}", utt.stream_id)
+            turn.path = TurnPath.ERROR
+            turn.fail("pipeline_error")
             await self._send_quiet(
                 error_envelope(ERROR_CODE_INTERNAL, KEY_INTERNAL, stream_id=utt.stream_id)
             )
+        finally:
+            self._deps.turns.finish(turn)
         await self._send_state(State.STATE_IDLE, utt.stream_id)
 
-    async def _pipeline(self, utt: _Utterance) -> None:
+    async def _pipeline(self, utt: _Utterance, turn: Turn) -> None:
         deps = self._deps
         started = time.monotonic()
         transcript = await self._transcribe(utt)
-        stt_ms = int((time.monotonic() - started) * 1000)
+        turn.add_seconds(Stage.STT, time.monotonic() - started)
         speech = deps.openai
         if transcript is None:
             # 클라우드 연결 실패: 자막으로만 알리고 터치 제어를 안내한다.
-            reply, speech = _single(deps.translate(KEY_UNAVAILABLE)), None
+            turn.path = TurnPath.ERROR
+            turn.fail("stt_failed")
+            reply, speech = self._canned(turn, KEY_UNAVAILABLE), None
         elif not transcript.strip():
-            reply = _single(deps.translate(KEY_NOT_HEARD))
+            turn.path = TurnPath.CLARIFY
+            reply = self._canned(turn, KEY_NOT_HEARD)
         else:
             await self._send(
                 Envelope(
                     transcript=Transcript(stream_id=utt.stream_id, text=transcript, final=True)
                 )
             )
+            turn.transcript = transcript
             hub_id = deps.resolve_hub(self._conn)
             area_id = utt.area_id or await deps.hub_area(hub_id)
-            reply = deps.agent.handle(transcript, hub_id, area_id)
+            reply = deps.agent.handle(transcript, hub_id, area_id, turn)
         streamer = ResponseStreamer(self._send, utt.stream_id, speech)
         await streamer.run(reply)
         first_audio = streamer.first_audio_at
+        if first_audio is not None:
+            turn.mark_first_audio(first_audio)
         logger.info(
             "Utterance done: stream={} stt_ms={} end_to_first_audio_ms={}",
             utt.stream_id,
-            stt_ms,
-            None if first_audio is None else int((first_audio - utt.ended_at) * 1000),
+            turn.t_stt_ms,
+            turn.t_first_audio_ms,
         )
+
+    def _canned(self, turn: Turn, key: str) -> AsyncIterator[str]:
+        """에이전트를 거치지 않는 고정 응답. 턴 기록에도 응답을 남긴다."""
+        text = self._deps.translate(key)
+        turn.append_response(text)
+        return _single(text)
 
     async def _transcribe(self, utt: _Utterance) -> str | None:
         """STT 결과 텍스트. 호출이 실패하면 None."""
@@ -278,18 +301,25 @@ class VoiceSession:
 
     async def _run_text(self, query: TextQuery) -> None:
         deps = self._deps
+        hub_id = deps.resolve_hub(self._conn)
+        turn = deps.turns.begin(hub_id, TurnSource.TEXT)
+        turn.transcript = query.text
         try:
-            hub_id = deps.resolve_hub(self._conn)
             area_id = query.area_id or await deps.hub_area(hub_id)
-            reply = deps.agent.handle(query.text, hub_id, area_id)
+            reply = deps.agent.handle(query.text, hub_id, area_id, turn)
             await ResponseStreamer(self._send, query.request_id, None).run(reply)
         except asyncio.CancelledError:
+            turn.fail("cancelled")
             raise
         except Exception:
             logger.exception("Text query failed: request={}", query.request_id)
+            turn.path = TurnPath.ERROR
+            turn.fail("pipeline_error")
             await self._send_quiet(
                 error_envelope(ERROR_CODE_INTERNAL, KEY_INTERNAL, request_id=query.request_id)
             )
+        finally:
+            deps.turns.finish(turn)
 
     # --- 송신 -----------------------------------------------------------------------------
 
