@@ -33,6 +33,7 @@ import app.cozybuddy.hub.feature.dashboard.DashboardViewModel
 import app.cozybuddy.hub.feature.dashboard.ui.DashboardRoute
 import app.cozybuddy.hub.feature.conversation.ConversationViewModel
 import app.cozybuddy.hub.feature.conversation.ui.ConversationOverlayRoute
+import app.cozybuddy.hub.feature.settings.PairingViewModel
 import app.cozybuddy.hub.feature.settings.SettingsViewModel
 import app.cozybuddy.hub.feature.settings.ui.SettingsRoute
 import app.cozybuddy.hub.service.VoiceServiceLauncher
@@ -46,6 +47,7 @@ class MainActivity : ComponentActivity() {
     private val alarmListViewModel: AlarmListViewModel by viewModels()
     private val alarmRingViewModel: AlarmRingViewModel by viewModels()
     private val settingsViewModel: SettingsViewModel by viewModels()
+    private val pairingViewModel: PairingViewModel by viewModels()
     private val dashboardViewModel: DashboardViewModel by viewModels()
 
     private val conversationViewModel: ConversationViewModel by viewModels()
@@ -86,7 +88,7 @@ class MainActivity : ComponentActivity() {
                     onClose = { screen = HubScreen.AMBIENT },
                     onOpenSettings = { screen = HubScreen.SETTINGS },
                 )
-                HubScreen.SETTINGS -> SettingsRoute(settingsViewModel, onClose = { screen = HubScreen.ALARMS })
+                HubScreen.SETTINGS -> SettingsRoute(settingsViewModel, pairingViewModel, onClose = { screen = HubScreen.ALARMS })
             }
             ConversationOverlayRoute(conversationViewModel, showMicButton = screen == HubScreen.AMBIENT)
             // 울림 오버레이는 어떤 화면 위에서도 보여야 하므로 마지막에 그린다.

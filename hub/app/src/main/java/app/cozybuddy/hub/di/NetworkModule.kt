@@ -8,6 +8,8 @@ import androidx.datastore.preferences.preferencesDataStoreFile
 import app.cozybuddy.hub.BuildConfig
 import app.cozybuddy.hub.core.network.HubConnection
 import app.cozybuddy.hub.core.network.HubLink
+import app.cozybuddy.hub.core.network.OkHttpPairingClient
+import app.cozybuddy.hub.core.network.PairingClient
 import app.cozybuddy.hub.core.network.ServerSettings
 import app.cozybuddy.hub.core.time.TimeSource
 import app.cozybuddy.hub.data.settings.AndroidKeystoreTokenCipher
@@ -34,6 +36,9 @@ abstract class NetworkBindings {
 
     @Binds
     abstract fun bindTokenCipher(impl: AndroidKeystoreTokenCipher): TokenCipher
+
+    @Binds
+    abstract fun bindPairingClient(impl: OkHttpPairingClient): PairingClient
 
     @Binds
     abstract fun bindHubLink(impl: HubConnection): HubLink

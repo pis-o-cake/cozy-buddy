@@ -64,8 +64,10 @@ class SettingsViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            val stored = settings.config.first()
-            form.update { it.copy(url = stored.url, clientId = stored.clientId, token = stored.token) }
+            // 코드 등록처럼 다른 경로로 저장소가 바뀌어도 폼이 낡은 값으로 되돌려 저장하지 않게 계속 따라간다.
+            settings.config.collect { stored ->
+                form.update { it.copy(url = stored.url, clientId = stored.clientId, token = stored.token) }
+            }
         }
         viewModelScope.launch {
             val prefs = wakeWordSettings.prefs.first()
