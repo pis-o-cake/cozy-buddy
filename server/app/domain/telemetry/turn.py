@@ -27,6 +27,8 @@ class TurnPath(StrEnum):
     LLM = "llm"
     CLARIFY = "clarify"
     ERROR = "error"
+    # 다른 허브가 같은 발화를 처리해 응답하지 않은 턴.
+    DECLINED = "declined"
 
 
 class SkillOutcome(StrEnum):

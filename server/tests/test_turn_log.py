@@ -117,6 +117,7 @@ def test_summary_path_ratios_and_stage_percentiles() -> None:
         "llm": (1, 0.2),
         "clarify": (0, 0.0),
         "error": (1, 0.2),
+        "declined": (0, 0.0),
     }
     assert summary.deterministic_ratio == 0.6
     stt = summary.stages["t_stt_ms"]
@@ -324,3 +325,16 @@ def test_summary_reports_tts_cache_hit_ratio_over_audio_turns() -> None:
 
     assert summary.tts_cache_hit_count == 2
     assert summary.tts_cache_hit_ratio == round(2 / 3, 4)
+
+
+def test_declined_turns_do_not_dilute_deterministic_ratio() -> None:
+    rows = [
+        make_row("a", TurnPath.MATCHER, stt=600, understand=1, act=30, first_audio=1400),
+        make_row("b", TurnPath.LLM, stt=800, understand=900, act=200, first_audio=2500),
+        make_row("c", TurnPath.DECLINED, stt=700, understand=None, act=None, first_audio=None),
+    ]
+
+    summary = summarize(rows, 24)
+
+    assert summary.paths["declined"].count == 1
+    assert summary.deterministic_ratio == 0.5
