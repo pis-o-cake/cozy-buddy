@@ -7,6 +7,7 @@ from app.core.connections import ClientConnection, ConnectionManager
 from app.core.database import Database
 from app.core.i18n import Translator
 from app.core.openai_gateway import OpenAIGateway
+from app.core.usage_guard import BucketRegistry
 from app.domain.agent.service import AgentService
 from app.domain.hub import crud as hub_crud
 from app.domain.telemetry.recorder import TurnRecorder
@@ -42,6 +43,8 @@ class VoiceService:
             resolve_hub=self._resolve_hub,
             tts_cache=tts_cache,
             arbiter=UtteranceArbiter(),
+            turn_limiter=BucketRegistry(settings.turn_rate_per_minute),
+            reminder_limiter=BucketRegistry(settings.reminder_rate_per_minute),
         )
 
     def session_for(self, conn: ClientConnection) -> VoiceSession:
