@@ -19,6 +19,7 @@ from app.core.openai_gateway import OpenAIGateway
 from app.domain.agent.clarify import ClarifyStore
 from app.domain.agent.context import TurnContext
 from app.domain.agent.home_view import build_home_view, home_names
+from app.domain.agent.model import Clarify
 from app.domain.agent.skills.alarm import AlarmSkill
 from app.domain.agent.skills.alarm_select import AlarmSelector
 from app.domain.agent.skills.alarm_store import AlarmStore
@@ -33,6 +34,7 @@ from app.domain.agent.understand.llm import LlmStep
 from app.domain.agent.understand.steps import MatcherAttempt, WeatherAttempt
 from app.domain.agent.understand.understander import Understander
 from app.domain.home.service import HomeService
+from app.domain.telemetry.turn import Stage, Turn, TurnPath, TurnSource
 from app.domain.weather.service import WeatherService
 
 
@@ -94,27 +96,51 @@ class AgentService:
             return None
         return self._t("voice.stt_prompt").format(names=", ".join(names))
 
-    async def handle(self, text: str, hub_id: str, area_id: str) -> AsyncIterator[str]:
+    async def handle(
+        self, text: str, hub_id: str, area_id: str, turn: Turn | None = None
+    ) -> AsyncIterator[str]:
         """발화를 처리하고 응답 텍스트 조각을 스트리밍한다.
 
         Args:
             text: STT 결과 또는 TextQuery 본문.
             hub_id: 말한 허브. 알람·타이머를 이 허브에 만든다. 모르면 빈 문자열.
             area_id: 말한 허브가 놓인 방. 모르면 빈 문자열.
+            turn: 이 발화의 턴 기록. 경로·의도·단계 시간·응답을 채운다. 없으면 버려지는 기록을 쓴다.
 
         Yields:
             응답 텍스트 조각. 기기 제어 실패나 내부 오류도 사용자용 문장으로 낸다.
         """
-        ctx = TurnContext(build_home_view(self._home.snapshot()), hub_id, area_id, self.now())
+        turn = turn or Turn(hub_id, TurnSource.TEXT, time.monotonic())
+        view = build_home_view(self._home.snapshot())
+        ctx = TurnContext(view, hub_id, area_id, self.now(), turn)
+        async for delta in self._run(text, ctx):
+            turn.append_response(delta)
+            yield delta
+
+    async def _run(self, text: str, ctx: TurnContext) -> AsyncIterator[str]:
+        turn = ctx.turn
         try:
-            understanding = await self._understander.understand(text, ctx)
-            if understanding.intent is not None:
-                result = await self._skills.execute(understanding.intent, ctx)
+            with turn.timed(Stage.UNDERSTAND):
+                understanding = await self._understander.understand(text, ctx)
+            intent = understanding.intent
+            if intent is not None:
+                turn.path = (
+                    TurnPath.CLARIFY
+                    if isinstance(intent, Clarify)
+                    else TurnPath(understanding.step)
+                )
+                turn.intent = type(intent).__name__
+                with turn.timed(Stage.ACT):
+                    result = await self._skills.execute(intent, ctx)
+                turn.record_skill(result.ok)
                 yield result.text
                 return
         except Exception:
             logger.exception("Agent failed to execute command")
+            turn.path = TurnPath.ERROR
+            turn.fail("internal")
             yield self._t(KEY_INTERNAL)
             return
+        turn.path = TurnPath.LLM
         async for delta in self._llm.stream(text, ctx):
             yield delta

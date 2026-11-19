@@ -18,6 +18,7 @@ from app.core.openai_gateway import OpenAIGateway
 from app.core.version import get_server_version
 from app.domain.agent.service import AgentService
 from app.domain.home.service import HomeService
+from app.domain.telemetry.recorder import TurnRecorder
 from app.domain.voice.service import VoiceService
 from app.domain.weather.client import OpenMeteoClient
 from app.domain.weather.service import WeatherService
@@ -99,8 +100,15 @@ def create_app(
         clock,
         app.state.weather,
     )
+    app.state.turns = TurnRecorder()
     app.state.voice = VoiceService(
-        settings, app.state.translator, app.state.agent, gateway, app.state.connections, get_db
+        settings,
+        app.state.translator,
+        app.state.agent,
+        app.state.turns,
+        gateway,
+        app.state.connections,
+        get_db,
     )
     app.add_middleware(RequestLogMiddleware)
     register_exception_handlers(app)

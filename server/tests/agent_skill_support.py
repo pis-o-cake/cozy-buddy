@@ -11,6 +11,7 @@ from app.domain.agent.context import TurnContext
 from app.domain.agent.home_view import EntityStatus, HomeView
 from app.domain.agent.skills.alarm_store import PENDING_DELETE, AlarmStore
 from app.domain.alarm.schemas import AlarmRead
+from app.domain.telemetry.turn import Turn, TurnSource
 from tests.agent_fixtures import BEDROOM, HOME, LIVING, NOW
 
 TZ = ZoneInfo("Asia/Seoul")
@@ -103,7 +104,9 @@ def make_ctx(
         "light.bedroom_ceiling": EntityStatus("off"),
         "sensor.living_temp": EntityStatus("21.5", {"unit_of_measurement": "C"}),
     }
-    return TurnContext(HomeView(HOME, status), hub_id, area_id, NOW)
+    return TurnContext(
+        HomeView(HOME, status), hub_id, area_id, NOW, Turn(hub_id, TurnSource.TEXT, 0.0)
+    )
 
 
 __all__ = ["BEDROOM", "HUB", "NOW", "TZ", "FakeAlarmStore", "FakeHome", "alarm_row", "make_ctx"]

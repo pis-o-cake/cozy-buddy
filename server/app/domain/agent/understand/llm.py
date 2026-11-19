@@ -11,6 +11,7 @@ from app.core.i18n import Translator
 from app.core.openai_gateway import OpenAIGateway, OpenAIGatewayError, ToolCall
 from app.domain.agent.context import TurnContext
 from app.domain.agent.skills.registry import SkillRegistry, tool_message
+from app.domain.telemetry.turn import Stage
 
 MAX_LLM_ITERATIONS = 5
 
@@ -43,31 +44,43 @@ class LlmStep:
             {"role": "system", "content": self._system_prompt(ctx)},
             {"role": "user", "content": text},
         ]
+        turn = ctx.turn
         emitted = False
         try:
-            for turn in range(MAX_LLM_ITERATIONS):
+            for iteration in range(MAX_LLM_ITERATIONS):
                 # 마지막 턴은 툴 없이 불러 반드시 텍스트로 끝나게 한다.
-                is_last = turn == MAX_LLM_ITERATIONS - 1
+                is_last = iteration == MAX_LLM_ITERATIONS - 1
                 content = ""
                 calls: tuple[ToolCall, ...] = ()
                 stream = self._openai.stream_chat(messages, None if is_last else tools)
+                # 이해 시간에는 LLM 을 기다린 시간만 센다. 소비자가 조각을 처리하는 시간은 뺀다.
+                waited = turn.clock()
                 async for chunk in self._with_idle_timeout(stream):
+                    turn.add_seconds(Stage.UNDERSTAND, turn.clock() - waited)
                     if chunk.text:
                         emitted = True
                         content += chunk.text
                         yield chunk.text
                     calls = chunk.tool_calls or calls
+                    waited = turn.clock()
+                turn.add_seconds(Stage.UNDERSTAND, turn.clock() - waited)
                 if not calls:
                     return
                 messages.append(_assistant_message(content, calls))
                 for call in calls:
-                    result = await self._skills.run_tool(call.name, call.parsed_arguments(), ctx)
+                    with turn.timed(Stage.ACT):
+                        result = await self._skills.run_tool(
+                            call.name, call.parsed_arguments(), ctx
+                        )
+                    turn.llm_tool_calls += 1
+                    turn.record_skill(result.ok)
                     logger.debug("Tool executed: {} ok={}", call.name, result.ok)
                     messages.append(
                         {"role": "tool", "tool_call_id": call.id, "content": tool_message(result)}
                     )
         except (TimeoutError, OpenAIGatewayError) as exc:
             logger.warning("LLM fallback failed: {}", exc or type(exc).__name__)
+            turn.fail("llm_timeout" if isinstance(exc, TimeoutError) else "llm_error")
             if not emitted:
                 yield self._t("agent.llm.apology")
 
