@@ -89,6 +89,51 @@ git add cfg.py
 expect_fail --staged
 reset
 
+label="staged JWT-like HA token fails"
+jwt="eyJ""$(printf 'a%.0s' $(seq 1 20))"".""$(printf 'b%.0s' $(seq 1 20))"".""$(printf 'c%.0s' $(seq 1 20))"
+printf 'HA=%s\n' "$jwt" > app.txt
+git add app.txt
+expect_fail --staged
+reset
+
+label="staged Tailscale key fails"
+printf 'KEY=%s\n' "tskey-""auth-""$(printf 'k%.0s' $(seq 1 20))" > app.txt
+git add app.txt
+expect_fail --staged
+reset
+
+label="unquoted env secret fails"
+printf 'MY_API_TOKEN=%s\n' "$(printf 'z%.0s' $(seq 1 24))" > cfg.env
+git add cfg.env
+expect_fail --staged
+reset
+
+label="unquoted env placeholder passes"
+printf 'COZY_HA_TOKEN=change-me-ha-long-lived-token\nOPENAI_API_KEY=sk-change-me\n' > cfg.env
+git add cfg.env
+expect_pass --staged
+reset
+
+label="python kwarg is not an env assignment"
+printf 'client(api_key=settings.openai_api_key_value)\n' > app.py
+git add app.py
+expect_pass --staged
+reset
+
+label="review body line is scanned"
+mkdir -p .engsys/reviews
+printf 'blob: %s\nnote: key %s\n' "$(printf 'a%.0s' $(seq 1 40))" "$fake" > .engsys/reviews/x.review
+git add .engsys/reviews/x.review
+expect_fail --staged
+reset
+
+label="review metadata line is skipped"
+mkdir -p .engsys/reviews
+printf 'blob: %s\n' "$(printf 'a%.0s' $(seq 1 40))" > .engsys/reviews/x.review
+git add .engsys/reviews/x.review
+expect_pass --staged
+reset
+
 label="--range finds added key"
 base=$(git rev-parse HEAD)
 printf 'KEY=%s\n' "$fake" > app.txt
