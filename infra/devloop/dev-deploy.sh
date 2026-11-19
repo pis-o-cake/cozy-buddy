@@ -6,6 +6,9 @@
 #   ./dev-deploy.sh logs <svc>   # 로그 팔로우
 #   ./dev-deploy.sh ps           # 상태
 #   ./dev-deploy.sh down         # 중지·삭제
+#   ./dev-deploy.sh pair NAME [AREA]   # 등록 코드 발급 (컨테이너 안 python -m app.cli)
+#   ./dev-deploy.sh clients [--all]    # 발급된 클라이언트 목록
+#   ./dev-deploy.sh revoke ID          # 클라이언트 폐기
 #   ./dev-deploy.sh <svc>...     # 지정 서비스만 up -d --build
 set -euo pipefail
 
@@ -14,7 +17,7 @@ HEALTH_TIMEOUT="${HEALTH_TIMEOUT:-60}"
 RUN_SMOKE=0
 
 usage() {
-    sed -n '2,9p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+    sed -n '2,12p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
     echo "환경변수: HEALTH_TIMEOUT(초, 기본 60), COZY_HTTP_PORT, WIN_HOST (config.env 값을 덮어씀)"
 }
 
@@ -47,6 +50,10 @@ if [[ -z "${WIN_HOST:-}" || -z "${WIN_USER:-}" || "$WIN_USER" == "changeme" ]]; 
 fi
 
 remote() {
+    if [[ "${DEV_DEPLOY_DRY_RUN:-0}" == "1" ]]; then
+        echo "DRY-RUN ssh -p $WIN_SSH_PORT $WIN_USER@$WIN_HOST: cd $REMOTE_PATH/server && $*"
+        return 0
+    fi
     ssh -p "$WIN_SSH_PORT" "$WIN_USER@$WIN_HOST" "cd $REMOTE_PATH/server && COZY_HTTP_PORT=${COZY_HTTP_PORT:-8120} $*"
 }
 
@@ -83,6 +90,27 @@ if [[ "${1:-}" == "health" ]]; then
     wait_healthy
     exit $?
 fi
+
+# 운영자 CLI: 동기화·빌드 없이 실행 중인 컨테이너에 exec 한다. 인자는 원격 셸에 안전하게 인용한다.
+run_cli() {
+    local quoted
+    quoted="$(printf '%q ' "$@")"
+    remote "docker compose exec -T cozy-server python -m app.cli $quoted"
+}
+
+case "${1:-}" in
+pair)
+    [[ -n "${2:-}" ]] || { echo "사용법: $0 pair NAME [AREA]" >&2; exit 1; }
+    if [[ -n "${3:-}" ]]; then run_cli pairing-code --name "$2" --area "$3"; else run_cli pairing-code --name "$2"; fi
+    exit $?
+    ;;
+clients) shift; run_cli clients "$@"; exit $? ;;
+revoke)
+    [[ -n "${2:-}" ]] || { echo "사용법: $0 revoke ID" >&2; exit 1; }
+    run_cli revoke "$2"
+    exit $?
+    ;;
+esac
 
 "$SCRIPT_DIR/sync.sh" flush
 
