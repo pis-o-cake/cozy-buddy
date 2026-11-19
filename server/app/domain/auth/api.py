@@ -67,7 +67,8 @@ AdminDep = Depends(require_admin)
 @router.post("/pairing-codes", dependencies=[AdminDep])
 async def create_pairing_code(body: PairingCodeCreate, service: AuthServiceDep) -> PairingCodeRead:
     """6자리 1회용 등록 코드를 발급한다(5분 유효)."""
-    return service.issue_code(PairingGrant(name=body.name, area_id=body.area_id))
+    grant = PairingGrant(name=body.name, area_id=body.area_id, kind=body.client_kind)
+    return service.issue_code(grant)
 
 
 @router.post("/pair")

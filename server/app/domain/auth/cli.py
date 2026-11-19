@@ -12,6 +12,8 @@ from typing import Any
 
 import httpx
 
+from app.config import ClientRole
+
 ENV_ADMIN_TOKEN = "COZY_ADMIN_TOKEN"  # secret-scan: allow (env var name, not a value)
 ENV_BASE_URL = "COZY_CLI_BASE_URL"
 DEFAULT_BASE_URL = "http://127.0.0.1:8000"
@@ -42,6 +44,12 @@ def add_subcommands(sub: "argparse._SubParsersAction[argparse.ArgumentParser]") 
     code = sub.add_parser("pairing-code", help="issue a one-time pairing code")
     code.add_argument("--name", required=True, help="hub display name")
     code.add_argument("--area", default="", help="Home Assistant area id")
+    code.add_argument(
+        "--kind",
+        choices=[role.value for role in ClientRole],
+        default=ClientRole.HUB.value,
+        help="client kind the code issues (default: hub)",
+    )
     code.set_defaults(handler=_pairing_code)
 
     clients = sub.add_parser("clients", help="list issued clients")
@@ -96,7 +104,8 @@ def _check(response: httpx.Response) -> None:
 
 def _pairing_code(client: httpx.Client, args: argparse.Namespace) -> None:
     response = client.post(
-        "/api/auth/pairing-codes", json={"name": args.name, "area_id": args.area}
+        "/api/auth/pairing-codes",
+        json={"name": args.name, "area_id": args.area, "client_kind": args.kind},
     )
     _check(response)
     body: dict[str, Any] = response.json()

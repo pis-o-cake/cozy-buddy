@@ -211,6 +211,39 @@ def test_pair_works_without_admin_token_but_needs_a_code(client: TestClient) -> 
     assert client.post("/api/auth/pair", json={"code": "123456"}).status_code == 400
 
 
+def test_code_issues_the_kind_the_admin_chose(admin_client: TestClient) -> None:
+    code = issue_code(admin_client, client_kind="mobile")
+    body = admin_client.post("/api/auth/pair", json={"code": code}).json()
+    assert body["client_id"].startswith("mobile-")
+    rows = admin_client.get("/api/auth/clients", headers=ADMIN).json()
+    assert [r["kind"] for r in rows] == ["mobile"]
+
+
+def test_code_defaults_to_hub_and_ignores_matching_hint(admin_client: TestClient) -> None:
+    code = issue_code(admin_client)
+    assert pair(admin_client, code)["client_id"].startswith("hub-")
+
+
+@pytest.mark.parametrize(("issued", "claimed"), [("hub", "mobile"), ("mobile", "hub")])
+def test_claimed_kind_mismatch_is_rejected_like_a_wrong_code(
+    admin_client: TestClient, issued: str, claimed: str
+) -> None:
+    code = issue_code(admin_client, client_kind=issued)
+    response = admin_client.post("/api/auth/pair", json={"code": code, "client_kind": claimed})
+    assert response.status_code == 400
+    assert response.json()["message_key"] == "auth.pairing_code_invalid"
+    assert admin_client.post("/api/auth/pair", json={"code": code}).status_code == 400
+    assert admin_client.get("/api/auth/clients", headers=ADMIN).json() == []
+
+
+def test_kind_mismatch_counts_toward_rate_limit(admin_client: TestClient) -> None:
+    for _ in range(5):
+        code = issue_code(admin_client, client_kind="hub")
+        body = {"code": code, "client_kind": "mobile"}
+        assert admin_client.post("/api/auth/pair", json=body).status_code == 400
+    assert _bad_pair(admin_client) == 429
+
+
 def test_store_codes_do_not_collide() -> None:
     store = PairingStore()
     codes = {store.issue(PairingGrant("", "")) for _ in range(200)}

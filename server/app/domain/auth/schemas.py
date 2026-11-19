@@ -8,10 +8,11 @@ from app.config import ClientRole
 
 
 class PairingCodeCreate(BaseModel):
-    """등록 코드 발급 요청. 이름과 방은 허브 등록 시 반영된다."""
+    """등록 코드 발급 요청. 이름과 방은 허브 등록 시 반영된다. 발급될 종류는 관리자가 정한다."""
 
     name: str = Field(default="", max_length=100)
     area_id: str = Field(default="", max_length=100)
+    client_kind: ClientRole = ClientRole.HUB
 
 
 class PairingCodeRead(BaseModel):
@@ -22,10 +23,10 @@ class PairingCodeRead(BaseModel):
 
 
 class PairRequest(BaseModel):
-    """코드로 등록하는 요청."""
+    """코드로 등록하는 요청. 종류는 코드에 묶여 있어 하위 호환용으로만 받고, 다르면 거절한다."""
 
     code: str = Field(min_length=1, max_length=16)
-    client_kind: ClientRole = ClientRole.HUB
+    client_kind: ClientRole | None = None
 
 
 class PairResponse(BaseModel):

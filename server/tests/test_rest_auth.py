@@ -28,8 +28,10 @@ def anon(client: TestClient) -> TestClient:
 
 
 def issue(client: TestClient, kind: str) -> dict[str, str]:
-    code = client.post("/api/auth/pairing-codes", json={}, headers=ADMIN_HEADERS).json()["code"]
-    response = client.post("/api/auth/pair", json={"code": code, "client_kind": kind})
+    code = client.post(
+        "/api/auth/pairing-codes", json={"client_kind": kind}, headers=ADMIN_HEADERS
+    ).json()["code"]
+    response = client.post("/api/auth/pair", json={"code": code})
     assert response.status_code == 200
     body: dict[str, str] = response.json()
     return body
