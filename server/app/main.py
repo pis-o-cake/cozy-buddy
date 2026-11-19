@@ -18,6 +18,7 @@ from app.core.logging import configure_logging
 from app.core.openai_gateway import TTS_SAMPLE_RATE_HZ, OpenAIGateway
 from app.core.version import get_server_version
 from app.domain.agent.service import AgentService
+from app.domain.broadcast.service import BroadcastService
 from app.domain.home.service import HomeService
 from app.domain.telemetry.recorder import TurnRecorder
 from app.domain.voice.service import VoiceService
@@ -123,6 +124,9 @@ def create_app(
         return db
 
     app.state.turns = TurnRecorder(get_db, settings.turn_log_days)
+    app.state.broadcast = BroadcastService(
+        app.state.translator, app.state.connections, get_db, gateway
+    )
     app.state.agent = AgentService(
         settings,
         app.state.translator,
@@ -132,6 +136,7 @@ def create_app(
         gateway,
         clock,
         app.state.weather,
+        app.state.broadcast,
     )
     app.state.voice = VoiceService(
         settings,

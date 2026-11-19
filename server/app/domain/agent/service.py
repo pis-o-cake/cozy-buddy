@@ -27,6 +27,7 @@ from app.domain.agent.skills.alarm_control import AlarmControlSkill
 from app.domain.agent.skills.alarm_select import AlarmSelector
 from app.domain.agent.skills.alarm_store import AlarmStore
 from app.domain.agent.skills.base import KEY_INTERNAL
+from app.domain.agent.skills.broadcast import BroadcastSkill
 from app.domain.agent.skills.clarify import ClarifySkill
 from app.domain.agent.skills.device import DeviceSkill
 from app.domain.agent.skills.registry import SkillRegistry
@@ -37,6 +38,7 @@ from app.domain.agent.understand.followup import FollowupResolver
 from app.domain.agent.understand.llm import LlmStep
 from app.domain.agent.understand.steps import MatcherAttempt, WeatherAttempt
 from app.domain.agent.understand.understander import Understander
+from app.domain.broadcast.service import BroadcastService
 from app.domain.home.service import HomeService
 from app.domain.telemetry.turn import Stage, Turn, TurnPath, TurnSource
 from app.domain.weather.service import WeatherService
@@ -58,6 +60,7 @@ class AgentService:
         openai: OpenAIGateway | None,
         clock: Callable[[], datetime] | None = None,
         weather: WeatherService | None = None,
+        broadcast: BroadcastService | None = None,
     ) -> None:
         self._settings = settings
         self._t = translate
@@ -80,6 +83,7 @@ class AgentService:
                 AlarmSkill(translate, alarms, selector, clarify, self._tz),
                 AlarmControlSkill(translate, connections.hub_control),
                 WeatherSkill(translate, weather),
+                *([BroadcastSkill(translate, broadcast)] if broadcast is not None else []),
                 ClarifySkill(translate, clarify),
             ],
             translate,

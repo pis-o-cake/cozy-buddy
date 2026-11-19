@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from loguru import logger
 
 from app.domain.agent.alarm_control_intent import match_alarm_control
+from app.domain.agent.broadcast_intent import match_broadcast
 from app.domain.agent.lexicon import QUERY_KINDS, VERB_KINDS, Kind, Lex, Vocab, build_vocab, scan
 from app.domain.agent.model import (
     RELATIVE_BRIGHTNESS_STEP,
@@ -76,6 +77,7 @@ def match(
         or match_cancel(norm, context.now)
         or match_timer(norm)
         or match_alarm(norm, context.now)
+        or match_broadcast(norm)
     )
     if scheduled is not None:
         return scheduled

@@ -179,6 +179,18 @@ class WeatherIntent:
 
 
 @dataclass(frozen=True, slots=True)
+class BroadcastIntent:
+    """다른 허브에 방송. target 이 None 이면 말한 허브를 뺀 모든 허브다.
+
+    target 은 말한 방·허브 이름 그대로이며, 어느 허브인지는 실행 쪽이 풀이한다.
+    text 는 방송으로 읽을 문장이다.
+    """
+
+    target: str | None
+    text: str
+
+
+@dataclass(frozen=True, slots=True)
 class Clarify:
     """확인 질문. action/params 는 사용자가 확정하면 그대로 실행할 보류 명령이다."""
 
@@ -222,6 +234,7 @@ MatchResult = (
     | CancelAlarmIntent
     | AlarmControlIntent
     | WeatherIntent
+    | BroadcastIntent
     | Clarify
     | NoMatch
 )
@@ -236,6 +249,7 @@ Intent = (
     | CancelAlarmIntent
     | AlarmControlIntent
     | WeatherIntent
+    | BroadcastIntent
     | Clarify
     | Dismiss
     | CancelSelected

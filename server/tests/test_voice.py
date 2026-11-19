@@ -204,6 +204,7 @@ def test_llm_fallback_runs_tool_then_streams_final_text(
         "set_reminder",
         "cancel_alarm",
         "get_weather",
+        "broadcast",
     ]
     assert (
         "light.living"
