@@ -91,6 +91,19 @@ if [[ "${1:-}" == "health" ]]; then
     exit $?
 fi
 
+# 설정 검증 후 reload. 검증 실패 시 nginx -t 출력을 보이고 실패한다.
+reload_nginx() {
+    echo "== nginx 설정 검증·reload"
+    local out
+    if ! out="$(remote "docker compose exec -T nginx nginx -t" 2>&1)"; then
+        echo "ERROR: nginx -t 실패:" >&2
+        echo "$out" >&2
+        return 1
+    fi
+    echo "$out"
+    remote "docker compose exec -T nginx nginx -s reload"
+}
+
 # 운영자 CLI: 동기화·빌드 없이 실행 중인 컨테이너에 exec 한다. 인자는 원격 셸에 안전하게 인용한다.
 run_cli() {
     local quoted
@@ -117,6 +130,7 @@ esac
 case "${1:-}" in
 "")
     remote "docker compose up -d --build"
+    reload_nginx
     wait_healthy
     if ((RUN_SMOKE)); then run_smoke; fi
     ;;
