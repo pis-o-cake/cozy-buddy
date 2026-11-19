@@ -439,3 +439,37 @@ def test_vocabulary_shuffles_never_raise() -> None:
 def test_naive_datetime_is_rejected() -> None:
     with pytest.raises(ValueError, match="timezone-aware"):
         UtteranceContext(text="불 꺼줘", hub_area_id=None, now=datetime(2026, 11, 13, 9, 0))
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "매일 7시 알람 끄지마",
+        "10분 타이머 취소하지마",
+        "10분 타이머 취소하지 마",
+        "7시 알람 맞추지마",
+        "7시 알람 말고 8시 알람",
+        "알람 지우지 마",
+        "7시 알람 안 돼",
+        "다음주 7시 알람",
+        "이번주 7시 알람 맞춰줘",
+        "다음주 7시 알람 취소해줘",
+        "어제 7시 알람",
+        "다음주 월요일 7시 알람",
+        "10분 타이머 맞춰줘 다음주",
+    ],
+)
+def test_negation_and_unsupported_dates_never_match_schedule(text: str) -> None:
+    assert_same(run(text, LIVING), NoMatch())
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("내일모레 7시 알람", AlarmIntent(7, 0, one_shot_epoch_ms=ms(11, 15, 7))),
+        ("모레 아침 7시 알람", AlarmIntent(7, 0, one_shot_epoch_ms=ms(11, 15, 7))),
+        ("글피 오전 7시 알람", AlarmIntent(7, 0, one_shot_epoch_ms=ms(11, 16, 7))),
+    ],
+)
+def test_relative_day_words(text: str, expected: MatchResult) -> None:
+    assert_same(run(text, LIVING), expected)
