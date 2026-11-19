@@ -76,6 +76,8 @@ class Settings(BaseSettings):
     # 기본은 로컬과 docker bridge 대역.
     trusted_proxies: str = "127.0.0.1/32,::1/128,172.16.0.0/12"
     hello_timeout_seconds: float = 10.0
+    # 연결 하나에 프레임을 보내는 제한 시간. 넘기면 그 연결을 닫아 팬아웃이 묶이지 않게 한다.
+    ws_send_timeout_seconds: float = Field(default=5.0, gt=0)
     # 보안 한도(REST 기본 거부·WebSocket 제한). 문서 UI(/docs, /openapi.json)는 기본 꺼 둔다.
     api_docs: bool = False
     ws_max_connections: int = Field(default=64, ge=1)
@@ -156,9 +158,14 @@ class Settings(BaseSettings):
     max_text_query_chars: int = Field(default=300, ge=1)
     turn_rate_per_minute: int = Field(default=20, ge=1)
     reminder_rate_per_minute: int = Field(default=6, ge=1)
+    broadcast_rate_per_minute: int = Field(default=6, ge=1)
     daily_llm_calls: int = Field(default=1500, ge=0)
     daily_tts_chars: int = Field(default=100_000, ge=0)
     daily_stt_seconds: int = Field(default=7_500, ge=0)
+
+    # --- 알람 동기화 ---
+    # 음성 알람 설정 뒤 허브 ack 를 기다리는 시간. 넘기면 "전달 중" 으로 답한다.
+    alarm_ack_timeout_seconds: float = Field(default=3.0, gt=0)
 
     # --- Home Assistant 제어 안전(S2) ---
     # 제어를 허용할 script 엔티티 ID 쉼표 목록. 비어 있으면 script 는 어떤 경로로도 실행하지 않는다.
