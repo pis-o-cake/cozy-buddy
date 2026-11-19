@@ -48,6 +48,7 @@ message Envelope {
     AlarmSyncRequest alarm_sync_request = 44;
     AlarmControl alarm_control = 45;
     AlarmControlResult alarm_control_result = 46;
+    ReminderFired reminder_fired = 47;
 
     // home
     HomeSnapshot home_snapshot = 60;
