@@ -1,0 +1,7 @@
+torch==2.15.0+cpu
+onnx==1.23.2
+onnxruntime==1.32.0
+numpy==2.5.5
+scipy==1.18.1
+soundfile==0.14.0
+loguru==0.8.0
