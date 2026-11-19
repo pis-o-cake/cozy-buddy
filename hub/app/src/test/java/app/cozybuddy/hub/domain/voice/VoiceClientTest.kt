@@ -330,6 +330,54 @@ class VoiceClientTest {
     }
 
     @Test
+    fun `declined utterance returns quietly to IDLE and ignores a late response`() = runTest {
+        val h = harness()
+        link.connect()
+        h.client.onTap()
+        runCurrent()
+        speakAndFinish()
+        assertEquals(AssistantPhase.THINKING, phase)
+
+        receive(
+            envelope {
+                utteranceDeclined = app.cozybuddy.protocol.v1.utteranceDeclined {
+                    streamId = "u1"
+                    reason = app.cozybuddy.protocol.v1.DeclineReason.DECLINE_REASON_DUPLICATE
+                    winnerHubId = "hub-2"
+                }
+            },
+        )
+
+        assertEquals(AssistantPhase.IDLE, phase)
+        assertEquals(emptyList<VoiceNotice>(), h.notices)
+        assertEquals(AssistantSnapshot(), machine.state.value)
+
+        receive(audioStart("r1"))
+        assertEquals(AssistantPhase.IDLE, phase)
+
+        h.client.onTap()
+        runCurrent()
+        assertEquals(AssistantPhase.LISTENING, phase)
+    }
+
+    @Test
+    fun `declined for an unknown stream changes nothing`() = runTest {
+        val h = harness()
+        link.connect()
+        h.client.onTap()
+        runCurrent()
+        speakAndFinish()
+
+        receive(
+            envelope {
+                utteranceDeclined = app.cozybuddy.protocol.v1.utteranceDeclined { streamId = "other" }
+            },
+        )
+
+        assertEquals(AssistantPhase.THINKING, phase)
+    }
+
+    @Test
     fun `broadcast audio plays only while the assistant is idle and leaves the state machine alone`() = runTest {
         val h = harness()
         link.connect()

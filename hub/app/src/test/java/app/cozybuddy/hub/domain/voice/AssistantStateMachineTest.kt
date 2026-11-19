@@ -37,6 +37,28 @@ class AssistantStateMachineTest {
     }
 
     @Test
+    fun `declined utterance returns THINKING to IDLE`() {
+        machine.onTap("u1")
+        machine.onUtteranceEnded("u1")
+
+        assertTrue(machine.onDeclined("u1"))
+        assertEquals(AssistantSnapshot(), machine.state.value)
+    }
+
+    @Test
+    fun `declined for another stream or while speaking is ignored`() {
+        machine.onTap("u1")
+        machine.onUtteranceEnded("u1")
+
+        assertFalse(machine.onDeclined("u0"))
+        assertEquals(AssistantPhase.THINKING, phase)
+
+        machine.onResponseAudioStart("r1")
+        assertFalse(machine.onDeclined("u1"))
+        assertEquals(AssistantPhase.SPEAKING, phase)
+    }
+
+    @Test
     fun `no speech timeout returns LISTENING to IDLE`() {
         machine.onTap("u1")
 

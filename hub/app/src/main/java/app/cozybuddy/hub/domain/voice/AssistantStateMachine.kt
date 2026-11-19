@@ -97,6 +97,21 @@ class AssistantStateMachine @Inject constructor() {
     fun onPlaybackDrained(responseId: String): Boolean =
         transition(AssistantPhase.SPEAKING, null, responseId) { idle(it) }
 
+    /**
+     * 서버가 같은 발화를 다른 허브가 처리한다며 거절했다. 해당 발화가 듣기·생각 중일 때만 IDLE 로 돌아간다.
+     * 오류가 아니므로 호출 쪽은 알림을 띄우지 않는다.
+     */
+    fun onDeclined(utteranceId: String): Boolean {
+        var changed = false
+        _state.update { current ->
+            val matches = current.utteranceId == utteranceId &&
+                (current.phase == AssistantPhase.LISTENING || current.phase == AssistantPhase.THINKING)
+            changed = matches
+            if (matches) idle(current) else current
+        }
+        return changed
+    }
+
     /** 오류나 연결 끊김. 어느 상태에서든 IDLE 로 돌아간다. 이미 IDLE 이면 false. */
     fun onError(): Boolean = reset()
 
