@@ -41,7 +41,7 @@ class FakeOpenAI(OpenAIGateway):
     async def aclose(self) -> None:
         return None
 
-    async def transcribe(self, wav: bytes, prompt: str | None = None) -> str:
+    async def transcribe(self, wav: bytes, prompt: str | None = None, on_hedge: Any = None) -> str:
         self.stt_calls.append((wav, prompt))
         if self.stt_block is not None:
             try:

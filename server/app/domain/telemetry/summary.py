@@ -44,10 +44,14 @@ def summarize(rows: Iterable[TurnLog], window_hours: float) -> TurnSummary:
         stages[name] = StageStat(
             count=len(values), p50_ms=percentile(values, 50), p95_ms=percentile(values, 95)
         )
+    stt_turns = sum(1 for row in turns if row.t_stt_ms is not None)
+    hedged = sum(1 for row in turns if row.stt_hedged)
     return TurnSummary(
         window_hours=window_hours,
         total=total,
         deterministic_ratio=round(deterministic / total, 4) if total else 0.0,
+        stt_hedged_count=hedged,
+        stt_hedge_ratio=round(hedged / stt_turns, 4) if stt_turns else 0.0,
         paths=paths,
         stages=stages,
     )

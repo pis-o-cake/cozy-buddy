@@ -1,6 +1,6 @@
 """턴 기록: 음성·텍스트 흐름에서 경로, 의도, 단계 시간이 채워진다."""
 
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 
 import pytest
 from cozy.v1.alarm_pb2 import ALARM_CONTROL_ACTION_STOP, AlarmControlResult
@@ -11,7 +11,7 @@ from fastapi.testclient import TestClient
 from starlette.testclient import WebSocketTestSession
 
 from app.config import Settings
-from app.core.openai_gateway import OpenAIGatewayError
+from app.core.openai_gateway import OpenAIGatewayError, OpenAIGatewayTimeout
 from app.domain.telemetry.recorder import TurnRecorder
 from app.domain.telemetry.turn import SkillOutcome, Turn, TurnPath, TurnSource
 from app.main import create_app
@@ -180,7 +180,7 @@ def test_empty_transcript_is_clarify_path(
 def test_stt_failure_records_error_turn(
     turn_client: TestClient, gateway: FakeOpenAI, captured: Captured
 ) -> None:
-    async def broken(wav: bytes, prompt: str | None = None) -> str:
+    async def broken(wav: bytes, prompt: str | None = None, **_: object) -> str:
         raise OpenAIGatewayError("stt down")
 
     gateway.transcribe = broken  # type: ignore[method-assign]
@@ -190,6 +190,49 @@ def test_stt_failure_records_error_turn(
 
     turn = captured.one()
     assert (turn.path, turn.error_code) == (TurnPath.ERROR, "stt_failed")
+
+
+def test_stt_timeout_records_error_turn_with_timeout_code(
+    turn_client: TestClient, gateway: FakeOpenAI, captured: Captured
+) -> None:
+    async def slow(wav: bytes, prompt: str | None = None, **_: object) -> str:
+        raise OpenAIGatewayTimeout("STT deadline exceeded")
+
+    gateway.transcribe = slow  # type: ignore[method-assign]
+    with connect_hub(turn_client) as hub:
+        send_utterance(hub)
+        recv_until(hub, is_idle)
+
+    turn = captured.one()
+    assert (turn.path, turn.error_code) == (TurnPath.ERROR, "stt_timeout")
+
+
+def test_hedged_stt_is_flagged_on_turn(
+    turn_client: TestClient, gateway: FakeOpenAI, captured: Captured
+) -> None:
+    async def hedged(
+        wav: bytes, prompt: str | None = None, on_hedge: Callable[[], None] | None = None
+    ) -> str:
+        assert on_hedge is not None
+        on_hedge()
+        return "거실 조명 꺼줘"
+
+    gateway.transcribe = hedged  # type: ignore[method-assign]
+    with connect_hub(turn_client) as hub:
+        send_utterance(hub)
+        recv_until(hub, is_idle)
+
+    assert captured.one().stt_hedged is True
+
+
+def test_unhedged_stt_is_not_flagged(
+    turn_client: TestClient, gateway: FakeOpenAI, captured: Captured
+) -> None:
+    with connect_hub(turn_client) as hub:
+        send_utterance(hub)
+        recv_until(hub, is_idle)
+
+    assert captured.one().stt_hedged is False
 
 
 def _alarm_control_of(frame: Envelope) -> bool:
