@@ -33,6 +33,9 @@ services:
       - no-new-privileges:true
     cap_drop:
       - ALL
+    # 종료 순서(connections drain 5s, 백업 stop 최대 60s)와 gunicorn --graceful-timeout 65 에 맞춘다.
+    # 기본 10s 면 백업 도중 SIGKILL 되어 DB 백업이 깨질 수 있다.
+    stop_grace_period: 70s
     restart: unless-stopped
 
   nginx:
@@ -46,6 +49,22 @@ services:
     command: ["nginx", "-c", "/etc/cozy-nginx/nginx.conf", "-g", "daemon off;"]
     volumes:
       - ./deploy/nginx:/etc/cozy-nginx:ro
+    # 마스터가 root 로 :80 에 바인드하고 워커를 nobody 로 내리므로 필요한 capability 만 남긴다.
+    # 쓰는 경로는 임시 디렉터리(proxy/client temp)와 pid 파일뿐이다. 로그는 stdout/stderr 심볼릭 링크다.
+    read_only: true
+    tmpfs:
+      - /var/cache/nginx
+      - /run
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETUID
+      - SETGID
+      - NET_BIND_SERVICE
     restart: unless-stopped
 
   homeassistant:
