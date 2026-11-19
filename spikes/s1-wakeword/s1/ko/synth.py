@@ -28,7 +28,7 @@ from scipy.signal import resample_poly
 from s1.ko import plan
 
 ROOT = Path(__file__).resolve().parents[2]
-ENV_PATH = Path("/Users/cheol/dev/private/cozy-buddy/.env")
+ENV_PATH = Path(os.environ.get("COZY_ENV_FILE") or ROOT.parents[1] / ".env")
 OUT = ROOT / ".cache/ko"
 SENTENCES = OUT / "sentences.json"
 MANIFEST = OUT / "manifest.jsonl"

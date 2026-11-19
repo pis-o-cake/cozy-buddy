@@ -3,10 +3,12 @@ from __future__ import annotations
 
 import os
 from dataclasses import asdict, dataclass, field
+from pathlib import Path
 
 from dotenv import load_dotenv
 
-ENV_PATH = "/Users/cheol/dev/private/cozy-buddy/.env"
+# 저장소 루트 .env. 워크트리 등에서 루트가 다르면 COZY_ENV_FILE 로 지정한다.
+ENV_PATH = Path(os.environ.get("COZY_ENV_FILE") or Path(__file__).resolve().parents[3] / ".env")
 SAMPLE_RATE = 24000
 INPUT_VOICE = "echo"
 RESPONSE_VOICE = "coral"
