@@ -25,6 +25,7 @@ KEY_TEXT_ONLY_NOTE = "broadcast.text_only_note"
 KEY_NO_TARGET = "broadcast.no_target"
 KEY_NO_OTHER_HUBS = "broadcast.no_other_hubs"
 KEY_ALL_OFFLINE = "broadcast.all_offline"
+KEY_ALL_OFFLINE_EVERYONE = "broadcast.all_offline_everyone"
 
 
 class BroadcastSkill(BaseSkill):
@@ -87,7 +88,9 @@ class BroadcastSkill(BaseSkill):
             key = KEY_NO_OTHER_HUBS if report.everyone else KEY_NO_TARGET
             return self._failure(key, args)
         if not report.delivered:
-            return self._failure(KEY_ALL_OFFLINE, args)
+            return self._failure(
+                KEY_ALL_OFFLINE_EVERYONE if report.everyone else KEY_ALL_OFFLINE, args
+            )
         count = len(report.delivered)
         key = _sent_key(report, count)
         sentences = [self._t(key).format(count=count, **args)]

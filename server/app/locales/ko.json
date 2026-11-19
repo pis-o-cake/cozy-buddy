@@ -142,5 +142,6 @@
   "broadcast.text_only_note": "음성은 만들지 못해 자막으로만 전했어요.",
   "broadcast.no_target": "{target}에는 방송할 허브가 없어요.",
   "broadcast.no_other_hubs": "방송을 받을 다른 허브가 없어요.",
-  "broadcast.all_offline": "{target}의 허브가 모두 오프라인이라 방송하지 못했어요."
+  "broadcast.all_offline": "{target}의 허브가 모두 오프라인이라 방송하지 못했어요.",
+  "broadcast.all_offline_everyone": "다른 허브가 모두 오프라인이라 방송하지 못했어요."
 }
