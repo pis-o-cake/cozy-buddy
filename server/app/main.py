@@ -15,6 +15,7 @@ from app.core.discovery import discover_domain_modules
 from app.core.exceptions import register_exception_handlers
 from app.core.i18n import Translator
 from app.core.logging import configure_logging
+from app.core.maintenance import BackupScheduler
 from app.core.openai_gateway import TTS_SAMPLE_RATE_HZ, OpenAIGateway
 from app.core.version import get_server_version
 from app.domain.agent.service import AgentService
@@ -79,6 +80,7 @@ def create_app(
         app.state.db = Database(settings.database_url)
         logger.info("Server started: version={}", get_server_version())
         await app.state.turns.start()
+        app.state.backups.start()
         await app.state.home.start()
         await app.state.weather.start()
         if warmup is not None:
@@ -93,6 +95,7 @@ def create_app(
                 await tts_cache.drain()
             await app.state.weather.stop()
             await app.state.home.stop()
+            await app.state.backups.stop()
             await app.state.turns.stop()
             if gateway is not None:
                 await gateway.aclose()
@@ -102,6 +105,7 @@ def create_app(
     app = FastAPI(title="Cozy Server", version=get_server_version(), lifespan=lifespan)
     app.state.settings = settings
     app.state.translator = Translator(settings.locale)
+    app.state.backups = BackupScheduler(settings)
     # WARNING: 연결 레지스트리는 프로세스 메모리에 있으므로 워커는 1개만 쓴다.
     app.state.connections = ConnectionManager()
     app.state.home = HomeService(settings, app.state.connections)
