@@ -11,8 +11,9 @@ FROM python:3.12-slim
 COPY --from=ghcr.io/astral-sh/uv:0.9.7 /uv /usr/local/bin/uv
 WORKDIR /app
 
-COPY pyproject.toml ./
-RUN uv pip install --system --no-cache -r pyproject.toml
+# poetry.lock 에서 생성한 해시 고정 파일로 설치한다(갱신: poetry run python scripts/export_lock.py).
+COPY requirements.lock.txt ./
+RUN uv pip install --system --no-cache --require-hashes --no-deps -r requirements.lock.txt
 
 COPY alembic.ini ./
 COPY migrations ./migrations
@@ -35,6 +36,8 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=15s \
 
 # IMPORTANT: 컨테이너는 read_only 로 돈다(compose). 쓰는 곳은 /app/data 볼륨과 /tmp(tmpfs)뿐이다.
 # 컨트롤 소켓은 ~/.gunicorn 에 써야 해서 끄고, 워커 heartbeat 는 메모리 /dev/shm 에 둔다.
+# IMPORTANT: --graceful-timeout 은 lifespan 종료(연결 drain 5s + 백업 stop 최대 60s)보다 길어야 하고,
+# compose 의 stop_grace_period 는 이보다 길어야 한다. 기본값 30s 면 백업 도중 SIGKILL 된다.
 # WARNING: 워커는 반드시 1개다. WebSocket 연결 레지스트리가 프로세스 메모리에 있어
 # 워커가 둘 이상이면 허브와 앱이 서로 다른 프로세스에 붙어 메시지가 전달되지 않는다.
-CMD ["sh", "-c", "alembic upgrade head && exec gunicorn 'app.main:create_app()' -k app.core.worker.CozyUvicornWorker -w 1 --no-control-socket --worker-tmp-dir /dev/shm -b 0.0.0.0:8000"]
+CMD ["sh", "-c", "alembic upgrade head && exec gunicorn 'app.main:create_app()' -k app.core.worker.CozyUvicornWorker -w 1 --graceful-timeout 65 --no-control-socket --worker-tmp-dir /dev/shm -b 0.0.0.0:8000"]
