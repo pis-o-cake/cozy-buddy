@@ -1,3 +1,5 @@
+from collections.abc import Callable
+
 import pytest
 from cozy.v1.alarm_pb2 import (
     ALARM_KIND_ALARM,
@@ -108,13 +110,80 @@ def test_mobile_upsert_forwarded_to_online_hub_and_ack_returns(client: TestClien
     assert row[0]["revision"] == 5
 
 
-def test_failed_ack_keeps_pending(client: TestClient) -> None:
+def test_rejected_ack_marks_rejected_forwards_hub_id_and_requests_snapshot(
+    client: TestClient,
+) -> None:
     with connect_hub(client) as hub, connect_mobile(client) as mobile:
         send(mobile, Envelope(alarm_upsert=AlarmUpsert(request_id="r", alarm=repeating_alarm())))
         recv(hub)
         send(hub, Envelope(alarm_ack=AlarmAck(request_id="r", alarm_id="a1", ok=False)))
-        assert recv(mobile).alarm_ack.ok is False
-    assert alarms(client)[0]["sync_state"] == "pending_to_hub"
+        forwarded = recv(mobile).alarm_ack
+        assert forwarded.ok is False and forwarded.hub_id == HUB_ID
+        assert recv(hub).alarm_sync_request.hub_id == HUB_ID
+    assert alarms(client)[0]["sync_state"] == "rejected"
+
+
+def test_rejected_change_is_not_redelivered_and_snapshot_clears_it(client: TestClient) -> None:
+    with connect_hub(client) as hub, connect_mobile(client) as mobile:
+        send(mobile, Envelope(alarm_upsert=AlarmUpsert(request_id="r", alarm=repeating_alarm())))
+        recv(hub)
+        send(hub, Envelope(alarm_ack=AlarmAck(request_id="r", alarm_id="a1", ok=False)))
+        recv(mobile)
+        recv(hub)
+
+    with connect_hub(client, consume_sync_request=False) as hub:
+        assert recv(hub).WhichOneof("body") == "alarm_sync_request"
+        send(hub, Envelope(alarm_snapshot=AlarmSnapshot(hub_id=HUB_ID, alarms=[])))
+        eventually(lambda: alarms(client) == [])
+
+
+def test_rejected_delete_reverts_to_synced(client: TestClient) -> None:
+    with connect_hub(client) as hub, connect_mobile(client) as mobile:
+        send(hub, Envelope(alarm_snapshot=AlarmSnapshot(hub_id=HUB_ID, alarms=[repeating_alarm()])))
+        recv(mobile)
+        eventually(lambda: alarms(client))
+        delete = AlarmDelete(request_id="d1", alarm_id="a1", hub_id=HUB_ID)
+        send(mobile, Envelope(alarm_delete=delete))
+        recv(hub)
+        send(hub, Envelope(alarm_ack=AlarmAck(request_id="d1", alarm_id="a1", ok=False)))
+        recv(mobile)
+        eventually(lambda: alarms(client)[0]["sync_state"] == "synced")
+
+
+@pytest.mark.parametrize(
+    "mutate",
+    [
+        lambda a: setattr(a, "alarm_id", "x" * 65),
+        lambda a: setattr(a, "alarm_id", "bad id!"),
+        lambda a: setattr(a.repeating, "hour", 24),
+        lambda a: setattr(a.repeating, "minute", 60),
+        lambda a: a.repeating.days.append(0),
+        lambda a: a.repeating.days.append(8),
+        lambda a: a.repeating.days.append(DAY_OF_WEEK_MONDAY),
+    ],
+)
+def test_mobile_upsert_with_invalid_fields_is_rejected(
+    client: TestClient, mutate: Callable[[Alarm], None]
+) -> None:
+    register_hub(client)
+    alarm = repeating_alarm()
+    mutate(alarm)
+    with connect_mobile(client) as mobile:
+        send(mobile, Envelope(alarm_upsert=AlarmUpsert(request_id="r", alarm=alarm)))
+        error = recv(mobile).error
+    assert error.message_key == "alarm.invalid"
+    assert alarms(client) == []
+
+
+def test_snapshot_with_duplicate_alarm_ids_still_commits(client: TestClient) -> None:
+    snapshot = AlarmSnapshot(
+        hub_id=HUB_ID, alarms=[repeating_alarm("d1"), repeating_alarm("d1"), repeating_alarm("d2")]
+    )
+    with connect_mobile(client) as mobile, connect_hub(client) as hub:
+        send(hub, Envelope(alarm_snapshot=snapshot))
+        recv(mobile)
+        stored = eventually(lambda: alarms(client))
+    assert sorted(a["alarm_id"] for a in stored) == ["d1", "d2"]
 
 
 def test_upsert_while_hub_offline_is_delivered_after_reconnect(client: TestClient) -> None:

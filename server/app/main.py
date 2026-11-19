@@ -142,7 +142,9 @@ def create_app(
     app.state.translator = Translator(settings.locale)
     app.state.backups = BackupScheduler(settings)
     # WARNING: 연결 레지스트리는 프로세스 메모리에 있으므로 워커는 1개만 쓴다.
-    app.state.connections = ConnectionManager(settings.ws_send_timeout_seconds)
+    app.state.connections = ConnectionManager(
+        settings.ws_send_timeout_seconds, settings.alarm_ack_timeout_seconds
+    )
     app.state.home = HomeService(settings, app.state.connections)
     app.state.weather = WeatherService(settings, app.state.connections, weather_client)
     gateway = openai or (OpenAIGateway(settings) if settings.voice_enabled else None)

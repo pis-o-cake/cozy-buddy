@@ -15,6 +15,8 @@ class SyncState(StrEnum):
     SYNCED = "synced"
     PENDING_TO_HUB = "pending_to_hub"
     PENDING_DELETE = "pending_delete"
+    # 허브가 변경을 거절했다. 다시 보내지 않으며 다음 스냅샷이 허브의 값으로 되돌린다.
+    REJECTED = "rejected"
 
 
 class AlarmKindName(StrEnum):

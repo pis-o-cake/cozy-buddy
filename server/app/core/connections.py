@@ -8,6 +8,7 @@ from loguru import logger
 from starlette.requests import HTTPConnection
 
 from app.config import ClientRole
+from app.core.alarm_acks import DEFAULT_ACK_TIMEOUT_SECONDS, AlarmAckWaiters
 from app.core.hub_control import HubControl
 
 CLOSE_REPLACED = 4000
@@ -53,11 +54,16 @@ class ClientConnection:
 class ConnectionManager:
     """연결된 허브·앱을 client_id 별로 추적한다. 프로세스 메모리에만 있다."""
 
-    def __init__(self, send_timeout_seconds: float = DEFAULT_SEND_TIMEOUT_SECONDS) -> None:
+    def __init__(
+        self,
+        send_timeout_seconds: float = DEFAULT_SEND_TIMEOUT_SECONDS,
+        alarm_ack_timeout_seconds: float = DEFAULT_ACK_TIMEOUT_SECONDS,
+    ) -> None:
         self._send_timeout = send_timeout_seconds
         self._hubs: dict[str, ClientConnection] = {}
         self._mobiles: dict[str, ClientConnection] = {}
         self.hub_control = HubControl(self)
+        self.alarm_acks = AlarmAckWaiters(alarm_ack_timeout_seconds)
         self._serving: set[asyncio.Future[None]] = set()
 
     def track_serving(self, task: asyncio.Future[None]) -> None:
