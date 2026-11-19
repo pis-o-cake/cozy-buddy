@@ -26,7 +26,7 @@ from s1.pipeline import WakePipeline
 
 ROOT = Path(__file__).resolve().parents[1]
 REPO = ROOT.parents[1]
-ENV_PATH = Path("/Users/cheol/dev/private/cozy-buddy/.env")
+ENV_PATH = Path(os.environ.get("COZY_ENV_FILE") or REPO / ".env")
 MODEL_DIR = REPO / "hub/app/src/main/assets/wakeword"
 CACHE = ROOT / ".cache"
 RESULTS = ROOT / "results/results.json"

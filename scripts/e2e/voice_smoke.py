@@ -39,7 +39,7 @@ from scipy.signal import resample_poly
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parents[1]
 PROTO_DIR = REPO / "protocol" / "proto"
-DEFAULT_ENV = Path("/Users/cheol/dev/private/cozy-buddy/.env")
+DEFAULT_ENV = Path(os.environ.get("COZY_ENV_FILE") or REPO / ".env")
 CACHE_DIR = HERE / ".cache"
 TTS_RATE = 24000
 SEND_RATE = 16000
