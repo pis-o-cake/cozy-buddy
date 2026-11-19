@@ -11,7 +11,9 @@ from app.config import ClientRole
 from app.core.hub_control import HubControl
 
 CLOSE_REPLACED = 4000
+CLOSE_SLOW_CONSUMER = 4001
 SERVING_DRAIN_SECONDS = 5.0
+DEFAULT_SEND_TIMEOUT_SECONDS = 5.0
 
 
 class ClientConnection:
@@ -51,7 +53,8 @@ class ClientConnection:
 class ConnectionManager:
     """연결된 허브·앱을 client_id 별로 추적한다. 프로세스 메모리에만 있다."""
 
-    def __init__(self) -> None:
+    def __init__(self, send_timeout_seconds: float = DEFAULT_SEND_TIMEOUT_SECONDS) -> None:
+        self._send_timeout = send_timeout_seconds
         self._hubs: dict[str, ClientConnection] = {}
         self._mobiles: dict[str, ClientConnection] = {}
         self.hub_control = HubControl(self)
@@ -131,37 +134,52 @@ class ConnectionManager:
         """연결된 허브·앱의 client_id 집합."""
         return set(self._hubs) | set(self._mobiles)
 
-    async def send_to_hub(self, hub_id: str, envelope: Envelope) -> bool:
-        """허브에 보낸다. 오프라인이거나 전송에 실패하면 False."""
-        conn = self._hubs.get(hub_id)
-        if conn is None:
-            return False
+    async def _deliver(self, conn: ClientConnection, envelope: Envelope) -> bool:
+        """제한 시간 안에 보낸다. 실패는 예외 대신 False 로 돌려주고 연결 하나로 격리한다.
+
+        WARNING: 시간 초과한 연결은 프레임이 반쯤 나갔을 수 있어 재사용하지 않고 닫는다.
+        """
         try:
-            await conn.send(envelope)
+            async with asyncio.timeout(self._send_timeout):
+                await conn.send(envelope)
+        except TimeoutError:
+            logger.warning("Send timed out, closing slow client: {} {}", conn.role, conn.client_id)
+            await self._close_quietly(conn)
+            return False
         except Exception:
-            logger.exception("Failed to send to hub: {}", hub_id)
+            logger.exception("Failed to send to client: {} {}", conn.role, conn.client_id)
             return False
         return True
 
-    async def broadcast(self, envelope: Envelope) -> None:
-        """연결된 모든 허브와 앱에 보낸다. 개별 실패는 로그만 남기고 계속한다."""
-        for conn in [*self._hubs.values(), *self._mobiles.values()]:
+    async def _close_quietly(self, conn: ClientConnection) -> None:
+        try:
+            async with asyncio.timeout(self._send_timeout):
+                await conn.close(CLOSE_SLOW_CONSUMER)
+        except Exception:
+            logger.debug("Slow client close failed: {}", conn.client_id)
+
+    async def _fan_out(self, conns: list[ClientConnection], envelope: Envelope) -> None:
+        async def one(conn: ClientConnection) -> None:
             copy = Envelope()
             copy.CopyFrom(envelope)
-            try:
-                await conn.send(copy)
-            except Exception:
-                logger.exception("Failed to broadcast to client: {}", conn.client_id)
+            await self._deliver(conn, copy)
+
+        await asyncio.gather(*(one(conn) for conn in conns))
+
+    async def send_to_hub(self, hub_id: str, envelope: Envelope) -> bool:
+        """허브에 보낸다. 오프라인이거나 전송에 실패하거나 시간이 초과되면 False."""
+        conn = self._hubs.get(hub_id)
+        if conn is None:
+            return False
+        return await self._deliver(conn, envelope)
+
+    async def broadcast(self, envelope: Envelope) -> None:
+        """연결된 모든 허브와 앱에 동시에 보낸다. 느리거나 실패한 연결은 그 연결만 건너뛴다."""
+        await self._fan_out([*self._hubs.values(), *self._mobiles.values()], envelope)
 
     async def broadcast_to_mobiles(self, envelope: Envelope) -> None:
-        """연결된 모든 앱에 보낸다. 개별 실패는 로그만 남기고 계속한다."""
-        for conn in list(self._mobiles.values()):
-            copy = Envelope()
-            copy.CopyFrom(envelope)
-            try:
-                await conn.send(copy)
-            except Exception:
-                logger.exception("Failed to send to mobile: {}", conn.client_id)
+        """연결된 모든 앱에 동시에 보낸다. 느리거나 실패한 연결은 그 연결만 건너뛴다."""
+        await self._fan_out(list(self._mobiles.values()), envelope)
 
 
 def get_connections(conn: HTTPConnection) -> ConnectionManager:

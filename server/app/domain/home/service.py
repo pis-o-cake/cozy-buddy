@@ -54,6 +54,9 @@ REGISTRY_EVENTS: tuple[str, ...] = (
 )
 SUBSCRIBED_EVENTS: tuple[str, ...] = ("state_changed", *REGISTRY_EVENTS)
 
+# 클라이언트로 나가기를 기다리는 메시지 상한. 넘치면 쌓인 변경을 버리고 스냅샷 하나로 대체한다.
+OUTBOX_MAX_MESSAGES = 256
+
 
 class HomeService:
     """HA 와의 연결 하나와 그 위의 엔티티 캐시를 소유한다. 앱 수명 동안 하나만 존재한다.
@@ -77,6 +80,8 @@ class HomeService:
         self._refresh_task: asyncio.Task[None] | None = None
         self._refresh_dirty = False
         self._poll_task: asyncio.Task[None] | None = None
+        self._outbox: asyncio.Queue[Envelope] = asyncio.Queue(OUTBOX_MAX_MESSAGES)
+        self._pump_task: asyncio.Task[None] | None = None
         if settings.ha_enabled:
             self._client = HomeAssistantClient(
                 settings.ha_url,
@@ -104,16 +109,19 @@ class HomeService:
         if self._client is None:
             logger.info("Home Assistant bridge disabled: COZY_HA_URL or COZY_HA_TOKEN not set")
             return
+        self._pump_task = asyncio.create_task(self._pump(), name="home-outbox-pump")
         self._task = asyncio.create_task(self._client.run(), name="home-assistant-client")
 
     async def stop(self) -> None:
-        """HA 연결 태스크를 멈춘다."""
+        """HA 연결 태스크와 클라이언트 송신 태스크를 멈춘다."""
         task, self._task = self._task, None
-        if task is None:
-            return
-        task.cancel()
-        with contextlib.suppress(asyncio.CancelledError):
-            await task
+        pump, self._pump_task = self._pump_task, None
+        for running in (task, pump):
+            if running is None:
+                continue
+            running.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await running
 
     def snapshot(self) -> HomeSnapshot:
         """현재 캐시의 스냅샷. 비활성이거나 연결 전이면 비어 있다."""
@@ -169,6 +177,28 @@ class HomeService:
             return _failure(command, ERROR_CODE_UPSTREAM_UNAVAILABLE, KEY_UNAVAILABLE)
         return CommandResult(request_id=command.request_id, ok=True)
 
+    def _publish(self, envelope: Envelope) -> None:
+        """클라이언트로 보낼 메시지를 큐에 넣고 기다리지 않는다.
+
+        Intent: 큐가 가득 차면 쌓인 변경을 버리고 현재 캐시의 전체 스냅샷으로 대체한다. 클라이언트는
+        스냅샷으로 홈 상태 전체를 교체하므로 변경을 잃지 않는다.
+        """
+        if self._outbox.full():
+            logger.warning("Home outbox full, replacing queued messages with a snapshot")
+            while not self._outbox.empty():
+                self._outbox.get_nowait()
+            envelope = Envelope(home_snapshot=self.snapshot())
+        self._outbox.put_nowait(envelope)
+
+    async def _pump(self) -> None:
+        """큐의 메시지를 순서대로 모든 클라이언트에 보낸다. 취소될 때까지 돈다."""
+        while True:
+            envelope = await self._outbox.get()
+            try:
+                await self._connections.broadcast(envelope)
+            except Exception:
+                logger.exception("Home broadcast failed")
+
     async def _on_connected(self, client: HomeAssistantClient) -> None:
         self._buffer = []
         try:
@@ -200,7 +230,7 @@ class HomeService:
             self._poll_task = asyncio.create_task(
                 self._poll_exposed(client), name="home-expose-poll"
             )
-        await self._connections.broadcast(Envelope(home_snapshot=self.snapshot()))
+        self._publish(Envelope(home_snapshot=self.snapshot()))
 
     async def _on_disconnected(self) -> None:
         self._ready = False
@@ -210,7 +240,7 @@ class HomeService:
         self._refresh_dirty = False
         self._catalog = HomeCatalog()
         logger.warning("Home Assistant disconnected, catalog cleared")
-        await self._connections.broadcast(Envelope(home_snapshot=self.snapshot()))
+        self._publish(Envelope(home_snapshot=self.snapshot()))
 
     async def _on_event(self, event: dict[str, Any]) -> None:
         event_type = event.get("event_type")
@@ -225,7 +255,7 @@ class HomeService:
         changed = self._apply_state_changed(event)
         if changed is None:
             return
-        await self._connections.broadcast(Envelope(entity_state_changed=changed))
+        self._publish(Envelope(entity_state_changed=changed))
 
     def _schedule_refresh(self) -> None:
         """캐시 재구성을 예약한다. 연결 직후 구성 중이면 새 데이터가 이미 반영되므로 무시한다."""
@@ -272,7 +302,7 @@ class HomeService:
             for event in buffered:
                 changed = self._apply_state_changed(event)
                 if changed is not None:
-                    await self._connections.broadcast(Envelope(entity_state_changed=changed))
+                    self._publish(Envelope(entity_state_changed=changed))
             return
         self._catalog = fresh
         for event in buffered:
@@ -283,7 +313,7 @@ class HomeService:
             len(self._catalog.entities),
         )
         # 삭제된 엔티티도 클라이언트가 홈 상태 전체를 이 스냅샷으로 교체해 반영한다.
-        await self._connections.broadcast(Envelope(home_snapshot=self.snapshot()))
+        self._publish(Envelope(home_snapshot=self.snapshot()))
 
     async def _poll_exposed(self, client: HomeAssistantClient) -> None:
         """전용 이벤트가 없는 노출 변경을 주기적으로 확인한다."""

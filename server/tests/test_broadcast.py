@@ -323,3 +323,44 @@ def test_rest_broadcast_without_hub_labels_the_sender(client: TestClient) -> Non
         notice = recv(kitchen)
 
     assert notice.broadcast_notice.from_area == "휴대폰"
+
+
+def test_rest_broadcast_ignores_from_hub_id_for_mobile(client: TestClient) -> None:
+    headers = {"Authorization": f"Bearer {MOBILE_TOKEN}"}
+    with connect_hub(client) as speaker, connect_hub(client, HUB_B, HUB_B_TOKEN) as kitchen:
+        response = client.post(
+            "/api/broadcast", json={"text": "밥", "from_hub_id": HUB_ID}, headers=headers
+        )
+        notice = recv(kitchen)
+        own = recv(speaker)
+
+    assert response.status_code == 200
+    assert notice.broadcast_notice.from_hub_id == ""
+    assert notice.broadcast_notice.from_area == "휴대폰"
+    assert own.broadcast_notice.text == "밥"
+
+
+def test_rest_broadcast_keeps_from_hub_id_for_admin(client: TestClient) -> None:
+    with connect_hub(client) as speaker, connect_hub(client, HUB_B, HUB_B_TOKEN) as kitchen:
+        response = client.post("/api/broadcast", json={"text": "밥", "from_hub_id": HUB_ID})
+        notice = recv(kitchen)
+
+    assert response.status_code == 200
+    assert response.json()["delivered"] == [HUB_B]
+    assert notice.broadcast_notice.from_hub_id == HUB_ID
+    del speaker
+
+
+def test_rest_broadcast_is_rate_limited_per_caller(settings: Settings) -> None:
+    limited = settings.model_copy(update={"broadcast_rate_per_minute": 2})
+    migrate(limited.database_url)
+    mobile = {"Authorization": f"Bearer {MOBILE_TOKEN}"}
+    with TestClient(create_app(limited)) as api, connect_hub(api, HUB_B, HUB_B_TOKEN):
+        codes = [
+            api.post("/api/broadcast", json={"text": "밥"}, headers=mobile).status_code
+            for _ in range(3)
+        ]
+        other = api.post("/api/broadcast", json={"text": "밥"}).status_code
+
+    assert codes == [200, 200, 429]
+    assert other == 200

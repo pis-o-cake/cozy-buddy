@@ -1,5 +1,6 @@
 """home 브리지: 가짜 HA 서버를 상대로 스냅샷, 상태 중계, 제어, 재연결을 검증한다."""
 
+import asyncio
 import time
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -11,14 +12,15 @@ from cozy.v1.common_pb2 import (
     ERROR_CODE_UPSTREAM_UNAVAILABLE,
 )
 from cozy.v1.envelope_pb2 import Envelope
-from cozy.v1.home_pb2 import EntityCommand, HomeSnapshot
+from cozy.v1.home_pb2 import EntityCommand, EntityStateChanged, HomeSnapshot
 from fastapi.testclient import TestClient
 from starlette.testclient import WebSocketTestSession
 
 from app.config import Settings
 from app.domain.home.commands import UnsupportedCommandError, build_service_call
 from app.domain.home.ha_client import to_websocket_url
-from app.domain.home.service import HomeService
+from app.domain.home.schemas import HomeCatalog, HomeEntity
+from app.domain.home.service import OUTBOX_MAX_MESSAGES, HomeService
 from app.main import create_app
 from tests.conftest import (
     connect_hub,
@@ -494,3 +496,42 @@ def test_reconnect_rebuilds_cache_and_pushes_fresh_snapshot(
     assert set(entities) == EXPECTED_ENTITIES
     assert entities["light.living"].state.state == "off"
     assert home_of(ha_client).ready
+
+
+async def test_state_changes_are_queued_without_waiting_for_clients() -> None:
+    settings = Settings(_env_file=None, ha_url="http://x", ha_token="t")  # type: ignore[call-arg]
+    release = asyncio.Event()
+    delivered: list[Envelope] = []
+
+    class SlowConnections:
+        async def broadcast(self, envelope: Envelope) -> None:
+            await release.wait()
+            delivered.append(envelope)
+
+    home = HomeService(settings, SlowConnections())  # type: ignore[arg-type]
+    entity = HomeEntity(entity_id="light.a", name="A", domain="light", state="off")
+    home._catalog = HomeCatalog(entities={"light.a": entity})
+    home._pump_task = asyncio.create_task(home._pump())
+    event = {
+        "event_type": "state_changed",
+        "data": {"entity_id": "light.a", "new_state": {"entity_id": "light.a", "state": "on"}},
+    }
+
+    await asyncio.wait_for(home._on_event(event), 0.5)
+    await asyncio.wait_for(home._on_event(event), 0.5)
+    release.set()
+    await asyncio.sleep(0.05)
+    await home.stop()
+
+    assert [e.WhichOneof("body") for e in delivered] == ["entity_state_changed"] * 2
+
+
+async def test_outbox_overflow_collapses_into_one_snapshot() -> None:
+    settings = Settings(_env_file=None, ha_url="http://x", ha_token="t")  # type: ignore[call-arg]
+    home = HomeService(settings, None)  # type: ignore[arg-type]
+    for _ in range(OUTBOX_MAX_MESSAGES + 5):
+        home._publish(Envelope(entity_state_changed=EntityStateChanged()))
+
+    queued = [home._outbox.get_nowait() for _ in range(home._outbox.qsize())]
+    assert queued[0].WhichOneof("body") == "home_snapshot"
+    assert len(queued) <= 6

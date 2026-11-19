@@ -208,6 +208,7 @@ class HomeAssistantClient:
             return
         if kind != "event":
             return
+        # IMPORTANT: 수신 루프에서 도는 핸들러는 클라이언트 송신을 기다리면 안 된다.
         try:
             await self._on_event(message.get("event") or {})
         except Exception:
