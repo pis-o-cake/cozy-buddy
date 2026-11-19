@@ -33,11 +33,17 @@ import app.cozybuddy.hub.core.audio.wakeword.WakeWordKeyword
 import app.cozybuddy.hub.core.audio.wakeword.WakeWordStatus
 import app.cozybuddy.hub.core.network.ConnectionState
 import app.cozybuddy.hub.core.network.UrlError
+import app.cozybuddy.hub.feature.settings.PairingViewModel
 import app.cozybuddy.hub.feature.settings.SettingsUiState
 import app.cozybuddy.hub.feature.settings.SettingsViewModel
 
 @Composable
-fun SettingsRoute(viewModel: SettingsViewModel, onClose: () -> Unit, modifier: Modifier = Modifier) {
+fun SettingsRoute(
+    viewModel: SettingsViewModel,
+    pairingViewModel: PairingViewModel,
+    onClose: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     SettingsScreen(
         state = state,
@@ -50,6 +56,7 @@ fun SettingsRoute(viewModel: SettingsViewModel, onClose: () -> Unit, modifier: M
         onWakeWordKeywordChange = viewModel::onWakeWordKeywordChange,
         onWakeWordSensitivityChange = viewModel::onWakeWordSensitivityChange,
         onWakeWordSensitivityCommit = viewModel::onWakeWordSensitivityCommit,
+        pairingContent = { PairingSection(pairingViewModel) },
         modifier = modifier,
     )
 }
@@ -67,6 +74,7 @@ fun SettingsScreen(
     onWakeWordSensitivityChange: (Float) -> Unit,
     onWakeWordSensitivityCommit: () -> Unit,
     modifier: Modifier = Modifier,
+    pairingContent: @Composable () -> Unit = {},
 ) {
     Column(
         modifier
@@ -134,6 +142,7 @@ fun SettingsScreen(
             "${stringResource(R.string.settings_status_label)}: ${connectionText(state.connection)}",
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+        pairingContent()
         WakeWordSection(
             state = state,
             onEnabledChange = onWakeWordEnabledChange,
