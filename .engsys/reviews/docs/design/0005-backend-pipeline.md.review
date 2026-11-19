@@ -1,12 +1,11 @@
 engsys-document-review: 1
 document: docs/design/0005-backend-pipeline.md
-blob: 191ea0faa2fabe4978e75212280b7d1cfdcd3b5b
+blob: 39a396bfe38559e477d3ef298106485814ff6bc0
 decision: pass
 reviewer: claude-opus-5-5
 audience: 서버 구현 담당자와 검토자
 purpose: 서버 발화 처리를 어떤 단계와 작업 묶음으로 구현하는가
 
-- STT 단계 시간 제한을 10초에서 6초(헤지 1.8초)로, 실패 처리 표의 오류 코드를 stt_failed·stt_timeout 으로 구체화한 변경을 확인
-- 성능 예산 절에 헤지 동작·과금 영향·관측 지표(stt_hedged, stt_hedge_ratio)·재시도 규칙 문단 추가, 구현(openai_gateway, 설정 기본값)과 일치함을 대조
-- 나머지 절은 변경 없음
+- 성능 예산 절을 가설에서 결과로 갱신: TTS 캐시 효과(로컬 첫 소리 p50 1.55→0.74초)와 W1-4 스트리밍 전사 미채택 근거(지연·정확도·비용 수치)를 스파이크 결과와 대조해 기재
+- 작업 묶음 표의 W2-3 을 취소로 표시, 재검토 조건을 성능 예산 절에 한 문장으로 남김
 

@@ -1,11 +1,11 @@
 engsys-document-review: 1
 document: docs/plan/development-plan.md
-blob: 7b12b4e966bc27eda9c3f6f6c5c8e54b76a793c7
+blob: 4b59fc8d5e893bc1aab15be50b903536377f5a87
 decision: pass
 reviewer: claude-opus-5-5
 audience: 프로젝트 소유자와 실행 담당자
 purpose: 누가 무엇을 어떤 순서로 하며 무엇이 막고 있는가
 
-- T8·T9·T17·T19 상태를 병합 PR 기준으로 갱신, 기능 보강 묶음 T20(#32 #35 #38 #39)과 설계안 0005 의 W1·W2 를 추가
-- W 묶음의 세부 소유 파일은 설계안 0005 표로 연결해 중복 서술을 피함
+- W1·W2 완료 PR 번호와 추가 개선(#50~#53), 스트리밍 전사 취소, 한국어 호출어 기준 미달 상태를 반영
+- STT 모델 종료 대비 T21(#55) 추가, B5 사람 음성 녹음이 막는 작업에 #43 추가
 
