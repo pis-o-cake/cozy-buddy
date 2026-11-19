@@ -95,13 +95,13 @@ fi
 reload_nginx() {
     echo "== nginx 설정 검증·reload"
     local out
-    if ! out="$(remote "docker compose exec -T nginx nginx -t" 2>&1)"; then
+    if ! out="$(remote "docker compose exec -T nginx nginx -t -c /etc/cozy-nginx/nginx.conf" 2>&1)"; then
         echo "ERROR: nginx -t 실패:" >&2
         echo "$out" >&2
         return 1
     fi
     echo "$out"
-    remote "docker compose exec -T nginx nginx -s reload"
+    remote "docker compose exec -T nginx nginx -c /etc/cozy-nginx/nginx.conf -s reload"
 }
 
 # 운영자 CLI: 동기화·빌드 없이 실행 중인 컨테이너에 exec 한다. 인자는 원격 셸에 안전하게 인용한다.
