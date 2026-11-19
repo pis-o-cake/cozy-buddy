@@ -18,6 +18,8 @@ enum AlarmKind {
   ALARM_KIND_UNSPECIFIED = 0;
   ALARM_KIND_ALARM = 1;
   ALARM_KIND_TIMER = 2;
+  // 말로 설정한 리마인더. label이 알릴 내용이다. 울릴 때 긴 알람음 대신 짧은 알림음과 문구를 쓴다.
+  ALARM_KIND_REMINDER = 3;
 }
 
 // 요일.
@@ -121,4 +123,12 @@ message AlarmControlResult {
   bool ok = 3;
   // ok가 false일 때만 의미가 있다.
   ErrorCode code = 4;
+}
+
+// 허브→서버. REMINDER 알람이 울렸다. 서버는 label로 안내 문장을 합성해 RESPONSE_DOWN 음성으로 내려보낸다.
+// 허브가 오프라인이거나 서버가 응답하지 못하면 허브는 알림음과 문구만 표시한다.
+// 안내 음성의 stream_id는 "reminder-"로 시작한다. 허브는 이 접두어로 대화 응답과 구분한다.
+message ReminderFired {
+  string alarm_id = 1;
+  string label = 2;
 }

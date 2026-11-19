@@ -19,7 +19,7 @@ CATALOG: dict[str, int] = {
     "text_query": 29, "utterance_declined": 31,
     "alarm_upsert": 40, "alarm_delete": 41, "alarm_ack": 42,
     "alarm_snapshot": 43, "alarm_sync_request": 44,
-    "alarm_control": 45, "alarm_control_result": 46,
+    "alarm_control": 45, "alarm_control_result": 46, "reminder_fired": 47,
     "home_snapshot": 60, "entity_state_changed": 61, "entity_command": 62,
     "command_result": 63, "hub_status": 64,
     "weather_snapshot": 80,
@@ -87,6 +87,9 @@ def build_bodies(gen_dir: Path) -> dict:
                                     code=common.ERROR_CODE_NOT_FOUND),
         "alarm_snapshot": alarm.AlarmSnapshot(hub_id="hub-1", alarms=[
             alarm_msg,
+            alarm.Alarm(alarm_id="m1", kind=alarm.ALARM_KIND_REMINDER, label="병원 가기",
+                        enabled=True, revision=1, hub_id="hub-1",
+                        one_shot=alarm.OneShot(fires_at_epoch_ms=1_700_000_900_000)),
             alarm.Alarm(alarm_id="t1", kind=alarm.ALARM_KIND_TIMER, enabled=True, revision=1,
                         hub_id="hub-1",
                         one_shot=alarm.OneShot(fires_at_epoch_ms=1_700_000_600_000))]),
@@ -96,6 +99,7 @@ def build_bodies(gen_dir: Path) -> dict:
             action=alarm.ALARM_CONTROL_ACTION_SNOOZE, snooze_minutes=5),
         "alarm_control_result": alarm.AlarmControlResult(
             request_id="r1", alarm_id="a1", ok=False, code=common.ERROR_CODE_NOT_FOUND),
+        "reminder_fired": alarm.ReminderFired(alarm_id="r1", label="병원 가기"),
         "home_snapshot": home.HomeSnapshot(
             areas=[home.Area(area_id="ar1", name="Living", aliases=["안방"])],
             entities=[home.Entity(entity_id="light.a", area_id="ar1", name="Lamp",
