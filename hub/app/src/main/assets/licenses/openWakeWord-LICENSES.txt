@@ -26,3 +26,9 @@ Attribution
   openWakeWord by David Scripka, https://github.com/dscripka/openWakeWord
   Models are shared unchanged. Changes: none.
   ShareAlike: any adapted model derived from these files must use the same license.
+
+Korean keyword classifier (experimental option)
+  jarvis_ko_c.onnx   59885f624a32f9798fc09937dcf206f914033a5a0fe13e518eeee8caaff7df66
+  The classifier head was trained by the cozy-buddy project (spikes/s1-wakeword/s1/ko). It runs on the frozen
+  openWakeWord melspectrogram and embedding front-end listed above, so it is a model adapted from those CC BY-NC-SA 4.0
+  files and carries the same terms: NON-COMMERCIAL, ShareAlike, household use only.

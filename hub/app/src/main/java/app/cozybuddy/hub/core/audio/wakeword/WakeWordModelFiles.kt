@@ -12,7 +12,7 @@ import timber.log.Timber
  * 번들한 모델 파일 이름과 sha256.
  *
  * 모델 출처는 openWakeWord 릴리스 v0.5.1 이다. 라이선스(모델 CC BY-NC-SA 4.0)는 `assets/licenses/openWakeWord-LICENSES.txt` 에 있다.
- * 키워드 분류기를 교체하면(예: LiveKit 으로 학습한 한국어 호출어) [KEYWORD] 와 [KEYWORD_SHA256] 만 바꾼다.
+ * 한국어 분류기 [KEYWORD_KO] 는 우리가 학습했다. 앞단(멜·임베딩)은 위 openWakeWord 모델 그대로다.
  */
 object WakeWordModelFiles {
     const val ASSET_DIR = "wakeword"
@@ -26,10 +26,14 @@ object WakeWordModelFiles {
     const val KEYWORD = "hey_jarvis_v0.1.onnx"
     const val KEYWORD_SHA256 = "94a13cfe60075b132f6a472e7e462e8123ee70861bc3fb58434a73712ee0d2cb"
 
+    const val KEYWORD_KO = "jarvis_ko_c.onnx"
+    const val KEYWORD_KO_SHA256 = "59885f624a32f9798fc09937dcf206f914033a5a0fe13e518eeee8caaff7df66"
+
     val expectedHashes: Map<String, String> = mapOf(
         MELSPECTROGRAM to MELSPECTROGRAM_SHA256,
         EMBEDDING to EMBEDDING_SHA256,
         KEYWORD to KEYWORD_SHA256,
+        KEYWORD_KO to KEYWORD_KO_SHA256,
     )
 
     fun sha256Hex(bytes: ByteArray): String =
