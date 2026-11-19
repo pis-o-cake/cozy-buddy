@@ -1,0 +1,191 @@
+{
+  "spike": "S2c streaming STT",
+  "path_definitions": {
+    "stream_kw": {
+      "kind": "stream",
+      "model": "gpt-live-transcribe",
+      "prompt": null,
+      "keywords": [
+        "거실",
+        "침실",
+        "주방",
+        "조명",
+        "불",
+        "스탠드",
+        "가습기",
+        "전기포트",
+        "타이머",
+        "알람"
+      ],
+      "delay": null
+    },
+    "stream_minimal": {
+      "kind": "stream",
+      "model": "gpt-live-transcribe",
+      "prompt": "스마트홈 음성 명령. 거실, 침실, 주방, 조명, 불, 스탠드, 가습기, 전기포트, 포트, 켜줘, 꺼줘, 틀어줘, 밝기, 퍼센트, 타이머, 알람, 오전, 오후, 저녁, 새벽",
+      "keywords": null,
+      "delay": "minimal"
+    }
+  },
+  "api": {
+    "stream": "Realtime WebSocket wss://api.openai.com/v1/realtime?intent=transcription, session.type=transcription, turn_detection=null, manual input_audio_buffer.commit",
+    "batch": "POST /v1/audio/transcriptions (file upload after speech end)"
+  },
+  "timing": {
+    "t_end": "end of speech: last 20 ms chunk fully paced out (stream) / instant before upload starts (batch). Connection setup excluded (session assumed open since wake word).",
+    "chunk_ms": 20
+  },
+  "normaliser": "s2/normalize.py (punctuation, spaces, sino-korean/digit numbers)",
+  "pricing": {
+    "url": "https://developers.openai.com/api/docs/pricing",
+    "date": "2026-11-19",
+    "per_min": {
+      "gpt-live-transcribe": 0.017,
+      "gpt-transcribe": 0.0045,
+      "gpt-4o-transcribe": 0.006
+    },
+    "note": "gpt-4o-transcribe per-minute is the page's estimate from token prices"
+  },
+  "limitations": [
+    "Input audio is synthetic TTS speech (24 kHz, gpt-4o-mini-tts echo).",
+    "Latency measured from the dev Mac network, not the hub.",
+    "Same audio repeated 3x: samples are not independent."
+  ],
+  "total_estimated_cost_usd": 0.0884,
+  "paths": {
+    "stream_kw": {
+      "samples": 50,
+      "failures": 0,
+      "failure_examples": [],
+      "t_end_to_final_p50_s": 0.725376625021454,
+      "t_end_to_final_p95_s": 0.9061682500177994,
+      "t_end_to_final_mean_s": 0.7499,
+      "t_end_to_first_delta_p50_s": -0.8978125829598866,
+      "t_end_to_first_delta_p95_s": -0.12600366701371968,
+      "deltas_median": 9.0,
+      "transcript_exact_rate": 0.84,
+      "transcript_exact_rate_raw": 0.64,
+      "accuracy_by_category": {
+        "alarm": 0.25,
+        "brightness": 1.0,
+        "chat": 1.0,
+        "colloquial": 0.8,
+        "explicit": 1.0,
+        "implicit": 0.7143,
+        "multi": 1.0,
+        "state": 0.8,
+        "timer": 0.6667
+      },
+      "cost_per_command_usd": 0.000884,
+      "stt_usage_example": {
+        "type": "duration",
+        "seconds": 3
+      },
+      "transcription_mismatches": [
+        {
+          "command": "조명 꺼줘",
+          "transcript": "조명 꺼져."
+        },
+        {
+          "command": "지금 불 꺼",
+          "transcript": ""
+        },
+        {
+          "command": "침실 불 좀 꺼줄래",
+          "transcript": ""
+        },
+        {
+          "command": "침실 가습기 켜져 있어?",
+          "transcript": "침실에 가습기 켜져 있어?"
+        },
+        {
+          "command": "아침 7시에 알람 맞춰줘",
+          "transcript": "아침 일곱 시에 알람 맞춰줘."
+        },
+        {
+          "command": "내일 새벽 5시 45분에 깨워줘",
+          "transcript": "내일 새벽 다섯시 사십오분에 깨워줘."
+        },
+        {
+          "command": "저녁 8시에 알람 맞춰줘",
+          "transcript": "저녁 여덟시에 알람 맞춰줘."
+        },
+        {
+          "command": "라면 끓이게 3분 타이머 맞춰줘",
+          "transcript": "라면 뿌리게 삼분 타이머 맞춰줘."
+        }
+      ]
+    },
+    "stream_minimal": {
+      "samples": 50,
+      "failures": 0,
+      "failure_examples": [],
+      "t_end_to_final_p50_s": 0.6981070000329055,
+      "t_end_to_final_p95_s": 0.8582376670092344,
+      "t_end_to_final_mean_s": 0.7342,
+      "t_end_to_first_delta_p50_s": -1.658977833983954,
+      "t_end_to_first_delta_p95_s": -0.7441374170011841,
+      "deltas_median": 9.0,
+      "transcript_exact_rate": 0.8,
+      "transcript_exact_rate_raw": 0.64,
+      "accuracy_by_category": {
+        "alarm": 0.25,
+        "brightness": 0.8571,
+        "chat": 0.8,
+        "colloquial": 0.8,
+        "explicit": 1.0,
+        "implicit": 0.8571,
+        "multi": 1.0,
+        "state": 0.8,
+        "timer": 0.3333
+      },
+      "cost_per_command_usd": 0.000884,
+      "stt_usage_example": {
+        "type": "duration",
+        "seconds": 3
+      },
+      "transcription_mismatches": [
+        {
+          "command": "지금 불 꺼",
+          "transcript": ""
+        },
+        {
+          "command": "침실 불 좀 꺼줄래",
+          "transcript": ""
+        },
+        {
+          "command": "침실 조명 밝기 30으로 해줘",
+          "transcript": "심실 조명 밝기 삼십으로 해줘."
+        },
+        {
+          "command": "침실 가습기 켜져 있어?",
+          "transcript": "침실에 가습기 켜져 있어?"
+        },
+        {
+          "command": "아침 7시에 알람 맞춰줘",
+          "transcript": "아침 일곱시에 알람 맞춰줘."
+        },
+        {
+          "command": "내일 새벽 5시 45분에 깨워줘",
+          "transcript": "내일 새벽 다섯시 사십오분에 깨워줘."
+        },
+        {
+          "command": "저녁 8시에 알람 맞춰줘",
+          "transcript": "전역 여덟시에 알람 맞춰줘."
+        },
+        {
+          "command": "5분 타이머 시작해줘",
+          "transcript": "오후분 타이머 시작해줘."
+        },
+        {
+          "command": "라면 끓이게 3분 타이머 맞춰줘",
+          "transcript": "라면  뿌리게 삼분 타이머 맞춰줘."
+        },
+        {
+          "command": "오늘 기분 어때",
+          "transcript": "오늘 기본 어때?"
+        }
+      ]
+    }
+  }
+}
