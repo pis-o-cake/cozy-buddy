@@ -64,6 +64,8 @@ message UtteranceStart {
   WakeSource source = 4;
   // 웨이크워드 이전에 버퍼링해 앞에 붙인 오디오 길이(ms).
   uint32 pre_roll_ms = 5;
+  // 허브가 잰 발화 입력 음량(dBFS, 0 이하). 0이면 측정하지 않은 것이다. 다중 허브 중재 확장용 예약 필드다.
+  float input_level_db = 6;
 }
 
 // 허브→서버. 발화 정상 종료(마지막 AudioChunk 뒤에 보낸다).
@@ -123,4 +125,19 @@ message TextQuery {
   string request_id = 1;
   string text = 2;
   string area_id = 3;
+}
+
+// 발화 거절 사유.
+enum DeclineReason {
+  DECLINE_REASON_UNSPECIFIED = 0;
+  // 다른 허브가 같은 발화를 먼저 처리했다.
+  DECLINE_REASON_DUPLICATE = 1;
+}
+
+// 서버→허브. 같은 발화를 다른 허브가 이겨서 이 발화는 처리하지 않는다. 허브는 조용히 IDLE로 돌아간다.
+message UtteranceDeclined {
+  string stream_id = 1;
+  DeclineReason reason = 2;
+  // 이긴 허브의 ID.
+  string winner_hub_id = 3;
 }
