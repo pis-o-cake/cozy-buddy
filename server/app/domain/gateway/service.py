@@ -27,6 +27,8 @@ from app.core.protocol import PROTOCOL_VERSION, error_envelope
 from app.core.security import authenticate
 from app.core.version import get_server_version
 from app.domain.alarm.service import AlarmService
+from app.domain.auth.pairing import PairingStore
+from app.domain.auth.service import AuthService
 from app.domain.home.service import HomeService
 from app.domain.hub.service import HubService
 from app.domain.voice.service import VoiceService
@@ -149,9 +151,7 @@ class GatewayService:
         role = {CLIENT_KIND_HUB: ClientRole.HUB, CLIENT_KIND_MOBILE: ClientRole.MOBILE}.get(
             hello.kind
         )
-        if role is None or not authenticate(
-            self._settings.token_entries, role, hello.client_id, hello.token
-        ):
+        if role is None or not await self._authenticate(role, hello.client_id, hello.token):
             return await self._reject(
                 conn, ERROR_CODE_UNAUTHENTICATED, KEY_UNAUTHENTICATED, "invalid credentials"
             )
@@ -159,6 +159,15 @@ class GatewayService:
         conn.identify(role, hello.client_id)
         await self._accept_client(conn)
         return True
+
+    async def _authenticate(self, role: ClientRole, client_id: str, token: str) -> bool:
+        """정적 토큰을 먼저, 없으면 페어링으로 발급한 토큰을 확인한다."""
+        if authenticate(self._settings.token_entries, role, client_id, token):
+            return True
+        async with self._database.session() as session:
+            return await AuthService(session, PairingStore(), self._connections).verify(
+                role, client_id, token
+            )
 
     async def _accept_client(self, conn: ClientConnection) -> None:
         server_hello = session_pb2.ServerHello(

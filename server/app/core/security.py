@@ -1,5 +1,6 @@
-"""정적 토큰 인증."""
+"""정적 토큰 인증과 발급 토큰 해시."""
 
+import hashlib
 import hmac
 from collections.abc import Iterable
 
@@ -29,3 +30,8 @@ def authenticate(
         if token_ok and id_ok and entry.kind == kind:
             matched = True
     return matched
+
+
+def hash_token(token: str) -> str:
+    """토큰의 SHA-256 16진 해시. 256비트 랜덤 토큰이라 느린 해시는 필요 없다."""
+    return hashlib.sha256(token.encode()).hexdigest()
