@@ -16,7 +16,13 @@ from app.core.database import get_session
 from app.core.exceptions import AuthenticationError
 from app.domain.auth.errors import AdminUnconfiguredError
 from app.domain.auth.pairing import PairingGrant, PairingStore
-from app.domain.auth.schemas import PairingCodeCreate, PairingCodeRead, PairRequest, PairResponse
+from app.domain.auth.schemas import (
+    ClientRead,
+    PairingCodeCreate,
+    PairingCodeRead,
+    PairRequest,
+    PairResponse,
+)
 from app.domain.auth.service import AuthService
 
 router = APIRouter()
@@ -70,6 +76,12 @@ async def pair(body: PairRequest, request: Request, service: AuthServiceDep) -> 
     settings: Settings = request.app.state.settings
     ip = resolve_client_ip(request, settings.trusted_proxies)
     return await service.pair(ip, body.code, body.client_kind)
+
+
+@router.get("/clients", dependencies=[AdminDep])
+async def list_clients(service: AuthServiceDep, include_revoked: bool = False) -> list[ClientRead]:
+    """발급된 클라이언트 목록. 기본은 폐기되지 않은 것만 보여준다."""
+    return await service.list_clients(include_revoked)
 
 
 @router.delete("/clients/{client_id}", dependencies=[AdminDep], status_code=204)

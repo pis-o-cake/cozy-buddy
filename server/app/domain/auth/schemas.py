@@ -1,5 +1,7 @@
 """인증 REST 스키마."""
 
+from datetime import datetime
+
 from pydantic import BaseModel, Field
 
 from app.config import ClientRole
@@ -31,3 +33,15 @@ class PairResponse(BaseModel):
 
     client_id: str
     token: str
+
+
+class ClientRead(BaseModel):
+    """발급된 클라이언트 요약. 토큰·해시는 담지 않는다."""
+
+    client_id: str
+    kind: ClientRole
+    name: str | None = None
+    area_id: str | None = None
+    created_at: datetime
+    revoked_at: datetime | None = None
+    connected: bool

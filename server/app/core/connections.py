@@ -126,6 +126,10 @@ class ConnectionManager:
         """연결된 허브 ID 집합."""
         return set(self._hubs)
 
+    def online_client_ids(self) -> set[str]:
+        """연결된 허브·앱의 client_id 집합."""
+        return set(self._hubs) | set(self._mobiles)
+
     async def send_to_hub(self, hub_id: str, envelope: Envelope) -> bool:
         """허브에 보낸다. 오프라인이거나 전송에 실패하면 False."""
         conn = self._hubs.get(hub_id)

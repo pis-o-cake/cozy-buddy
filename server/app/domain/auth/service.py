@@ -17,7 +17,7 @@ from app.domain.auth import crud
 from app.domain.auth.errors import PairingCodeInvalidError, RateLimitedError
 from app.domain.auth.models import ClientToken
 from app.domain.auth.pairing import PAIRING_CODE_TTL_SECONDS, PairingGrant, PairingStore
-from app.domain.auth.schemas import PairingCodeRead, PairResponse
+from app.domain.auth.schemas import ClientRead, PairingCodeRead, PairResponse
 from app.domain.hub import crud as hub_crud
 from app.domain.hub.models import Hub
 
@@ -87,6 +87,37 @@ class AuthService:
             if hmac.compare_digest(candidate, stored.encode()) and stored_kind == kind.value:
                 matched = True
         return matched
+
+    async def list_clients(self, include_revoked: bool) -> list[ClientRead]:
+        """발급된 클라이언트를 client_id 별로 묶어 돌려준다.
+
+        모든 토큰이 폐기된 클라이언트만 revoked_at 을 갖는다(가장 늦은 폐기 시각).
+        """
+        rows = await crud.list_tokens(self._session)
+        grouped: dict[str, list[ClientToken]] = {}
+        for row in rows:
+            grouped.setdefault(row.client_id, []).append(row)
+        hubs = await crud.hubs_by_id(self._session, set(grouped))
+        online = self._connections.online_client_ids()
+        clients: list[ClientRead] = []
+        for client_id, tokens in grouped.items():
+            revoked = [t.revoked_at for t in tokens if t.revoked_at is not None]
+            fully_revoked = len(revoked) == len(tokens)
+            if fully_revoked and not include_revoked:
+                continue
+            hub = hubs.get(client_id)
+            clients.append(
+                ClientRead(
+                    client_id=client_id,
+                    kind=ClientRole(tokens[0].kind),
+                    name=hub.name if hub else None,
+                    area_id=hub.area_id if hub else None,
+                    created_at=min(t.created_at for t in tokens),
+                    revoked_at=max(revoked) if fully_revoked else None,
+                    connected=client_id in online and not fully_revoked,
+                )
+            )
+        return clients
 
     async def revoke(self, client_id: str) -> None:
         """토큰을 폐기하고 연결된 세션을 끊는다.
