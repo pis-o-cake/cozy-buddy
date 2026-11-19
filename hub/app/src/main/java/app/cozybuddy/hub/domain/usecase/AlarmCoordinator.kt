@@ -26,7 +26,8 @@ class AlarmCoordinator @Inject constructor(
     /** 저장 후 예약을 맞춘다. 울릴 일이 없는 일회성은 비활성으로 정규화해 저장한다. */
     suspend fun save(alarm: Alarm): Alarm {
         val now = timeSource.now()
-        val normalized = if (alarm.enabled && NextFireCalculator.nextFire(alarm, now) == null) {
+        val expired = alarm.enabled && NextFireCalculator.nextFire(alarm, now) == null
+        val normalized = if (expired && !hasPendingSnooze(alarm.id)) {
             alarm.copy(enabled = false)
         } else {
             alarm
@@ -53,7 +54,8 @@ class AlarmCoordinator @Inject constructor(
         val alarms = repository.observeAll().first()
         Timber.i("Rescheduling %d alarms", alarms.size)
         alarms.forEach { alarm ->
-            if (alarm.enabled && NextFireCalculator.nextFire(alarm, timeSource.now()) == null) {
+            val expired = alarm.enabled && NextFireCalculator.nextFire(alarm, timeSource.now()) == null
+            if (expired && !hasPendingSnooze(alarm.id)) {
                 // 꺼져 있던 동안 지나간 일회성은 울리지 않고 비활성화한다.
                 Timber.i("Disabling expired one-shot id=%s", alarm.id)
                 repository.upsert(alarm.copy(enabled = false))
@@ -124,9 +126,23 @@ class AlarmCoordinator @Inject constructor(
         }
     }
 
+    private suspend fun pendingSnooze(id: String): Snooze? {
+        val now = timeSource.now().toInstant()
+        return snoozes.getAll().firstOrNull { it.alarmId == id && it.fireAt.isAfter(now) }
+    }
+
+    private suspend fun hasPendingSnooze(id: String): Boolean = pendingSnooze(id) != null
+
     private suspend fun applySchedule(alarm: Alarm) {
         val triggerAt = NextFireCalculator.nextFire(alarm, timeSource.now())
         if (triggerAt == null) {
+            val snooze = pendingSnooze(alarm.id)
+            // 정규 시각이 지난 일회성도 스누즈가 남아 있으면 그 시각에 울려야 한다.
+            if (alarm.enabled && snooze != null) {
+                scheduler.cancel(alarm.id)
+                scheduler.scheduleSnooze(alarm.id, snooze.fireAt)
+                return
+            }
             snoozes.clear(alarm.id)
             scheduler.cancel(alarm.id)
             return
