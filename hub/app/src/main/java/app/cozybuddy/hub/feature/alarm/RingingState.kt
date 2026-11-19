@@ -40,5 +40,5 @@ class RingingStateHolder @Inject constructor() {
 /** UI 가 울림을 끄는 통로. 서비스 구현은 플랫폼에 묶여 있어 인터페이스로 가린다. */
 interface AlarmRingControl {
     fun stop()
-    fun snooze()
+    fun snooze(minutes: Int)
 }

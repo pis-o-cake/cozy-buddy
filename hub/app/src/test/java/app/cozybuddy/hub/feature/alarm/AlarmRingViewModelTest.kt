@@ -76,6 +76,6 @@ class AlarmRingViewModelTest {
         viewModel.onSnooze()
 
         verify(exactly = 1) { control.stop() }
-        verify(exactly = 1) { control.snooze() }
+        verify(exactly = 1) { control.snooze(9) }
     }
 }

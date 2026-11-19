@@ -105,14 +105,14 @@ class AlarmCoordinator @Inject constructor(
      *
      * 스누즈면 별도 슬롯에 [SnoozePolicy] 시각을 예약하고, 아니면 일회성은 비활성화한다.
      */
-    suspend fun onRingFinished(id: String, snoozed: Boolean) {
+    suspend fun onRingFinished(id: String, snoozed: Boolean, snoozeMinutes: Int = SnoozePolicy.DEFAULT_MINUTES) {
         val alarm = repository.get(id)
         if (alarm == null) {
             snoozes.clear(id)
             return
         }
         if (snoozed) {
-            val fireAt = SnoozePolicy.snoozeAt(timeSource.now().toInstant())
+            val fireAt = SnoozePolicy.snoozeAt(timeSource.now().toInstant(), snoozeMinutes)
             snoozes.put(Snooze(id, fireAt))
             scheduler.scheduleSnooze(id, fireAt)
             return

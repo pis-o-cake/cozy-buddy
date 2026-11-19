@@ -16,6 +16,7 @@ import app.cozybuddy.hub.R
 import app.cozybuddy.hub.core.time.TimeSource
 import app.cozybuddy.hub.domain.model.Alarm
 import app.cozybuddy.hub.domain.model.AlarmKind
+import app.cozybuddy.hub.domain.scheduling.SnoozePolicy
 import app.cozybuddy.hub.domain.usecase.AlarmCoordinator
 import app.cozybuddy.hub.feature.alarm.AlarmRingConfig
 import app.cozybuddy.hub.feature.alarm.RingingState
@@ -63,7 +64,10 @@ class AlarmRingService : Service() {
         when (intent?.action) {
             ACTION_START -> handleStart(intent.getStringExtra(EXTRA_ALARM_ID))
             ACTION_STOP -> finishRing(snoozed = false)
-            ACTION_SNOOZE -> finishRing(snoozed = true)
+            ACTION_SNOOZE -> finishRing(
+                snoozed = true,
+                snoozeMinutes = intent.getIntExtra(EXTRA_SNOOZE_MINUTES, SnoozePolicy.DEFAULT_MINUTES),
+            )
             else -> stopSelf()
         }
         return START_NOT_STICKY
@@ -151,16 +155,16 @@ class AlarmRingService : Service() {
         Timber.i("Ringing started id=%s", alarm.id)
     }
 
-    private fun finishRing(snoozed: Boolean) {
+    private fun finishRing(snoozed: Boolean, snoozeMinutes: Int = SnoozePolicy.DEFAULT_MINUTES) {
         if (session == null) {
             // 다음 알람을 준비하는 중이면 서비스를 끄지 않는다.
             if (!starting) stopSelf()
             return
         }
-        scope.launch { finishCurrent(snoozed) }
+        scope.launch { finishCurrent(snoozed, snoozeMinutes) }
     }
 
-    private suspend fun finishCurrent(snoozed: Boolean) {
+    private suspend fun finishCurrent(snoozed: Boolean, snoozeMinutes: Int) {
         val finished = session ?: return
         session = null
         // 정리하는 동안 들어온 시작 요청이 대기열 순서를 앞지르지 않게 한다.
@@ -171,7 +175,7 @@ class AlarmRingService : Service() {
         // 서비스 종료 중에도 DB 갱신(일회성 비활성화·스누즈 예약)은 끝까지 해야 한다.
         withContext(NonCancellable) {
             try {
-                coordinator.onRingFinished(finished.alarmId, snoozed)
+                coordinator.onRingFinished(finished.alarmId, snoozed, snoozeMinutes)
             } catch (e: Exception) {
                 Timber.e(e, "onRingFinished failed id=%s", finished.alarmId)
             }
@@ -275,6 +279,7 @@ class AlarmRingService : Service() {
         const val ACTION_STOP = "app.cozybuddy.hub.action.RING_STOP"
         const val ACTION_SNOOZE = "app.cozybuddy.hub.action.RING_SNOOZE"
         const val EXTRA_ALARM_ID = "alarm_id"
+        const val EXTRA_SNOOZE_MINUTES = "snooze_minutes"
         private const val NANOS_PER_MILLI = 1_000_000L
 
         fun startIntent(context: Context, alarmId: String): Intent =
